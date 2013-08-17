@@ -386,7 +386,7 @@ def get_cloudlet_type(instance):
     if hasattr(instance, "cloudlet_type"):
         cloudlet_type = getattr(instance, "cloudlet_type")
         return cloudlet_type
-    return _("Unkwon type")
+    return _("Unknowntype")
 
 
 def get_power_state(instance):

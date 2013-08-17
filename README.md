@@ -49,37 +49,43 @@ This patch **does not change any existing source code**, but designed to be
 purely pluggable extension, so you can revert back to original state by
 reversing the installation steps.
 
-1. install libraries for the fabric script.
+1. Install libraries for the fabric script.
 
 	> $ sudo apt-get install git openssh-server fabric
 
-2.  You first need to specify you OpenStack machine's IP addresses at
-	installation script, **fabric.py** file.  We assume that you run this
-	script at control node, so you only need to change the ip address of
-	compute machines.  
+2.  You first need to specify IP addresses of your OpenStack machine at the
+	installation script, **fabric.py** file.  We assume you run this script at
+	control node, so you only need to list the ip address of compute machines.
+	If you are testing with a single node (run both control and compute at one
+	machine) you don't need this step.
 	
-	> (At fabric.py file)
-	> compute_nodes = [
-	> 		('ssh_username', 'ip address or domain name of node')
-	> 		('krha', 'sleep.elijah.cs.cmu.edu')
-	> 		..
-	> 		]
+		> (At fabric.py file)
+		> compute_nodes = [
+		> 		('ssh_username', 'ip address or domain name of node')
+		> 		('krha', 'sleep.elijah.cs.cmu.edu')
+		> 		..
+		> 		]
 
 
-3. install extension at control node (localhost).
+3. Install cloudlet extension for both control node and compute node at localhost.
 
-	$ fab localhost install_control()
-
-
-3. install extension at compte node.
-
-	$ fab remote install_compute()
+		> $ fab localhost install_control()
 
 
+3. Install cloudlet extension at compte nodes.  Again, if you are testing with
+   single node (all-in-one case), you don't need this step since
+   install_control does already did path for computation.
 
+		> $ fab remote install_compute()
+
+
+How to use
+-----------
+
+If the installation is successful, you should 
 
 Known Issues
-----------
+------------
 
 1. Possible resource leak from unexpected OpenStack termination
 

@@ -8,8 +8,8 @@ from fabric.context_managers import cd
 
 
 # your configuration
-control_node = ['localhost']
-compute_nodes = [('krha', 'sleet.elijah.cs.cmu.edu')]
+control_node = ['krha@localhost']
+compute_node_list = ['krha@sleet.elijah.cs.cmu.edu']
 
 
 # constant
@@ -112,19 +112,28 @@ def deploy_compute_manager():
 def check_system_requirement():
     msg = "Tested only Ubuntu 12.04 LTS\n"
     msg += "But the current OS is not Ubuntu 12.04 LTS"
-
+    
+    # OS version test
     output = run('cat /etc/lsb-release')
     if output.failed == True:
         abort(msg)
     if str(output).find("DISTRIB_RELEASE=12.04") == -1:
         abort(msg)
 
+    # OpenStack installation test
+    hostname = sudo('hostname')
+    output = sudo("nova-manage service list | grep %s" % hostname)
+    if output.find("XXX") != -1:
+        msg = "OpenStack is not fully functioning.\n"
+        msg += "Check the service with 'nova-manage service list' command.\n\n"
+        msg += output
+        abort(msg)
+
 
 def check_VM_synthesis_package():
     cloudlet_temp_repo = '/tmp/cloudlet_repo_temp'
-    sudo("apt-get update")
-    sudo("apt-get install git openssh-server fabric")
-    run("git clone %s -o %s" % (VM_SYNTEHSIS_REPO, cloudlet_temp_repo))
+    sudo("rm -rf %s" % cloudlet_temp_repo)
+    run("git clone %s %s" % (VM_SYNTEHSIS_REPO, cloudlet_temp_repo))
     with cd(cloudlet_temp_repo):
         if sudo("fab localhost install").failed:
             msg = "Cannot install cloudlet package.\n"
@@ -145,7 +154,7 @@ def deploy_dashboard():
     if files.exists(dest_dir, use_sudo=True) == False:
         sudo("mkdir -p %s" % dest_dir)
     if put(src_dir, dest_dir, use_sudo=True).failed:
-        abort("Cannot create symbolic link from %s to %s" % (src_dir, link_dir))
+        abort("Cannot copy from %s to %s" % (src_dir, link_dir))
 
 
 def deploy_svirt():
@@ -161,37 +170,42 @@ def deploy_svirt():
 
 
 @task
-def compute_nodes():
+def localhost():
     env.run = local
     env.warn_only = True
-    env.hosts = ['localhost']
+    env.hosts = control_node
 
 
 @task
-def control_nodes():
+def remote():
     env.run = run
     env.warn_only = True
-    env.user = 'krha'
-    env.hosts = ['sleet.elijah.cs.cmu.edu']
+    env.hosts = compute_node_list
 
 
 @task
 def install_control():
+    check_VM_synthesis_package()
+
     with hide('stdout'):
         check_system_requirement()
-        check_VM_synthesis_package()
         deploy_cloudlet_api()
         deploy_compute_manager()
-        #deploy_dashboard()
         deploy_svirt()
+        deploy_dashboard()
+
+    sys.stdout.write("[SUCCESS] Finished installation")
 
 
 @task
 def install_compute():
+    check_VM_synthesis_package()
+
     with hide('stdout'):
         check_system_requirement()
-        check_VM_synthesis_package()
         deploy_cloudlet_api()
         deploy_compute_manager()
         deploy_svirt()
+
+    sys.stdout.write("[SUCCESS] Finished installation")
 
