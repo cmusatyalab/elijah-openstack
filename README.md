@@ -90,7 +90,7 @@ How to use
 
 First, if the installation is successful, you should be able to see update
 Dashboard as below.  ![OpenStack cloudlet extension
-dashboard](https://raw.github.com/cmusatyalab/elijah-openstack/tree/master/doc/screenshot/cloudlet_dashboard.png)
+dashboard](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot/cloudlet_dashboard.png?raw=true)
 Or you can chech cloudlet extension by listing existing extension using
 standard openstack API.
 
