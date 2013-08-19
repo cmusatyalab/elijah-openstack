@@ -9,7 +9,7 @@ from fabric.context_managers import cd
 
 # your configuration
 control_node = ['localhost']
-compute_node_list = ['cloudlet@sleet.krha.kr']
+compute_node_list = ['krha@sleet.elijah.cs.cmu.edu']
 
 
 # constant
@@ -134,8 +134,8 @@ def check_VM_synthesis_package():
     if run("cloudlet --version").failed:
         # install cloudlet library
         cloudlet_temp_repo = '/tmp/cloudlet_repo_temp'
-        sudo("rm -rf %s" % cloudlet_temp_repo)
-        run("git clone %s %s" % (VM_SYNTEHSIS_REPO, cloudlet_temp_repo))
+        #sudo("rm -rf %s" % cloudlet_temp_repo)
+        #run("git clone %s %s" % (VM_SYNTEHSIS_REPO, cloudlet_temp_repo))
         with cd(cloudlet_temp_repo):
             if run("fab localhost install").failed:
                 msg = "Cannot install cloudlet package.\n"

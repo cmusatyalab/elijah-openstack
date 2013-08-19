@@ -94,6 +94,10 @@ dashboard](https://raw.github.com/cmusatyalab/elijah-openstack/tree/master/doc/s
 Or you can chech cloudlet extension by listing existing extension using
 standard openstack API.
 
+You can either use Web interface at Dashboard or take a look at
+./client/nova_client.py to figure out how to use cloudlet extension API.  We're
+working on documentation of this extension and will be updated soon.
+
 
 
 Known Issues
