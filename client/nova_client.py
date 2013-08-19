@@ -255,6 +255,8 @@ def request_cloudlet_ipaddress(server_address, token, end_point, server_uuid):
 
 
 def get_token(server_address, user, password, tenant_name):
+    import pdb;pdb.set_trace()
+
     url = "%s:5000" % server_address
     params = {
             "auth":

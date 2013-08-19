@@ -82,7 +82,13 @@ reversing the installation steps.
 How to use
 -----------
 
-If the installation is successful, you should 
+First, if the installation is successful, you should be able to see update
+Dashboard as below.  ![OpenStack cloudlet extension
+dashboard](https://raw.github.com/cmusatyalab/elijah-openstack/tree/master/doc/screenshot/cloudlet_dashboard.png)
+Or you can chech cloudlet extension by listing existing extension using
+standard openstack API.
+
+
 
 Known Issues
 ------------
