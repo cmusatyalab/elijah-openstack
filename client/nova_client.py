@@ -23,11 +23,6 @@ import json
 import sys
 import urllib
 
-image_name = "Ubuntu-server"
-test_instance_name = image_name + '-test'
-base_vm_name = image_name + '-base'
-overlay_vm_name = image_name + "-overlay_vm"
-
 
 class CloudletClientError(Exception):
     pass
@@ -276,15 +271,20 @@ def get_token(server_address, user, password, tenant_name):
     conn.close()
 
     #print json.dumps(dd, indent=4)
-    api_token = dd['access']['token']['id']
-    service_list = dd['access']['serviceCatalog']
-    nova_endpoint = None
-    glance_endpoint = None
-    for service in service_list:
-        if service['name'] == 'nova':
-            nova_endpoint = service['endpoints'][0]['publicURL']
-        elif service['name'] == 'glance':
-            glance_endpoint = service['endpoints'][0]['publicURL']
+    try:
+        api_token = dd['access']['token']['id']
+        service_list = dd['access']['serviceCatalog']
+        nova_endpoint = None
+        glance_endpoint = None
+        for service in service_list:
+            if service['name'] == 'nova':
+                nova_endpoint = service['endpoints'][0]['publicURL']
+            elif service['name'] == 'glance':
+                glance_endpoint = service['endpoints'][0]['publicURL']
+    except KeyError, e:
+        sys.stderr.write(str(e) + "\n")
+        sys.stderr.write("Malformed return from OpenStack\n")
+        sys.stderr.write(str(dd))
     return api_token, nova_endpoint, glance_endpoint
 
 
@@ -321,10 +321,21 @@ def overlay_download(server_address, uname, password, overlay_name, output_file)
     if err:
         print err
 
-def process_command_line(argv):
-    global operation_mode
 
-    parser = OptionParser(usage="usage: %prog" + " [option]",
+def print_usage(commands):
+    usage = "\n%prog command [option]\n"
+    usage += "Command list:\n"
+    MAX_SPACE = 20
+    for (comm, desc) in commands.iteritems():
+        space = ""
+        if len(comm) < MAX_SPACE: 
+            space = " " * (20-len(comm))
+        usage += "  %s%s : %s\n" % (comm, space, desc)
+    return usage
+
+
+def process_command_line(argv, commands):
+    parser = OptionParser(usage=print_usage(commands),
             version="Cloudlet Synthesys(piping) 0.1")
     parser.add_option(
             '-s', '--server', action='store', type='string',
@@ -332,20 +343,32 @@ def process_command_line(argv):
             help='set openstack api server address')
     parser.add_option(
             '-u', '--user', action='store', type='string', 
-            dest='user_name', default='admin',
-            help='set username')
+            dest='user_name', help='set username')
     parser.add_option(
             '-p', '--password', action='store', type='string', 
-            dest='password', default='password',
-            help='set password')
+            dest='password', help='set password')
     parser.add_option(
             '-t', '--tenant', action='store', type='string', 
-            dest='tenant_name', default='admin',
-            help='set tenant name')
-    parser.add_option(
-            '-x', '--token', action='store', type='string', dest='token',
-            help='set tenant name')
+            dest='tenant_name', help='set tenant name')
+
     settings, args = parser.parse_args(argv)
+    if settings.user_name == None:
+        msg = "Need username for OpenStack API\n"
+        msg += "Check the information using 'nova user-list'"
+        parser.error(msg)
+    if settings.password == None:
+        parser.error("Need password for OpenStack API")
+    if settings.tenant_name == None:
+        msg = "Need tenant name for OpenStack API\n"
+        msg += "Check the information using 'nova tenant-list'"
+        parser.error(msg)
+    
+    if not len(args) != 0:
+        parser.error("Need command, Choose among :\n  %s" % " | ".join(commands))
+    mode = str(args[0]).lower()
+    if mode not in commands.keys():
+        parser.error("Invalid Command, Choose among :\n  %s" % " | ".join(commands))
+
     return settings, args
 
 
@@ -397,12 +420,18 @@ def get_cloudlet_base_list(server_address, uname, password):
 
 
 def main(argv=None):
-    global test_instance_name
-    global base_vm_name
-    global overlay_vm_name
-    key_name = "mykey"
+    CMD_CREATE_BASE     = "create-base"
+    CMD_CREATE_OVERLAY  = "create-overlay"
+    CMD_DOWNLOAD        = "download"
+    CMD_SYNTHESIS       = "synthesis"
+    commands = {
+            CMD_CREATE_BASE: "create base vm from the running instance",
+            CMD_CREATE_OVERLAY: "create VM overlay from the customizaed VM",
+            CMD_DOWNLOAD: "Download VM overlay",
+            CMD_SYNTHESIS: "VM Synthesis (Need downloadable URLs for VM overlay",
+            }
 
-    settings, args = process_command_line(sys.argv[1:])
+    settings, args = process_command_line(sys.argv[1:], commands)
     print "Connecting to %s for tenant %s" % \
             (settings.server_address, settings.tenant_name)
     token, endpoint, glance_endpoint = \
@@ -413,16 +442,7 @@ def main(argv=None):
         print "need command"
         sys.exit(1)
 
-    if args[0] == 'image-list':
-        images = get_list(settings.server_address, token, \
-                urlparse(endpoint), "images")
-        print json.dumps(images, indent=2)
-    elif args[0] == 'boot':
-        image_name = sys.argv[2]
-        images = request_new_server(settings.server_address, \
-                token, urlparse(endpoint), key_name=key_name, \
-                image_name=image_name, server_name=test_instance_name)
-    elif args[0] == 'create-base':
+    if args[0] == 'create-base':
         instance_name = raw_input("Name of a running instance that you like to make as a base VM : ")
         snapshot_name = raw_input("Set name of Base VM : ")
         request_cloudlet_base(settings.server_address, token, \
@@ -440,11 +460,23 @@ def main(argv=None):
         overlay_download(settings.server_address, "admin", "admin", \
                 VM_overlay_blob, VM_overlay_blob)
     elif args[0] == 'synthesis':
-        overlay_meta_url = "http://scarlet.aura.cs.cmu.edu:8000/overlay.meta"
-        overlay_blob_url = "http://scarlet.aura.cs.cmu.edu:8000/overlay.blob"
+        basevm_image_name = raw_input("Name of Base VM: ")
+        overlay_meta_url = raw_input("URL for VM overlay metafile : ")
+        overlay_blob_url = raw_input("URL for VM overlay blobfile : ")
+        new_instance_name = raw_input("Set the name of syntehsized VM : ")
         request_synthesis(settings.server_address, token, urlparse(endpoint), \
-                key_name=key_name, image_name=base_vm_name+"-disk", server_name='synthesis', \
+                key_name=None, image_name=basevm_image_name, server_name=new_instance_name, \
                 overlay_meta_url=overlay_meta_url, overlay_blob_url=overlay_blob_url)
+    elif args[0] == 'image-list':
+        images = get_list(settings.server_address, token, \
+                urlparse(endpoint), "images")
+        print json.dumps(images, indent=2)
+    elif args[0] == 'boot':
+        image_name = sys.argv[2]
+        new_instance_name = raw_input("Set the name of VM : ")
+        images = request_new_server(settings.server_address, \
+                token, urlparse(endpoint), key_name=None, \
+                image_name=image_name, server_name=new_instance_name)
     elif args[0] == 'ip-address':
         server_uuid = args[1]
         ret = request_cloudlet_ipaddress(settings.server_address, token, urlparse(endpoint), \
