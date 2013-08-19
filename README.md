@@ -59,12 +59,20 @@ reversing the installation steps.
 
 	> $ sudo apt-get install git openssh-server fabric
 
-2.  You first need to specify IP addresses of your OpenStack machine at the
-	installation script, **fabric.py** file.  We assume you run this script at
-	control node, so you only need to list the ip address of compute machines.
-	If you are testing with a single node (run both control and compute at one
-	machine) you don't need this step.
-	
+
+2. Run this installation script at control node. It will install cloudlet
+   extension at localhost for contolling and computing.
+
+		> $ fab localhost install_control
+
+
+3. Install cloudlet extension at every compute node.  If your OpenStack is
+   single-machine all-in-one node, __you don't need this step__ since
+   *install_control* does already apply all patches on local machine.
+   
+   You first need to specify IP addresses of your OpenStack machine at the
+   installation script, **fabric.py** file. 
+
 		> (At fabric.py file)
 		> compute_nodes = [
 		> 		('ssh_username', 'ip address or domain name of node')
@@ -72,17 +80,9 @@ reversing the installation steps.
 		> 		..
 		> 		]
 
+   Then, run the script.
 
-3. Install cloudlet extension for both control node and compute node at localhost.
-
-		> $ fab localhost install_control()
-
-
-3. Install cloudlet extension at compute nodes.  Again, if you are testing with
-   single node (all-in-one case), you don't need this step since
-   install_control does already did path for computation.
-
-		> $ fab remote install_compute()
+		> $ fab remote install_compute
 
 
 How to use
