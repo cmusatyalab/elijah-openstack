@@ -8,8 +8,8 @@ from fabric.context_managers import cd
 
 
 # your configuration
-control_node = ['krha@localhost']
-compute_node_list = ['krha@sleet.elijah.cs.cmu.edu']
+control_node = ['localhost']
+compute_node_list = ['cloudlet@sleet.krha.kr']
 
 
 # constant
@@ -123,7 +123,7 @@ def check_system_requirement():
     # OpenStack installation test
     hostname = sudo('hostname')
     output = sudo("nova-manage service list | grep %s" % hostname)
-    if output.find("XXX") != -1:
+    if output.failed == True or output.find("XXX") != -1:
         msg = "OpenStack is not fully functioning.\n"
         msg += "Check the service with 'nova-manage service list' command.\n\n"
         msg += output
@@ -131,18 +131,25 @@ def check_system_requirement():
 
 
 def check_VM_synthesis_package():
-    cloudlet_temp_repo = '/tmp/cloudlet_repo_temp'
-    sudo("rm -rf %s" % cloudlet_temp_repo)
-    run("git clone %s %s" % (VM_SYNTEHSIS_REPO, cloudlet_temp_repo))
-    with cd(cloudlet_temp_repo):
-        if sudo("fab localhost install").failed:
-            msg = "Cannot install cloudlet package.\n"
-            msg += "Manually install it downloading from %s" % VM_SYNTEHSIS_REPO
-            abort(msg)
-
     if run("cloudlet --version").failed:
-        abort("Cannot find cloudlet package.\nInstall Cloudlet from %s" % VM_SYNTEHSIS_REPO)
-        
+        # install cloudlet library
+        cloudlet_temp_repo = '/tmp/cloudlet_repo_temp'
+        sudo("rm -rf %s" % cloudlet_temp_repo)
+        run("git clone %s %s" % (VM_SYNTEHSIS_REPO, cloudlet_temp_repo))
+        with cd(cloudlet_temp_repo):
+            if run("fab localhost install").failed:
+                msg = "Cannot install cloudlet package.\n"
+                msg += "Manually install it downloading from %s" % VM_SYNTEHSIS_REPO
+                abort(msg)
+
+        # double check installation
+        if run("cloudlet --version").failed:
+            abort("Cannot find cloudlet package.\nInstall Cloudlet from %s" % VM_SYNTEHSIS_REPO)
+    else:
+        msg = "Cloudlet library exists. Skip installing cloudlet library"
+        sys.stdout.write(msg)
+        return
+
 
 def deploy_dashboard():
     global HORIZON_PATH
