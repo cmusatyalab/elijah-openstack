@@ -27,7 +27,7 @@ Prerequisites
    OpenStack.  For installation of OpenStack, you can follow the [official
    documentation](http://docs.openstack.org/grizzly/openstack-compute/install/apt/openstack-install-guide-apt-grizzly.pdf).
    Since OpenStack is a collection of multiple semi-independent project, its
-   installtion is not trivial if you don't have any experience. But once you
+   installation is not trivial if you don't have any experience. But once you
    have installed that, cloudlet patch would be simple. Please take a look at
    (my note) for the installation tip.
 
@@ -38,13 +38,19 @@ Prerequisites
 
 3. The tested platform is Ubuntu 12.04 LTS 64 bits.
 
+4. If you install this OpenStack extension for the purpose of testing Cloudlet
+   (VM Synthesis), I would recommend you to play with stand-alone version of
+   this work at
+   [elijah-cloudlet](https://github.com/cmusatyalab/elijah-cloudlet).  That is
+   much easier to install and modify since OpenStack is a nontrivial piece of
+   software.
 
 
 Installation
 ------------
 
 Here we provide a script to apply this extension to the existing OpenStack.
-It will install cloudlet library and apply pathches for the cloudlet extension.
+It will install cloudlet library and apply patches for the cloudlet extension.
 This patch **does not change any existing source code**, but designed to be
 purely pluggable extension, so you can revert back to original state by
 reversing the installation steps.
@@ -72,7 +78,7 @@ reversing the installation steps.
 		> $ fab localhost install_control()
 
 
-3. Install cloudlet extension at compte nodes.  Again, if you are testing with
+3. Install cloudlet extension at compute nodes.  Again, if you are testing with
    single node (all-in-one case), you don't need this step since
    install_control does already did path for computation.
 
