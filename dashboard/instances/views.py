@@ -116,7 +116,7 @@ def spice(request, instance_id):
 class UpdateView(workflows.WorkflowView):
     workflow_class = UpdateInstance
     template_name = 'project/cloudlet/instances/update.html'
-    success_url = reverse_lazy("horizon:project:instances:index")
+    success_url = reverse_lazy("horizon:project:cloudlet:index")
 
     def get_context_data(self, **kwargs):
         context = super(UpdateView, self).get_context_data(**kwargs)

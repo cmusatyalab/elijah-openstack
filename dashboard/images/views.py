@@ -44,13 +44,13 @@ class CreateView(forms.ModalFormView):
     form_class = CreateImageForm
     template_name = 'project/images_and_snapshots/images/create.html'
     context_object_name = 'image'
-    success_url = reverse_lazy("horizon:project:images_and_snapshots:index")
+    success_url = reverse_lazy("horizon:project:cloudet:index")
 
 
 class UpdateView(forms.ModalFormView):
     form_class = UpdateImageForm
     template_name = 'project/images_and_snapshots/images/update.html'
-    success_url = reverse_lazy("horizon:project:images_and_snapshots:index")
+    success_url = reverse_lazy("horizon:project:cloudlet:index")
 
     def get_object(self):
         if not hasattr(self, "_object"):

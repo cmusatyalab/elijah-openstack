@@ -255,8 +255,6 @@ def request_cloudlet_ipaddress(server_address, token, end_point, server_uuid):
 
 
 def get_token(server_address, user, password, tenant_name):
-    import pdb;pdb.set_trace()
-
     url = "%s:5000" % server_address
     params = {
             "auth":
@@ -425,16 +423,22 @@ def main(argv=None):
                 token, urlparse(endpoint), key_name=key_name, \
                 image_name=image_name, server_name=test_instance_name)
     elif args[0] == 'create-base':
+        instance_name = raw_input("Name of a running instance that you like to make as a base VM : ")
+        snapshot_name = raw_input("Set name of Base VM : ")
         request_cloudlet_base(settings.server_address, token, \
-                urlparse(endpoint), test_instance_name, base_vm_name) 
+                urlparse(endpoint), instance_name, snapshot_name) 
     elif args[0] == 'create-overlay':
+        instance_name = raw_input("Name of a running instance that you like to create VM overlay : ")
+        snapshot_name = raw_input("Set name of VM overlay : ")
         request_cloudlet_overlay_stop(settings.server_address, token, urlparse(endpoint), \
-                test_instance_name, overlay_vm_name)
+                instance_name, snapshot_name)
     elif args[0] == 'download':
+        VM_overlay_meta = raw_input("Name of VM overlay metafile: ")
+        VM_overlay_blob = raw_input("Name of VM overlay blobfile: ")
         overlay_download(settings.server_address, "admin", "admin", \
-                overlay_vm_name + "-meta", "./overlay.meta")
+                VM_overlay_meta, VM_overlay_meta)
         overlay_download(settings.server_address, "admin", "admin", \
-                overlay_vm_name + "-blob", "./overlay.blob")
+                VM_overlay_blob, VM_overlay_blob)
     elif args[0] == 'synthesis':
         overlay_meta_url = "http://scarlet.aura.cs.cmu.edu:8000/overlay.meta"
         overlay_blob_url = "http://scarlet.aura.cs.cmu.edu:8000/overlay.blob"

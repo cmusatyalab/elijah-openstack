@@ -162,7 +162,7 @@ class UpdateInstance(workflows.Workflow):
     finalize_button_name = _("Save")
     success_message = _('Modified instance "%s".')
     failure_message = _('Unable to modify instance "%s".')
-    success_url = "horizon:project:instances:index"
+    success_url = "horizon:project:cloudlet:index"
     default_steps = (UpdateInstanceInfo,
                      UpdateInstanceSecurityGroups)
 

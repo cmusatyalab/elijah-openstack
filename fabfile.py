@@ -156,8 +156,8 @@ def deploy_dashboard():
     global HOROZIN_API_PATH
 
     # deploy files
-    src_dir = os.path.abspath("./dashboard")
-    dest_dir = os.path.join(HORIZON_PATH, "cloudlet/")
+    src_dir = os.path.abspath("./dashboard/*")
+    dest_dir = os.path.join(HORIZON_PATH, "cloudlet")
     if files.exists(dest_dir, use_sudo=True) == False:
         sudo("mkdir -p %s" % dest_dir)
     if put(src_dir, dest_dir, use_sudo=True).failed:

@@ -40,7 +40,7 @@ LOG = logging.getLogger(__name__)
 class CreateView(forms.ModalFormView):
     form_class = CreateSnapshot
     template_name = 'project/images_and_snapshots/snapshots/create.html'
-    success_url = reverse_lazy("horizon:project:images_and_snapshots:index")
+    success_url = reverse_lazy("horizon:project:cloudlet:index")
 
     def get_object(self):
         if not hasattr(self, "_object"):
