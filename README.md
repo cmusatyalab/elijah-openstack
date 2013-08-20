@@ -96,7 +96,8 @@ standard openstack API.
 
 You can either use Web interface at Dashboard or take a look at
 ./client/nova_client.py to figure out how to use cloudlet extension API.  We're
-working on documentation of this extension and will be updated soon.
+currently working on documentation of this extension and will be updated soon
+with examples.
 
 
 
@@ -108,4 +109,6 @@ Known Issues
 2. __Early start optimization__ is turned off
 	- Early start optimization splits VM overlay into multiple segments (files) 
 	- Need better packaging for VM overlay to handle segments
+
+3. Example _Base VM_ with portable configuration (e.g. CPU flags)
 
