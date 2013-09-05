@@ -87,17 +87,20 @@ class SetInstanceDetailsAction(workflows.Action):
                                        widget=forms.CheckboxSelectMultiple(),
                                        help_text=_("Launch instance in these "
                                                    "security groups."))
-    flavor = forms.ChoiceField(label=_("Flavor"), required=True,
-                               help_text=_("Size of image to launch."))
-    keypair_id = forms.DynamicChoiceField(label=_("Keypair"),
-                                       required=False,
-                                       help_text=_("Which keypair to use for "
-                                                   "authentication."),
-                                       add_item_link=KEYPAIR_IMPORT_URL)
+    # We intentionally disable this options
+    # since you cannot specify this options for the resumed VM
+    #
+    #flavor = forms.ChoiceField(label=_("Flavor"), required=True,
+    #                          help_text=_("Size of image to launch."))
+    #keypair_id = forms.DynamicChoiceField(label=_("Keypair"),
+    #                                   required=False,
+    #                                   help_text=_("Which keypair to use for "
+    #                                               "authentication."),
+    #                                   add_item_link=KEYPAIR_IMPORT_URL)
 
     class Meta:
         name = _("VM overlay Info")
-        help_text_template = ("project/instances/"
+        help_text_template = ("project/cloudlet/instance/"
                               "_launch_details_help.html")
 
     def clean(self):

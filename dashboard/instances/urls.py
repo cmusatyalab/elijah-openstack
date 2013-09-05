@@ -27,6 +27,7 @@ INSTANCES = r'^(?P<instance_id>[^/]+)/%s$'
 VIEW_MOD = 'openstack_dashboard.dashboards.project.instances.views'
 
 
+import pdb;pdb.set_trace()
 urlpatterns = patterns(VIEW_MOD,
     url(r'^$', IndexView.as_view(), name='index'),
     url(r'^launch$', LaunchInstanceView.as_view(), name='launch'),

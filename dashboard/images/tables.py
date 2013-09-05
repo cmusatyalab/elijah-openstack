@@ -63,9 +63,16 @@ class DeleteImage(tables.DeleteAction):
         api.glance.image_delete(request, obj_id)
 
 
-class CreateImage(tables.LinkAction):
+class ImportBaseVM(tables.LinkAction):
+    name = "import"
+    verbose_name = _("Import Base VM")
+    url = "horizon:project:images_and_snapshots:images:create"
+    classes = ("ajax-modal", "btn-create")
+
+
+class CreateBaseVM(tables.LinkAction):
     name = "create"
-    verbose_name = _("Create Image")
+    verbose_name = _("Create Base VM")
     url = "horizon:project:images_and_snapshots:images:create"
     classes = ("ajax-modal", "btn-create")
 
@@ -193,6 +200,6 @@ class BaseVMsTable(tables.DataTable):
         status_columns = ["status"]
         verbose_name = _("Images")
         columns = ["name", "status", "public", "disk_format"]
-        table_actions = (CreateImage, DeleteImage,)
+        table_actions = (ImportBaseVM, CreateBaseVM, DeleteImage,)
         row_actions = (ResumeBaseVM, EditImage, DeleteImage,)
         pagination_param = "cloudlet_base_marker"

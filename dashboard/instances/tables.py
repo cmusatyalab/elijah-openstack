@@ -196,7 +196,7 @@ class CreateOverlayAction(tables.BatchAction):
 
 class VMSynthesisLink(tables.LinkAction):
     name = "launch"
-    verbose_name = _("VM Synthesis")
+    verbose_name = _("Start VM Synthesis")
     url = "horizon:project:cloudlet:launch"
     classes = ("btn-launch", "ajax-modal")
 
@@ -217,7 +217,7 @@ class VMSynthesisLink(tables.LinkAction):
                     self.verbose_name = string_concat(self.verbose_name, ' ',
                                                       _("(Quota exceeded)"))
             else:
-                self.verbose_name = _("VM Synthesis")
+                self.verbose_name = _("Start VM Synthesis")
                 classes = [c for c in self.classes if c != "disabled"]
                 self.classes = classes
         except:

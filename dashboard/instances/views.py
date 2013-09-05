@@ -18,7 +18,7 @@ from horizon import workflows
 from openstack_dashboard import api
 from .tabs import InstanceDetailTabs
 from .tables import InstancesTable
-from .workflows import LaunchInstance, UpdateInstance
+from .workflows import UpdateInstance
 
 
 LOG = logging.getLogger(__name__)
@@ -62,16 +62,6 @@ class IndexView(tables.DataTableView):
                     exceptions.handle(self.request, msg)
         return instances
 
-
-class LaunchInstanceView(workflows.WorkflowView):
-    workflow_class = LaunchInstance
-    template_name = "project/cloudlet/instances/launch.html"
-
-    def get_initial(self):
-        initial = super(LaunchInstanceView, self).get_initial()
-        initial['project_id'] = self.request.user.tenant_id
-        initial['user_id'] = self.request.user.id
-        return initial
 
 
 def console(request, instance_id):
