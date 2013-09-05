@@ -28,21 +28,16 @@ from horizon import forms
 from horizon import workflows
 
 from openstack_dashboard import api
-from openstack_dashboard.api import cinder
 from openstack_dashboard.api import glance
 from openstack_dashboard.usage import quotas
 
+from ..util import CLOUDLET_TYPE
+
+import requests
+from django.core.validators import URLValidator
+from django.core.exceptions import ValidationError
 import cloudlet_api
 
-
-# original is defined at cloudlet_api.py
-class CLOUDLET_TYPE(object):
-    IMAGE_TYPE_BASE_DISK        = "cloudlet_base_disk"
-    IMAGE_TYPE_BASE_MEM         = "cloudlet_base_memory"
-    IMAGE_TYPE_BASE_DISK_HASH   = "cloudlet_base_disk_hash"
-    IMAGE_TYPE_BASE_MEM_HASH    = "cloudlet_base_memory_hash"
-    IMAGE_TYPE_OVERLAY_META     = "cloudlet_overlay_meta"
-    IMAGE_TYPE_OVERLAY_DATA     = "cloudlet_overlay_data"
 
 LOG = logging.getLogger(__name__)
 
@@ -108,9 +103,40 @@ class SetInstanceDetailsAction(workflows.Action):
     def clean(self):
         cleaned_data = super(SetInstanceDetailsAction, self).clean()
 
-        if cleaned_data.get('overlay_meta_url', None) == None or \
-                cleaned_data.get('overlay_blob_url', None) == None:
+        overlay_meta_url = cleaned_data.get('overlay_meta_url', None)
+        overlay_blob_url = cleaned_data.get('overlay_blob_url', None)
+        if overlay_meta_url is None or overlay_blob_url is None:
             raise forms.ValidationError(_("Need URL to fetch VM overlay"))
+
+        # check url format
+        val = URLValidator(verify_exists=False)
+        try:
+            val(overlay_meta_url)
+        except ValidationError, e:
+            raise forms.ValidationError(_("Malformed URL for overlay meta"))
+        try:
+            val(overlay_blob_url)
+        except ValidationError, e:
+            raise forms.ValidationError(_("Malformed URL for overlay blob"))
+
+        # check url accessibility
+        try:
+            header_ret = requests.head(overlay_meta_url)
+            if header_ret.ok == False:
+                raise
+        except Exception as e:
+            msg = "URL is not accessible : %s" % overlay_meta_url
+            raise forms.ValidationError(_(msg))
+        try:
+            header_ret = requests.head(overlay_blob_url)
+            if header_ret.ok == False:
+                raise
+        except Exception as e:
+            msg = "URL is not accessible : %s" % overlay_blob_url
+            raise forms.ValidationError(_(msg))
+
+        # check existance of the url
+        requests.head(overlay_meta_url)
         if cleaned_data.get('name', None) == None:
             raise forms.ValidationError(_("Need name for the synthesized VM"))
 

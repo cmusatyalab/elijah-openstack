@@ -42,8 +42,10 @@ def request_synthesis(request, vm_name, base_disk_id, flavor_id, key_name, secur
     print json.dumps(dd, indent=2)
     return dd
 
+
 class test_class(object):
     pass
+
 
 def novaclient(request):
     insecure = getattr(settings, 'OPENSTACK_SSL_NO_VERIFY', False)

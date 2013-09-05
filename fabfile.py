@@ -100,6 +100,14 @@ def deploy_compute_manager():
                 % (NOVA_COMPUTE_CONF_PATH)
         sudo(command)
 
+    # use specific CPU-mode
+    CUSTOM_CPU = "custom"
+    CUSTOM_CPU_MODEL = "kvm64"
+    sudo("sed -i '/^libvirt_cpu_mode=/d' %s" % (NOVA_CONF_PATH))
+    sudo("sed -i '$ a libvirt_cpu_mode=%s' %s" % (CUSTOM_CPU, NOVA_CONF_PATH)) 
+    sudo("sed -i '/^libvirt_cpu_model=/d' %s" % (NOVA_CONF_PATH))
+    sudo("sed -i '$ a libvirt_cpu_model=%s' %s" % (CUSTOM_CPU_MODEL, NOVA_CONF_PATH))
+
     # copy files
     for (src_file, target_dir) in deploy_files:
         dest_filepath = os.path.join(target_dir, os.path.basename(src_file))
@@ -199,7 +207,7 @@ def install_control():
         deploy_cloudlet_api()
         deploy_compute_manager()
         deploy_svirt()
-        deploy_dashboard()
+        #deploy_dashboard()
 
     sys.stdout.write("[SUCCESS] Finished installation")
 

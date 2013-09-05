@@ -24,7 +24,9 @@ from .volume_snapshots.tabs import SnapshotDetailTabs
 
 from horizon import workflows
 from .workflows import LaunchInstance
-from .workflows import CLOUDLET_TYPE
+
+from util import CLOUDLET_TYPE
+from util import get_cloudlet_type
 
 LOG = logging.getLogger(__name__)
 
@@ -40,13 +42,12 @@ class IndexView(tables.MultiTableView):
     def get_images_data(self):
         marker = self.request.GET.get(BaseVMsTable._meta.pagination_param, None)
         try:
-            # FIXME(gabriel): The paging is going to be strange here due to
-            # our filtering after the fact.
             (all_images,
              self._more_images) = api.glance.image_list_detailed(self.request,
                                                                  marker=marker)
             images = [im for im in all_images
-                      if im.properties.get("cloudlet_type", None) == CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK]
+                      if im.properties.get("cloudlet_type", None) == \
+                              CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK]
         except:
             images = []
             exceptions.handle(self.request, _("Unable to retrieve images."))
@@ -59,33 +60,14 @@ class IndexView(tables.MultiTableView):
             all_snaps, self._more_snapshots = api.glance.snapshot_list_detailed(
                 req, marker=marker)
             snaps = [im for im in all_snaps
-                      if im.properties.get("cloudlet_type", None) == CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY_META]
+                      if im.properties.get("cloudlet_type", None) == \
+                              CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY_META]
         except:
             snaps = []
             exceptions.handle(req, _("Unable to retrieve snapshots."))
         return snaps
 
     def get_instances_data(self):
-        def _cloudlet_type(instance):
-            request = instance.request
-            image_id = instance.image['id']
-            metadata = instance.metadata
-            try:
-                image = glance.image_get(request, image_id)
-                if hasattr(image, 'properties') != True:
-                    return None
-                properties = getattr(image, 'properties')
-                if properties == None or properties.get('is_cloudlet') == None:
-                    return None
-
-                # now it's either resumed base instance or synthesized instance
-                # synthesized instance has meta that for overlay URL
-                if metadata.get('overlay_meta_url') != None:
-                    return CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY_META
-                else:
-                    return CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK
-            except glance_exceptions.ClientException:
-                return None
 
         # Gather synthesized instances
         try:
@@ -122,7 +104,7 @@ class IndexView(tables.MultiTableView):
                     exceptions.handle(self.request, msg)
 
             for instance in instances:
-                instance_type = _cloudlet_type(instance)
+                instance_type = get_cloudlet_type(instance)
                 if instance_type == CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
                     filtered_instances.append(instance)
                     setattr(instance, 'cloudlet_type', "Resumed Base VM")

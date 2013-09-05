@@ -35,6 +35,9 @@ from openstack_dashboard.dashboards.project.access_and_security \
         .floating_ips.workflows import IPAssociationWorkflow
 from .tabs import InstanceDetailTabs, LogTab, ConsoleTab
 
+from ..util import get_cloudlet_type
+from ..util import CLOUDLET_TYPE
+
 
 LOG = logging.getLogger(__name__)
 
@@ -155,6 +158,32 @@ class ToggleSuspend(tables.BatchAction):
             self.current_present_action = SUSPEND
         return ((instance.status in ACTIVE_STATES or self.suspended)
                 and not is_deleting(instance))
+
+    def action(self, request, obj_id):
+        if self.suspended:
+            api.nova.server_resume(request, obj_id)
+            self.current_past_action = RESUME
+        else:
+            api.nova.server_suspend(request, obj_id)
+            self.current_past_action = SUSPEND
+
+
+class CreateOverlayAction(tables.BatchAction):
+    name = "create-overlay"
+    action_present = _("Create")
+    action_past = _("Scheduled overlay creation of")
+    data_type_singular = _("VM overlay")
+    data_type_plural = _("VM overlays")
+    classes = ('btn-danger', 'btn-terminate')
+
+    def allowed(self, request, instance=None):
+        is_active = instance.status in ACTIVE_STATES 
+        is_resumed_base = False
+        cloudlet_type = get_cloudlet_type(instance)
+        if cloudlet_type == CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
+            is_resumed_base = True
+
+        return is_active and is_resumed_base
 
     def action(self, request, obj_id):
         if self.suspended:
@@ -312,7 +341,7 @@ class SimpleAssociateIP(tables.Action):
         except:
             exceptions.handle(request,
                               _("Unable to associate floating IP."))
-        return shortcuts.redirect("horizon:project:instances:index")
+        return shortcuts.redirect("horizon:project:cloudlet:instances:index")
 
 
 class SimpleDisassociateIP(tables.Action):
@@ -382,11 +411,11 @@ def get_keyname(instance):
     return _("Not available")
 
 
-def get_cloudlet_type(instance):
+def cloudlet_type(instance):
     if hasattr(instance, "cloudlet_type"):
         cloudlet_type = getattr(instance, "cloudlet_type")
         return cloudlet_type
-    return _("Unknowntype")
+    return _("Unknown type")
 
 
 def get_power_state(instance):
@@ -427,7 +456,7 @@ class InstancesTable(tables.DataTable):
     name = tables.Column("name",
                          link=("horizon:project:instances:detail"),
                          verbose_name=_("Instance Name"))
-    cloudlet_type = tables.Column(get_cloudlet_type, verbose_name=_("Cloudlet Type"))
+    cloudlet_type = tables.Column(cloudlet_type, verbose_name=_("Cloudlet Type"))
     ip = tables.Column(get_ips, verbose_name=_("IP Address"))
     size = tables.Column(get_size,
                          verbose_name=_("Size"),
@@ -457,7 +486,8 @@ class InstancesTable(tables.DataTable):
         table_actions = (VMSynthesisLink, TerminateInstance)
         row_actions = (
                        SimpleAssociateIP, AssociateIP,
-                       SimpleDisassociateIP, EditInstance,
-                       EditInstanceSecurityGroups, ConsoleLink, LogLink,
-                       TogglePause, ToggleSuspend, SoftRebootInstance,
-                       RebootInstance, TerminateInstance)
+                       SimpleDisassociateIP, CreateOverlayAction)
+                       #SimpleDisassociateIP, EditInstance,
+                       #EditInstanceSecurityGroups, ConsoleLink, LogLink,
+                       #TogglePause, ToggleSuspend, SoftRebootInstance,
+                       #RebootInstance, TerminateInstance)
