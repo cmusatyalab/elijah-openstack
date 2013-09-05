@@ -17,7 +17,7 @@ LOG = logging.getLogger(__name__)
 class ResumeBaseVM(tables.LinkAction):
     name = "resume_base_vm"
     verbose_name = _("Resume Base VM")
-    url = "horizon:project:instances:launch"
+    url = "horizon:project:cloudlet:resume"
     classes = ("btn-launch", "ajax-modal")
 
     def get_link_url(self, datum):
@@ -66,13 +66,6 @@ class DeleteImage(tables.DeleteAction):
 class ImportBaseVM(tables.LinkAction):
     name = "import"
     verbose_name = _("Import Base VM")
-    url = "horizon:project:images_and_snapshots:images:create"
-    classes = ("ajax-modal", "btn-create")
-
-
-class CreateBaseVM(tables.LinkAction):
-    name = "create"
-    verbose_name = _("Create Base VM")
     url = "horizon:project:images_and_snapshots:images:create"
     classes = ("ajax-modal", "btn-create")
 
@@ -200,6 +193,6 @@ class BaseVMsTable(tables.DataTable):
         status_columns = ["status"]
         verbose_name = _("Images")
         columns = ["name", "status", "public", "disk_format"]
-        table_actions = (ImportBaseVM, CreateBaseVM, DeleteImage,)
+        table_actions = (ImportBaseVM, DeleteImage,)
         row_actions = (ResumeBaseVM, EditImage, DeleteImage,)
         pagination_param = "cloudlet_base_marker"

@@ -23,7 +23,8 @@ from .volume_snapshots.tables import VolumeSnapshotsTable
 from .volume_snapshots.tabs import SnapshotDetailTabs
 
 from horizon import workflows
-from .workflows import LaunchInstance
+from .workflows import SynthesisInstance
+from .workflows import ResumeInstance
 
 from util import CLOUDLET_TYPE
 from util import get_cloudlet_type
@@ -128,12 +129,23 @@ class IndexView(tables.MultiTableView):
         return snapshots
 
 
-class LaunchInstanceView(workflows.WorkflowView):
-    workflow_class = LaunchInstance
+class ResumeInstanceView(workflows.WorkflowView):
+    workflow_class = ResumeInstance
+    template_name = "project/cloudlet/instances/resume.html"
+
+    def get_initial(self):
+        initial = super(ResumeInstanceView, self).get_initial()
+        initial['project_id'] = self.request.user.tenant_id
+        initial['user_id'] = self.request.user.id
+        return initial
+
+
+class SynthesisInstanceView(workflows.WorkflowView):
+    workflow_class = SynthesisInstance
     template_name = "project/cloudlet/instances/launch.html"
 
     def get_initial(self):
-        initial = super(LaunchInstanceView, self).get_initial()
+        initial = super(SynthesisInstanceView, self).get_initial()
         initial['project_id'] = self.request.user.tenant_id
         initial['user_id'] = self.request.user.id
         return initial

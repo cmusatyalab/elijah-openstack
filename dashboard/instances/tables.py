@@ -195,9 +195,9 @@ class CreateOverlayAction(tables.BatchAction):
 
 
 class VMSynthesisLink(tables.LinkAction):
-    name = "launch"
+    name = "synthesis"
     verbose_name = _("Start VM Synthesis")
-    url = "horizon:project:cloudlet:launch"
+    url = "horizon:project:cloudlet:synthesis"
     classes = ("btn-launch", "ajax-modal")
 
     def allowed(self, request, datum):
