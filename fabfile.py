@@ -207,7 +207,7 @@ def install_control():
         deploy_cloudlet_api()
         deploy_compute_manager()
         deploy_svirt()
-        #deploy_dashboard()
+        deploy_dashboard()
 
     sys.stdout.write("[SUCCESS] Finished installation")
 
