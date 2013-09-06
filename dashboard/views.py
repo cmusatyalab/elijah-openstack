@@ -4,10 +4,8 @@ Views for managing Images and Snapshots.
 
 import logging
 
+from django.core.urlresolvers import reverse, reverse_lazy
 from django.utils.translation import ugettext_lazy as _
-
-import glanceclient.exc as glance_exceptions
-from openstack_dashboard.api import glance
 
 from horizon import exceptions
 from horizon import tables
@@ -33,7 +31,6 @@ LOG = logging.getLogger(__name__)
 
 
 class IndexView(tables.MultiTableView):
-
     table_classes = (BaseVMsTable, SnapshotsTable, InstancesTable, VolumeSnapshotsTable)
     template_name = 'project/cloudlet/index.html'
 
@@ -131,7 +128,7 @@ class IndexView(tables.MultiTableView):
 
 class ResumeInstanceView(workflows.WorkflowView):
     workflow_class = ResumeInstance
-    template_name = "project/cloudlet/instances/resume.html"
+    template_name = "project/cloudlet/instance/resume.html"
 
     def get_initial(self):
         initial = super(ResumeInstanceView, self).get_initial()
@@ -142,7 +139,7 @@ class ResumeInstanceView(workflows.WorkflowView):
 
 class SynthesisInstanceView(workflows.WorkflowView):
     workflow_class = SynthesisInstance
-    template_name = "project/cloudlet/instances/launch.html"
+    template_name = "project/cloudlet/instance/launch.html"
 
     def get_initial(self):
         initial = super(SynthesisInstanceView, self).get_initial()

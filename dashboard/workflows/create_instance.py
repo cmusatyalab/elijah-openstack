@@ -486,7 +486,6 @@ class ResumeInstance(workflows.Workflow):
         # this flavor is required to create new instance but will be discarded since
         # we're resuming the VM. Later we should get flavor information from the resumed VM
         # TODO: get flavor information from the base VM
-        import pdb;pdb.set_trace()
         try:
             flavors = api.nova.flavor_list(request)
             context['flavor'] = flavors[0].id

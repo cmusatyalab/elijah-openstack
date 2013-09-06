@@ -208,6 +208,17 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         except exception.InstanceNotFound:
             raise exception.InstanceNotRunning(instance_id=instance['uuid'])
 
+        # make sure base vm is cached
+        (image_service, image_id) = glance.get_remote_image_service(
+            context, instance['image_ref'])
+        image_meta = image_service.show(context, image_id)
+        memory_snap_id, diskhash_snap_id, memhash_snap_id = \
+                self._get_basevm_meta_info(image_meta)
+        self._get_cache_image(context, instance, image_meta['id'])
+        self._get_cache_image(context, instance, memory_snap_id)
+        self._get_cache_image(context, instance, diskhash_snap_id)
+        self._get_cache_image(context, instance, memhash_snap_id)
+
         # pause VM
         self.pause(instance)
 

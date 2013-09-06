@@ -410,6 +410,8 @@ def get_ref_id(server_address, token, end_point, ref_string, name):
             image_ref = dd[ref_string][i]["links"][0]["href"]
             return image_ref, dd[ref_string][i]['id']
 
+    raise Exception("No such name: %s" % name)
+
 
 def get_cloudlet_base_list(server_address, uname, password):
     from glance import client
@@ -424,11 +426,13 @@ def main(argv=None):
     CMD_CREATE_OVERLAY  = "create-overlay"
     CMD_DOWNLOAD        = "download"
     CMD_SYNTHESIS       = "synthesis"
+    CMD_BOOT            = "boot"
     commands = {
             CMD_CREATE_BASE: "create base vm from the running instance",
             CMD_CREATE_OVERLAY: "create VM overlay from the customizaed VM",
             CMD_DOWNLOAD: "Download VM overlay",
             CMD_SYNTHESIS: "VM Synthesis (Need downloadable URLs for VM overlay",
+            CMD_BOOT : "Boot VM disk using predefined configuration (testing purpose",
             }
 
     settings, args = process_command_line(sys.argv[1:], commands)
@@ -442,24 +446,24 @@ def main(argv=None):
         print "need command"
         sys.exit(1)
 
-    if args[0] == 'create-base':
+    if args[0] == CMD_CREATE_BASE:
         instance_name = raw_input("Name of a running instance that you like to make as a base VM : ")
         snapshot_name = raw_input("Set name of Base VM : ")
         request_cloudlet_base(settings.server_address, token, \
                 urlparse(endpoint), instance_name, snapshot_name) 
-    elif args[0] == 'create-overlay':
+    elif args[0] == CMD_CREATE_OVERLAY:
         instance_name = raw_input("Name of a running instance that you like to create VM overlay : ")
         snapshot_name = raw_input("Set name of VM overlay : ")
         request_cloudlet_overlay_stop(settings.server_address, token, urlparse(endpoint), \
                 instance_name, snapshot_name)
-    elif args[0] == 'download':
+    elif args[0] == CMD_DOWNLOAD:
         VM_overlay_meta = raw_input("Name of VM overlay metafile: ")
         VM_overlay_blob = raw_input("Name of VM overlay blobfile: ")
         overlay_download(settings.server_address, "admin", "admin", \
                 VM_overlay_meta, VM_overlay_meta)
         overlay_download(settings.server_address, "admin", "admin", \
                 VM_overlay_blob, VM_overlay_blob)
-    elif args[0] == 'synthesis':
+    elif args[0] == CMD_SYNTHESIS:
         basevm_image_name = raw_input("Name of Base VM: ")
         overlay_meta_url = raw_input("URL for VM overlay metafile : ")
         overlay_blob_url = raw_input("URL for VM overlay blobfile : ")
@@ -471,8 +475,8 @@ def main(argv=None):
         images = get_list(settings.server_address, token, \
                 urlparse(endpoint), "images")
         print json.dumps(images, indent=2)
-    elif args[0] == 'boot':
-        image_name = sys.argv[2]
+    elif args[0] == CMD_BOOT:
+        image_name = raw_input("Specify disk image by name : ")
         new_instance_name = raw_input("Set the name of VM : ")
         images = request_new_server(settings.server_address, \
                 token, urlparse(endpoint), key_name=None, \

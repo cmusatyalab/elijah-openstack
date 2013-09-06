@@ -12,6 +12,27 @@ from novaclient.v1_1.security_groups import SecurityGroup as NovaSecurityGroup
 
 LOG = logging.getLogger(__name__)
 
+def request_create_overlay(request, instance_id):
+    token = request.user.token.id
+    management_url = url_for(request, 'compute')
+    end_point = urlparse(management_url)
+
+    overlay_name = "overlay-" + str(instance_id)
+    params = json.dumps({"cloudlet-overlay-finish":{"overlay-name": overlay_name}})
+    headers = { "X-Auth-Token":token, "Content-type":"application/json" }
+
+    conn = httplib.HTTPConnection(end_point[1])
+    command = "%s/servers/%s/action" % (end_point[2], instance_id)
+    conn.request("POST", command, params, headers)
+    response = conn.getresponse()
+    data = response.read()
+    dd = json.loads(data)
+    conn.close()
+    import pdb;pdb.set_trace()
+
+    return dd
+
+
 def request_synthesis(request, vm_name, base_disk_id, flavor_id, key_name, security_group_id, overlay_meta_url, overlay_blob_url):
     token = request.user.token.id
     management_url = url_for(request, 'compute')
@@ -33,13 +54,11 @@ def request_synthesis(request, vm_name, base_disk_id, flavor_id, key_name, secur
 
     conn = httplib.HTTPConnection(end_point[1])
     conn.request("POST", "%s/servers" % end_point[2], params, headers)
-    print "request new server: %s/servers" % (end_point[2])
     response = conn.getresponse()
     data = response.read()
     dd = json.loads(data)
     conn.close()
 
-    print json.dumps(dd, indent=2)
     return dd
 
 

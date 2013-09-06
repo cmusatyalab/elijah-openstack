@@ -37,6 +37,7 @@ from .tabs import InstanceDetailTabs, LogTab, ConsoleTab
 
 from ..util import get_cloudlet_type
 from ..util import CLOUDLET_TYPE
+from ..workflows import cloudlet_api
 
 
 LOG = logging.getLogger(__name__)
@@ -169,9 +170,9 @@ class ToggleSuspend(tables.BatchAction):
 
 
 class CreateOverlayAction(tables.BatchAction):
-    name = "create-overlay"
+    name = "overlay"
     action_present = _("Create")
-    action_past = _("Scheduled overlay creation of")
+    action_past = _("Scheduled VM overlay creation of")
     data_type_singular = _("VM overlay")
     data_type_plural = _("VM overlays")
     classes = ('btn-danger', 'btn-terminate')
@@ -186,12 +187,8 @@ class CreateOverlayAction(tables.BatchAction):
         return is_active and is_resumed_base
 
     def action(self, request, obj_id):
-        if self.suspended:
-            api.nova.server_resume(request, obj_id)
-            self.current_past_action = RESUME
-        else:
-            api.nova.server_suspend(request, obj_id)
-            self.current_past_action = SUSPEND
+        cloudlet_api.request_create_overlay(request, obj_id)
+
 
 
 class VMSynthesisLink(tables.LinkAction):
@@ -257,16 +254,6 @@ class EditInstanceSecurityGroups(EditInstance):
         return (instance.status in ACTIVE_STATES and
                 not is_deleting(instance) and
                 request.user.tenant_id == instance.tenant_id)
-
-
-class CreateSnapshot(tables.LinkAction):
-    name = "snapshot"
-    verbose_name = _("Create Snapshot")
-    url = "horizon:project:images_and_snapshots:snapshots:create"
-    classes = ("ajax-modal", "btn-camera")
-
-    def allowed(self, request, instance=None):
-        return instance.status in ACTIVE_STATES and not is_deleting(instance)
 
 
 class ConsoleLink(tables.LinkAction):
