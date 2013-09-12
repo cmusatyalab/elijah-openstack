@@ -28,7 +28,6 @@ def request_create_overlay(request, instance_id):
     data = response.read()
     dd = json.loads(data)
     conn.close()
-    import pdb;pdb.set_trace()
 
     return dd
 

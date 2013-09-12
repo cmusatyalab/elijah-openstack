@@ -63,46 +63,6 @@ class IndexView(tables.DataTableView):
         return instances
 
 
-
-def console(request, instance_id):
-    try:
-        tail = request.GET.get('length', None)
-        data = api.nova.server_console_output(request,
-                                              instance_id,
-                                              tail_length=tail)
-    except:
-        data = _('Unable to get log for instance "%s".') % instance_id
-        exceptions.handle(request, ignore=True)
-    response = http.HttpResponse(mimetype='text/plain')
-    response.write(data)
-    response.flush()
-    return response
-
-
-def vnc(request, instance_id):
-    try:
-        console = api.nova.server_vnc_console(request, instance_id)
-        instance = api.nova.server_get(request, instance_id)
-        return shortcuts.redirect(console.url +
-                ("&title=%s(%s)" % (instance.name, instance_id)))
-    except:
-        redirect = reverse("horizon:project:instances:index")
-        msg = _('Unable to get VNC console for instance "%s".') % instance_id
-        exceptions.handle(request, msg, redirect=redirect)
-
-
-def spice(request, instance_id):
-    try:
-        console = api.nova.server_spice_console(request, instance_id)
-        instance = api.nova.server_get(request, instance_id)
-        return shortcuts.redirect(console.url +
-                ("&title=%s(%s)" % (instance.name, instance_id)))
-    except:
-        redirect = reverse("horizon:project:instances:index")
-        msg = _('Unable to get SPICE console for instance "%s".') % instance_id
-        exceptions.handle(request, msg, redirect=redirect)
-
-
 class UpdateView(workflows.WorkflowView):
     workflow_class = UpdateInstance
     template_name = 'project/cloudlet/instances/update.html'

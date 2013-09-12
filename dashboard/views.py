@@ -5,6 +5,9 @@ Views for managing Images and Snapshots.
 import logging
 
 from django.core.urlresolvers import reverse, reverse_lazy
+from django.http import HttpResponse
+from django import shortcuts
+from horizon import messages
 from django.utils.translation import ugettext_lazy as _
 
 from horizon import exceptions
@@ -15,7 +18,7 @@ from openstack_dashboard import api
 from openstack_dashboard.api.base import is_service_enabled
 from django.utils.datastructures import SortedDict
 from .images.tables import BaseVMsTable 
-from .snapshots.tables import SnapshotsTable
+from .images.tables import VMOverlaysTable
 from .instances.tables import InstancesTable
 from .volume_snapshots.tables import VolumeSnapshotsTable
 from .volume_snapshots.tabs import SnapshotDetailTabs
@@ -31,7 +34,7 @@ LOG = logging.getLogger(__name__)
 
 
 class IndexView(tables.MultiTableView):
-    table_classes = (BaseVMsTable, SnapshotsTable, InstancesTable, VolumeSnapshotsTable)
+    table_classes = (BaseVMsTable, VMOverlaysTable, InstancesTable, VolumeSnapshotsTable)
     template_name = 'project/cloudlet/index.html'
 
     def has_more_data(self, table):
@@ -53,13 +56,13 @@ class IndexView(tables.MultiTableView):
 
     def get_overlays_data(self):
         req = self.request
-        marker = req.GET.get(SnapshotsTable._meta.pagination_param, None)
+        marker = req.GET.get(VMOverlaysTable._meta.pagination_param, None)
         try:
-            all_snaps, self._more_snapshots = api.glance.snapshot_list_detailed(
+            all_snaps, self._more_snapshots = api.glance.image_list_detailed(
                 req, marker=marker)
             snaps = [im for im in all_snaps
-                      if im.properties.get("cloudlet_type", None) == \
-                              CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY_META]
+                      if (im.properties.get("cloudlet_type", None) == CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY_META)
+                      or (im.properties.get("cloudlet_type", None) == CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY_DATA)]
         except:
             snaps = []
             exceptions.handle(req, _("Unable to retrieve snapshots."))
@@ -151,3 +154,23 @@ class SynthesisInstanceView(workflows.WorkflowView):
 class DetailView(tabs.TabView):
     tab_group_class = SnapshotDetailTabs
     template_name = 'project/cloudlet/snapshots/detail.html'
+
+
+def download_vm_overlay(request):
+    try:
+        image_id = request.GET.get("image_id", None)
+        image_name = request.GET.get("image_name", None)
+        if image_id is None:
+            raise
+        client = api.glance.glanceclient(request)
+
+        body = client.images.data(image_id)
+        response = HttpResponse(body, content_type="application/octet-stream")
+        response['Content-Disposition'] = 'attachment; filename="%s"' % image_name
+        return response
+
+
+    except Exception, e:
+        LOG.exception("Exception in Downloading.")
+        messages.error(request, _('Error Downloading VM overlay: %s') % e)
+        return shortcuts.redirect(request.build_absolute_uri())

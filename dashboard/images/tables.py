@@ -9,6 +9,7 @@ from django.utils.http import urlencode
 from django.utils.translation import ugettext_lazy as _
 from horizon import tables
 from horizon.utils.memoized import memoized
+from django.core import urlresolvers
 
 from openstack_dashboard import api
 
@@ -44,10 +45,6 @@ class CreateVMOverlay(tables.BatchAction):
     def action(self, request, obj_id):
         return self.create_vm_overlay(request, obj_id)
 
-    def create_vm_overlay(self, request, obj_id):
-        pass
-        #api.glance.image_delete(request, obj_id)
-
 
 class DeleteImage(tables.DeleteAction):
     data_type_singular = _("Image")
@@ -61,6 +58,27 @@ class DeleteImage(tables.DeleteAction):
 
     def delete(self, request, obj_id):
         api.glance.image_delete(request, obj_id)
+
+
+class DownloadImage(tables.LinkAction):
+    name = "download_overlay"
+    verbose_name = _("Download VM overlay")
+    verbose_name_plural = _("Download VM overlays")
+    classes = ("btn-download",)
+    url = "horizon:project:cloudlet:download"
+
+    def allowed(self, request, image=None):
+        if image:
+            return image.owner == request.user.tenant_id
+        return True
+
+    def get_link_url(self, datum):
+        base_url = reverse(self.url)
+        params = urlencode({
+            "image_id": self.table.get_object_id(datum),
+            "image_name": getattr(datum, "name", "vm-overlay"),
+                    })
+        return "?".join([base_url, params])
 
 
 class ImportBaseVM(tables.LinkAction):
@@ -185,7 +203,6 @@ class BaseVMsTable(tables.DataTable):
                            verbose_name=_("Public"),
                            empty_value=False,
                            filters=(filters.yesno, filters.capfirst))
-    disk_format = tables.Column(get_format, verbose_name=_("Format"))
 
     class Meta:
         name = "images"
@@ -195,4 +212,41 @@ class BaseVMsTable(tables.DataTable):
         columns = ["name", "status", "public", "disk_format"]
         table_actions = (ImportBaseVM, DeleteImage,)
         row_actions = (ResumeBaseVM, EditImage, DeleteImage,)
+        pagination_param = "cloudlet_base_marker"
+
+
+class VMOverlaysTable(tables.DataTable):
+    STATUS_CHOICES = (
+        ("active", True),
+        ("saving", None),
+        ("queued", None),
+        ("pending_delete", None),
+        ("killed", False),
+        ("resume", False),
+    )
+    name = tables.Column("name",
+                         link=("horizon:project:images_and_snapshots:"
+                               "images:detail"),
+                         verbose_name=_("VM Overlays"))
+    image_type = tables.Column(get_image_type,
+                               verbose_name=_("Type"),
+                               filters=(filters.title,))
+    status = tables.Column("status",
+                           filters=(filters.title,),
+                           verbose_name=_("Status"),
+                           status=True,
+                           status_choices=STATUS_CHOICES)
+    public = tables.Column("is_public",
+                           verbose_name=_("Public"),
+                           empty_value=False,
+                           filters=(filters.yesno, filters.capfirst))
+
+    class Meta:
+        name = "overlays"
+        row_class = UpdateRow
+        status_columns = ["status"]
+        verbose_name = _("Images")
+        columns = ["name", "status", "public", "disk_format"]
+        table_actions = (DeleteImage,)
+        row_actions = (DownloadImage, EditImage, DeleteImage,)
         pagination_param = "cloudlet_base_marker"
