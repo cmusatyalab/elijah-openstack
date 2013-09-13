@@ -36,7 +36,11 @@ from ..util import CLOUDLET_TYPE
 import requests
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
+
 import cloudlet_api
+import urllib2
+from cloudlet import msgpack
+from cloudlet.Configuration import Const as Cloudlet_Const
 
 
 LOG = logging.getLogger(__name__)
@@ -72,7 +76,7 @@ class SelectProjectUser(workflows.Step):
 KEYPAIR_IMPORT_URL = "horizon:project:access_and_security:keypairs:import"
 
 class SetResumeDetailAction(workflows.Action):
-    image_id = forms.ChoiceField(label=_("Base VM"), required=True)
+    image_id = forms.ChoiceField(label=_("Image"), required=True)
     name = forms.CharField(max_length=80, label=_("Instance Name"), initial="Resumed VM")
     security_group_ids = forms.MultipleChoiceField(label=_("Security Groups"),
                                        required=True,
@@ -98,11 +102,6 @@ class SetResumeDetailAction(workflows.Action):
     def clean(self):
         cleaned_data = super(SetResumeDetailAction, self).clean()
 
-        if cleaned_data.get('image_id', None) == None:
-            raise forms.ValidationError(_("There are no image sources "
-                                          "available; you must first create "
-                                          "an image before attempting to "
-                                          "launch an instance."))
         return cleaned_data
 
     def _get_available_images(self, request, context):
@@ -218,15 +217,15 @@ class SetResumeDetailAction(workflows.Action):
                               _('Unable to retrieve instance flavors.'))
         return sorted(flavor_list)
 
+
 class SetSynthesizeDetailsAction(workflows.Action):
 
-    image_id = forms.ChoiceField(label=_("Base VM"), required=True)
     overlay_meta_url = forms.CharField(max_length=200, required=True, 
             label=_("URL for VM overlay meta"),
-            initial="http://scarlet.aura.cs.cmu.edu:8000/overlay.meta")
+            initial="http://findcloudlet.org/overlay.meta")
     overlay_blob_url = forms.CharField(max_length=200, required=True, 
             label=_("URL for VM overlay blob"),
-            initial="http://scarlet.aura.cs.cmu.edu:8000/overlay.blob")
+            initial="http://findcloudlet.org/overlay.blob")
     name = forms.CharField(max_length=80, label=_("Instance Name"), initial="synthesized_vm")
     security_group_ids = forms.MultipleChoiceField(label=_("Security Groups"),
                                        required=True,
@@ -290,69 +289,30 @@ class SetSynthesizeDetailsAction(workflows.Action):
         if cleaned_data.get('name', None) == None:
             raise forms.ValidationError(_("Need name for the synthesized VM"))
 
+        # finally check the header file of VM overlay
+        # to make sure that associated Base VM exists
+        is_found = False
+        requested_basevm_id = ''
+        try:
+            u = urllib2.urlopen(overlay_meta_url)
+            metadata = u.read()
+            overlay_meta = msgpack.unpackb(metadata)
+            requested_basevm_id = overlay_meta.get(Cloudlet_Const.META_BASE_VM_SHA256, None)
+            public = {"is_public": True, "status": "active"}
+            public_images, _more = glance.image_list_detailed(self.request, filters=public)
+            for image in public_images:
+                if image.id == requested_basevm_id:
+                    is_found = True
+        except Exception as e:
+            msg = "Error while finding matching Base VM with %s" % (requested_basevm_id)
+            raise forms.ValidationError(_(msg))
+        if is_found == False:
+            msg = "Cannot find matching base VM with UUID(%s)" % (requested_basevm_id)
+            raise forms.ValidationError(_(msg))
+
+        # specify associated base VM from the metadata
+        cleaned_data['image_id'] = str(requested_basevm_id)
         return cleaned_data
-
-    def _get_available_images(self, request, context):
-        project_id = context.get('project_id', None)
-        if not hasattr(self, "_public_images"):
-            public = {"is_public": True,
-                      "status": "active"}
-            try:
-                public_images, _more = glance.image_list_detailed(
-                    request, filters=public)
-            except:
-                public_images = []
-                exceptions.handle(request,
-                                  _("Unable to retrieve public images."))
-            self._public_images = public_images
-
-        # Preempt if we don't have a project_id yet.
-        if project_id is None:
-            setattr(self, "_images_for_%s" % project_id, [])
-
-        if not hasattr(self, "_images_for_%s" % project_id):
-            owner = {"property-owner_id": project_id,
-                     "status": "active"}
-            try:
-                owned_images, _more = glance.image_list_detailed(
-                    request, filters=owner)
-            except:
-                owned_images = []
-                exceptions.handle(request,
-                                  _("Unable to retrieve images for "
-                                    "the current project."))
-            setattr(self, "_images_for_%s" % project_id, owned_images)
-
-        owned_images = getattr(self, "_images_for_%s" % project_id)
-        images = owned_images + self._public_images
-        base_vms = list()
-        for image in images:
-            if hasattr(image, 'properties') == True:
-                properties = getattr(image, 'properties')
-                cloudlet_type = properties.get('cloudlet_type', None)
-                if cloudlet_type == CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
-                    base_vms.append(image)
-
-        # Remove duplicate images
-        image_ids = []
-        final_images = []
-        for image in base_vms:
-            if image.id not in image_ids:
-                image_ids.append(image.id)
-                final_images.append(image)
-        return [image for image in final_images
-                if image.container_format not in ('aki', 'ari')]
-
-    def populate_image_id_choices(self, request, context):
-        images = self._get_available_images(request, context)
-        choices = [(image.id, image.name)
-                   for image in images
-                   if image.properties.get("image_type", '') == "snapshot"]
-        if choices:
-            choices.insert(0, ("", _("Select Base VM")))
-        else:
-            choices.insert(0, ("", _("No Base VM is available.")))
-        return choices
 
     def get_help_text(self):
         extra = {}
@@ -409,6 +369,13 @@ class SetSynthesizeDetailsAction(workflows.Action):
 class SetResumeAction(workflows.Step):
     action_class = SetResumeDetailAction
     contributes = ("image_id", "name", "security_group_ids", "flavor", "keypair_id")
+
+    def prepare_action_context(self, request, context):
+        source_type = request.GET.get("source_type", None)
+        source_id = request.GET.get("source_id", None)
+        if source_type != None and source_id != None:
+            context[source_type] = source_id
+        return context
 
 
 class SetSynthesizeAction(workflows.Step):

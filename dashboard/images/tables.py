@@ -23,7 +23,7 @@ class ResumeBaseVM(tables.LinkAction):
 
     def get_link_url(self, datum):
         base_url = reverse(self.url)
-        params = urlencode({"source_type": "instance_snapshot_id",
+        params = urlencode({"source_type": "image_id",
                             "source_id": self.table.get_object_id(datum)})
         return "?".join([base_url, params])
 
