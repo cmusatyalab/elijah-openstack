@@ -448,7 +448,7 @@ class InstancesTable(tables.DataTable):
     name = tables.Column("name",
                          link=("horizon:project:instances:detail"),
                          verbose_name=_("Instance Name"))
-    cloudlet_type = tables.Column(cloudlet_type, verbose_name=_("Cloudlet Type"))
+    cloudlet_type = tables.Column(cloudlet_type, verbose_name=_("Type"))
     ip = tables.Column(get_ips, verbose_name=_("IP Address"))
     size = tables.Column(get_size,
                          verbose_name=_("Size"),
