@@ -222,10 +222,10 @@ class SetSynthesizeDetailsAction(workflows.Action):
 
     overlay_meta_url = forms.CharField(max_length=200, required=True, 
             label=_("URL for VM overlay meta"),
-            initial="http://findcloudlet.org/overlay.meta")
+            initial="")
     overlay_blob_url = forms.CharField(max_length=200, required=True, 
             label=_("URL for VM overlay blob"),
-            initial="http://findcloudlet.org/overlay.blob")
+            initial="")
     name = forms.CharField(max_length=80, label=_("Instance Name"), initial="synthesized_vm")
     security_group_ids = forms.MultipleChoiceField(label=_("Security Groups"),
                                        required=True,

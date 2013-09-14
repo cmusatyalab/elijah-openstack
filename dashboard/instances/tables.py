@@ -79,7 +79,12 @@ class TerminateInstance(tables.BatchAction):
     classes = ('btn-danger', 'btn-terminate')
 
     def allowed(self, request, instance=None):
-        return True
+        is_resumed_base = False
+        cloudlet_type = get_cloudlet_type(instance)
+        if cloudlet_type == CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
+            is_resumed_base = True
+
+        return (not is_resumed_base)
 
     def action(self, request, obj_id):
         api.nova.server_delete(request, obj_id)
@@ -470,10 +475,10 @@ class InstancesTable(tables.DataTable):
         verbose_name = _("Instances")
         status_columns = ["status", "task"]
         row_class = UpdateRow
-        table_actions = (VMSynthesisLink, TerminateInstance)
+        table_actions = (VMSynthesisLink,)
         row_actions = (
-                       SimpleAssociateIP, AssociateIP,
-                       SimpleDisassociateIP, CreateOverlayAction)
+                CreateOverlayAction, TerminateInstance)
+                #SimpleAssociateIP, AssociateIP, SimpleDisassociateIP)
                        #SimpleDisassociateIP, EditInstance,
                        #EditInstanceSecurityGroups, ConsoleLink, LogLink,
                        #TogglePause, ToggleSuspend, SoftRebootInstance,
