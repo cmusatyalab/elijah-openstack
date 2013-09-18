@@ -32,14 +32,14 @@ def request_create_overlay(request, instance_id):
     return dd
 
 
-def request_synthesis(request, vm_name, base_disk_id, flavor_id, key_name, security_group_id, overlay_meta_url, overlay_blob_url):
+def request_synthesis(request, vm_name, base_disk_id, flavor_id, key_name, \
+        security_group_id, overlay_url):
     token = request.user.token.id
     management_url = url_for(request, 'compute')
     end_point = urlparse(management_url)
 
     # other data
-    meta_data = {"overlay_meta_url": overlay_meta_url, 
-            "overlay_blob_url":overlay_blob_url}
+    meta_data = {"overlay_url": overlay_url}
     s = { \
             "server": { \
                 "name": vm_name, "imageRef": base_disk_id, 

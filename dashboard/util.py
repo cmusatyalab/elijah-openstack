@@ -15,8 +15,7 @@ class CLOUDLET_TYPE(object):
     IMAGE_TYPE_BASE_MEM         = "cloudlet_base_memory"
     IMAGE_TYPE_BASE_DISK_HASH   = "cloudlet_base_disk_hash"
     IMAGE_TYPE_BASE_MEM_HASH    = "cloudlet_base_memory_hash"
-    IMAGE_TYPE_OVERLAY_META     = "cloudlet_overlay_meta"
-    IMAGE_TYPE_OVERLAY_DATA     = "cloudlet_overlay_data"
+    IMAGE_TYPE_OVERLAY          = "cloudlet_overlay"
 
 
 def get_cloudlet_type(instance):
@@ -33,8 +32,8 @@ def get_cloudlet_type(instance):
 
         # now it's either resumed base instance or synthesized instance
         # synthesized instance has meta that for overlay URL
-        if metadata.get('overlay_meta_url') != None:
-            return CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY_META
+        if metadata.get('overlay_url') != None:
+            return CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY
         else:
             return CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK
     except glance_exceptions.ClientException:

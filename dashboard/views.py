@@ -61,8 +61,8 @@ class IndexView(tables.MultiTableView):
             all_snaps, self._more_snapshots = api.glance.image_list_detailed(
                 req, marker=marker)
             snaps = [im for im in all_snaps
-                      if (im.properties.get("cloudlet_type", None) == CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY_META)
-                      or (im.properties.get("cloudlet_type", None) == CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY_DATA)]
+                      if (im.properties.get("cloudlet_type", None) == 
+                          CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY)]
         except:
             snaps = []
             exceptions.handle(req, _("Unable to retrieve snapshots."))
@@ -109,7 +109,7 @@ class IndexView(tables.MultiTableView):
                 if instance_type == CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
                     filtered_instances.append(instance)
                     setattr(instance, 'cloudlet_type', "Resumed Base VM")
-                if instance_type == CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY_META:
+                if instance_type == CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY:
                     filtered_instances.append(instance)
                     setattr(instance, 'cloudlet_type', "Synthesized VM")
 

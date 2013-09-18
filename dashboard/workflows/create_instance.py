@@ -220,12 +220,8 @@ class SetResumeDetailAction(workflows.Action):
 
 class SetSynthesizeDetailsAction(workflows.Action):
 
-    overlay_meta_url = forms.CharField(max_length=200, required=True, 
-            label=_("URL for VM overlay meta"),
-            initial="")
-    overlay_blob_url = forms.CharField(max_length=200, required=True, 
-            label=_("URL for VM overlay blob"),
-            initial="")
+    overlay_url = forms.CharField(max_length=200, required=True, 
+            label=_("URL for VM overlay"), initial="")
     name = forms.CharField(max_length=80, label=_("Instance Name"), initial="synthesized_vm")
     security_group_ids = forms.MultipleChoiceField(label=_("Security Groups"),
                                        required=True,
@@ -252,50 +248,37 @@ class SetSynthesizeDetailsAction(workflows.Action):
     def clean(self):
         cleaned_data = super(SetSynthesizeDetailsAction, self).clean()
 
-        overlay_meta_url = cleaned_data.get('overlay_meta_url', None)
-        overlay_blob_url = cleaned_data.get('overlay_blob_url', None)
-        if overlay_meta_url is None or overlay_blob_url is None:
+        overlay_url = cleaned_data.get('overlay_url', None)
+        if overlay_url is None:
             raise forms.ValidationError(_("Need URL to fetch VM overlay"))
 
         # check url format
         val = URLValidator(verify_exists=False)
         try:
-            val(overlay_meta_url)
+            val(overlay_url)
         except ValidationError, e:
             raise forms.ValidationError(_("Malformed URL for overlay meta"))
-        try:
-            val(overlay_blob_url)
-        except ValidationError, e:
-            raise forms.ValidationError(_("Malformed URL for overlay blob"))
 
         # check url accessibility
         try:
-            header_ret = requests.head(overlay_meta_url)
+            header_ret = requests.head(overlay_url)
             if header_ret.ok == False:
                 raise
         except Exception as e:
-            msg = "URL is not accessible : %s" % overlay_meta_url
-            raise forms.ValidationError(_(msg))
-        try:
-            header_ret = requests.head(overlay_blob_url)
-            if header_ret.ok == False:
-                raise
-        except Exception as e:
-            msg = "URL is not accessible : %s" % overlay_blob_url
+            msg = "URL is not accessible : %s" % overlay_url
             raise forms.ValidationError(_(msg))
 
-        # check existance of the url
-        requests.head(overlay_meta_url)
         if cleaned_data.get('name', None) == None:
             raise forms.ValidationError(_("Need name for the synthesized VM"))
 
         # finally check the header file of VM overlay
         # to make sure that associated Base VM exists
+        from cloudlet.package import VMOverlayPackage
         is_found = False
         requested_basevm_id = ''
         try:
-            u = urllib2.urlopen(overlay_meta_url)
-            metadata = u.read()
+            overlay_package = VMOverlayPackage(overlay_url)
+            metadata = overlay_package.read_meta()
             overlay_meta = msgpack.unpackb(metadata)
             requested_basevm_id = overlay_meta.get(Cloudlet_Const.META_BASE_VM_SHA256, None)
             public = {"is_public": True, "status": "active"}
@@ -380,7 +363,7 @@ class SetResumeAction(workflows.Step):
 
 class SetSynthesizeAction(workflows.Step):
     action_class = SetSynthesizeDetailsAction
-    contributes = ("image_id", "overlay_meta_url", "overlay_blob_url", "name", "security_group_ids", "flavor", "keypair_id")
+    contributes = ("image_id", "overlay_url", "name", "security_group_ids", "flavor", "keypair_id")
 
 
 class SetAccessControlsAction(workflows.Action):
@@ -519,8 +502,7 @@ class SynthesisInstance(workflows.Workflow):
                     context['flavor'],
                     context['keypair_id'],
                     context['security_group_ids'],
-                    context['overlay_meta_url'],
-                    context['overlay_blob_url'],
+                    context['overlay_url'],
                     )
             return True
         except:
