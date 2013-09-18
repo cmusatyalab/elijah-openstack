@@ -81,17 +81,24 @@ def request_new_server(server_address, token, end_point, \
     print json.dumps(dd, indent=2)
 
 
-def request_synthesis(server_address, token, end_point, key_name=None, image_name=None, \
-        server_name=None, overlay_meta_url=None, overlay_blob_url=None):
+def request_synthesis(server_address, token, end_point, key_name=None,\
+        server_name=None, overlay_url=None):
+    # read meta data from vm overlay URL
+    from cloudlet.package import VMOverlayPackage
+    from cloudlet import msgpack
+
+    overlay_package = VMOverlayPackage(overlay_url)
+    meta_raw = overlay_package.read_meta()
+    meta_info = msgpack.unpackb(meta_raw)
+    basevm_uuid = meta_info['base_vm_sha256']
+
     # basic data
-    image_ref, image_id = get_ref_id(server_address, token, end_point, "images", image_name)
     flavor_ref, flavor_id = get_ref_id(server_address, token, end_point, "flavors", "m1.tiny")
     # other data
-    meta_data = {"overlay_meta_url": overlay_meta_url, \
-            "overlay_blob_url":overlay_blob_url}
+    meta_data = {"overlay_url": overlay_url}
     s = { \
             "server": { \
-                "name": server_name, "imageRef": image_id, \
+                "name": server_name, "imageRef": str(basevm_uuid), \
                 "flavorRef": flavor_id, "metadata": meta_data, \
                 "min_count":"1", "max_count":"1",
                 "key_name": key_name,
@@ -199,14 +206,12 @@ def request_cloudlet_overlay_start(server_address, token, end_point, image_name,
 
 
 def request_cloudlet_overlay_stop(server_address, token, end_point, \
-        server_name, overlay_name):
+        instance_uuid, overlay_name):
     server_list = get_list(server_address, token, end_point, "servers")
     server_id = ''
     for server in server_list:
-        print "%s == %s" % (server['name'], server_name)
-        if server['name'] == server_name:
+        if server['id'] == instance_uuid:
             server_id = server['id']
-            print "server id : " + server_id
     if not server_id:
         raise CloudletClientError("cannot find matching server name")
 
@@ -452,32 +457,27 @@ def main(argv=None):
         request_cloudlet_base(settings.server_address, token, \
                 urlparse(endpoint), instance_name, snapshot_name) 
     elif args[0] == CMD_CREATE_OVERLAY:
-        instance_name = raw_input("Name of a running instance that you like to create VM overlay : ")
+        instance_uuid = raw_input("UUID of a running instance that you like to create VM overlay : ")
         snapshot_name = raw_input("Set name of VM overlay : ")
         request_cloudlet_overlay_stop(settings.server_address, token, urlparse(endpoint), \
-                instance_name, snapshot_name)
+                instance_uuid, snapshot_name)
     elif args[0] == CMD_DOWNLOAD:
-        VM_overlay_meta = raw_input("Name of VM overlay metafile: ")
-        VM_overlay_blob = raw_input("Name of VM overlay blobfile: ")
+        VM_overlay_meta = raw_input("Name of VM overlay file: ")
         overlay_download(settings.server_address, "admin", "admin", \
                 VM_overlay_meta, VM_overlay_meta)
-        overlay_download(settings.server_address, "admin", "admin", \
-                VM_overlay_blob, VM_overlay_blob)
     elif args[0] == CMD_SYNTHESIS:
-        basevm_image_name = raw_input("Name of Base VM: ")
-        overlay_meta_url = raw_input("URL for VM overlay metafile : ")
-        overlay_blob_url = raw_input("URL for VM overlay blobfile : ")
-        new_instance_name = raw_input("Set the name of syntehsized VM : ")
+        overlay_url = raw_input("URL for VM overlay metafile : ")
+        new_instance_name = raw_input("Set VM's name : ")
         request_synthesis(settings.server_address, token, urlparse(endpoint), \
-                key_name=None, image_name=basevm_image_name, server_name=new_instance_name, \
-                overlay_meta_url=overlay_meta_url, overlay_blob_url=overlay_blob_url)
+                key_name=None, server_name=new_instance_name, \
+                overlay_url=overlay_url)
     elif args[0] == 'image-list':
         images = get_list(settings.server_address, token, \
                 urlparse(endpoint), "images")
         print json.dumps(images, indent=2)
     elif args[0] == CMD_BOOT:
         image_name = raw_input("Specify disk image by name : ")
-        new_instance_name = raw_input("Set the name of VM : ")
+        new_instance_name = raw_input("Set VM's name : ")
         images = request_new_server(settings.server_address, \
                 token, urlparse(endpoint), key_name=None, \
                 image_name=image_name, server_name=new_instance_name)

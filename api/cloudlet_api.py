@@ -40,8 +40,7 @@ class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
     IMAGE_TYPE_BASE_MEM         = "cloudlet_base_memory"
     IMAGE_TYPE_BASE_DISK_HASH   = "cloudlet_base_disk_hash"
     IMAGE_TYPE_BASE_MEM_HASH    = "cloudlet_base_memory_hash"
-    IMAGE_TYPE_OVERLAY_META     = "cloudlet_overlay_meta"
-    IMAGE_TYPE_OVERLAY_DATA     = "cloudlet_overlay_data"
+    IMAGE_TYPE_OVERLAY          = "cloudlet_overlay"
 
     INSTANCE_TYPE_RESUMED_BASE      = "cloudlet_resumed_base_instance"
     INSTANCE_TYPE_SYNTHESIZED_VM    = "cloudlet_synthesized_vm"
@@ -211,21 +210,16 @@ class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
                 version=CloudletAPI.BASE_RPC_API_VERSION)
 
     @nova_api.check_instance_state(vm_state=[vm_states.ACTIVE])
-    def cloudlet_create_overlay_finish(self, context, instance, overlay_name, extra_properties=None):
-        meta_properties = {
+    def cloudlet_create_overlay_finish(self, context, instance, 
+            overlay_name, extra_properties=None):
+        overlay_meta_properties = {
                 'is_cloudlet': True, 
-                'cloudlet_type' : CloudletAPI.IMAGE_TYPE_OVERLAY_META,
+                'cloudlet_type' : CloudletAPI.IMAGE_TYPE_OVERLAY,
                 }
-        blob_properties = {
-                'is_cloudlet': True,
-                'cloudlet_type' : CloudletAPI.IMAGE_TYPE_OVERLAY_DATA,
-                }
-        meta_properties.update(extra_properties or {})
-        blob_properties.update(extra_properties or {})
-        recv_overlay_meta = self._cloudlet_create_image(context, instance, overlay_name+'-meta', \
-                'snapshot', extra_properties = meta_properties)
-        recv_overlay_blob = self._cloudlet_create_image(context, instance, overlay_name+'-blob', \
-                'snapshot', extra_properties = blob_properties)
+        overlay_meta_properties.update(extra_properties or {})
+        recv_overlay_meta = self._cloudlet_create_image(context, instance, 
+                overlay_name, 'snapshot', 
+                extra_properties = overlay_meta_properties)
 
         instance = self.nova_api.update(context, instance,
                                task_state=task_states.IMAGE_SNAPSHOT,
@@ -238,11 +232,10 @@ class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
                         'cloudlet_overlay_finish',
                         instance=instance_p,
                         overlay_name=overlay_name,
-                        overlay_meta_id=recv_overlay_meta['id'], 
-                        overlay_blob_id=recv_overlay_blob['id']
+                        overlay_id=recv_overlay_meta['id'], 
                         ),
                 topic=nova_rpc._compute_topic(self.topic, context, None, instance),
                 version=CloudletAPI.BASE_RPC_API_VERSION)
 
-        return recv_overlay_meta, recv_overlay_blob
+        return recv_overlay_meta
 

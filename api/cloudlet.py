@@ -98,5 +98,5 @@ class CloudletController(wsgi.Controller):
 
         LOG.debug(_("cloudlet Generate overlay VM finish %r"), id)
         instance = self._get_instance(context, id)
-        disk_meta, memory_meta = self.cloudlet_api.cloudlet_create_overlay_finish(context, instance, overlay_name)
-        return {'overlay-meta': disk_meta, 'overlay-blob':memory_meta}
+        overlay_id = self.cloudlet_api.cloudlet_create_overlay_finish(context, instance, overlay_name)
+        return {'overlay-id': overlay_id}

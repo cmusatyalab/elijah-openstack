@@ -76,8 +76,7 @@ class CloudletComputeManager(compute_manager.ComputeManager):
             publisher_id=compute_manager.publisher_id())
     @compute_manager.reverts_task_state
     @compute_manager.wrap_instance_fault
-    def cloudlet_overlay_finish(self, context, instance, overlay_name,
-            overlay_meta_id, overlay_blob_id):
+    def cloudlet_overlay_finish(self, context, instance, overlay_name, overlay_id):
         """Generate VM overlay with given instance,
         and save it as a snapshot
         """
@@ -90,7 +89,7 @@ class CloudletComputeManager(compute_manager.ComputeManager):
                     expected_task_state=expected_state)
 
         self.driver.create_overlay_vm(context, instance, overlay_name, 
-                overlay_meta_id, overlay_blob_id, update_task_state)
+                overlay_id, update_task_state)
 
         instance = self._instance_update(context, instance['uuid'],
                 task_state=None,

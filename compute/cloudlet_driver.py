@@ -17,7 +17,6 @@
 import os
 import uuid
 import hashlib
-import urllib2
 
 from nova.virt.libvirt import blockinfo
 from nova.compute import power_state
@@ -37,6 +36,7 @@ from lzma import LZMADecompressor
 from xml.etree import ElementTree
 from cloudlet import synthesis
 from cloudlet import msgpack
+from cloudlet.package import VMOverlayPackage
 from cloudlet.Configuration import Const as Cloudlet_Const
 
 
@@ -202,7 +202,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         self.firewall_driver.apply_instance_filter(instance, network_info)
 
     def create_overlay_vm(self, context, instance, 
-            overlay_name, overlay_meta_id, overlay_blob_id, update_task_state):
+            overlay_name, overlay_id, update_task_state):
         try:
             virt_dom = self._lookup_by_name(instance['name'])
         except exception.InstanceNotFound:
@@ -226,9 +226,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         (image_service, image_id) = glance.get_remote_image_service(
             context, instance['image_ref'])
         meta_metadata = self._get_snapshot_metadata(virt_dom, context, \
-                instance, overlay_meta_id)
-        blob_metadata = self._get_snapshot_metadata(virt_dom, context, \
-                instance, overlay_blob_id)
+                instance, overlay_id)
         update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD)
 
         vm_overlay = self.vm_overlay_dict.get(instance['uuid'], None)
@@ -236,20 +234,19 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             raise exception.InstanceNotRunning(instance_id=instance['uuid'])
         del self.vm_overlay_dict[instance['uuid']]
         vm_overlay.create_overlay()
-        meta_filepath = vm_overlay.overlay_metafile
-        blob_files = vm_overlay.overlay_files[0]
-        print "[INFO] overlay : %s" % str(vm_overlay.overlay_files[0])
+        overlay_zip = vm_overlay.overlay_zipfile
+        print "[INFO] overlay : %s" % str(overlay_zip)
 
         update_task_state(task_state=task_states.IMAGE_UPLOADING,
                     expected_state=task_states.IMAGE_PENDING_UPLOAD)
 
         # export to glance
-        self._update_to_glance(context, image_service, meta_filepath, \
-                overlay_meta_id, meta_metadata)
-        LOG.info(_("overlay_vm metafile upload complete"), instance=instance)
-        self._update_to_glance(context, image_service, blob_files, \
-                overlay_blob_id, blob_metadata)
-        LOG.info(_("overlay_vm blobfile upload complete"), instance=instance)
+        self._update_to_glance(context, image_service, overlay_zip, \
+                overlay_id, meta_metadata)
+        LOG.info(_("overlay_vm upload complete"), instance=instance)
+
+        if os.path.exists(overlay_zip):
+            os.remove(overlay_zip)
 
 
     def _get_cache_image(self, context, instance, snapshot_id, suffix=''):
@@ -323,19 +320,16 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             LOG.debug(_("cloudlet, get memory_hash_snapshot_id: %s" % str(memhash_snap_id)))
         return memory_snap_id, diskhash_snap_id, memhash_snap_id
 
-    def _get_VM_overlay_meta(self, instance):
+    def _get_VM_overlay_url(self, instance):
         # get overlay from instance metadata for synthesis case
-        overlay_meta_url = overlay_data_url = None
+        overlay_url = None
         instance_meta = instance.get('metadata', None)
         LOG.debug(_("instance meta data : %s" % instance_meta))
-        overlay_meta_url = overlay_data_url = None
         if instance_meta != None:
             for instance_meta_item in instance_meta:
-                if instance_meta_item.get("key") == "overlay_meta_url":
-                    overlay_meta_url = instance_meta_item.get("value")
-                if instance_meta_item.get("key") == "overlay_blob_url":
-                    overlay_data_url = instance_meta_item.get("value")
-        return overlay_meta_url, overlay_data_url
+                if instance_meta_item.get("key") == "overlay_url":
+                    overlay_url = instance_meta_item.get("value")
+        return overlay_url
 
     # overwrite original libvirt_driver's spawn method
     def spawn(self, context, instance, image_meta, injected_files,
@@ -351,7 +345,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         # get meta info related to VM synthesis
         memory_snap_id, diskhash_snap_id, memhash_snap_id = \
                 self._get_basevm_meta_info(image_meta)
-        overlay_meta_url, overlay_data_url = self._get_VM_overlay_meta(instance)
+        overlay_url = self._get_VM_overlay_url(instance)
 
         # original openstack logic
         disk_info = blockinfo.get_disk_info(libvirt_driver.CONF.libvirt_type,
@@ -387,13 +381,13 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         instance['metadata'] = original_metadata
 
 
-        if overlay_meta_url != None and overlay_data_url != None:
+        if overlay_url != None:
             # synthesis from overlay
             LOG.debug(_('cloudlet, synthesis start'))
             # append metadata to the instance
             self._create_network_only(xml, instance, network_info, block_device_info)
             synthesized_vm = self.create_new_using_synthesis(context, instance, 
-                    xml, image_meta, overlay_meta_url, overlay_data_url)
+                    xml, image_meta, overlay_url)
             instance_uuid = str(instance.get('uuid', ''))
             self.synthesized_vm_dics[instance_uuid] = synthesized_vm
         elif memory_snap_id != None:
@@ -432,24 +426,24 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
         # get meta info related to VM synthesis
         instance_uuid = str(instance.get('uuid', ''))
-        overlay_meta_url, overlay_data_url = self._get_VM_overlay_meta(instance)
+        overlay_url = self._get_VM_overlay_url(instance)
+        
+        # check resumed base VM list
+        vm_overlay = self.vm_overlay_dict.get(instance_uuid, None)
+        if vm_overlay != None:
+            del self.vm_overlay_dict[instance['uuid']]
 
-        if overlay_meta_url != None and overlay_data_url != None:
-            # synthesized VM
-            synthesized_VM = self.synthesized_vm_dics.get(instance_uuid)
-            if synthesized_VM == None:
-                msg = "Synthesized VM, but can't find matching uuid of %s" % \
-                        (instance_uuid)
-                LOG.info(msg)
-            else:
-                LOG.info(_("Deallocate all resources of synthesized VM"), \
-                        instance=instance)
-                if hasattr(synthesized_VM, 'machine') == True:
-                    # intentionally avoid terminating VM at synthesis code
-                    # since OpenStack will do that
-                    synthesized_VM.machine = None
-                synthesized_VM.terminate()
-                del self.synthesized_vm_dics[instance_uuid]
+        # check synthesized VM list
+        synthesized_VM = self.synthesized_vm_dics.get(instance_uuid, None)
+        if synthesized_VM != None:
+            LOG.info(_("Deallocate all resources of synthesized VM"), \
+                    instance=instance)
+            if hasattr(synthesized_VM, 'machine') == True:
+                # intentionally avoid terminating VM at synthesis code
+                # since OpenStack will do that
+                synthesized_VM.machine = None
+            synthesized_VM.terminate()
+            del self.synthesized_vm_dics[instance_uuid]
 
     def resume_basevm(self, instance, xml,
             base_disk, base_memory, base_diskmeta, base_memmeta, base_hashvalue):
@@ -460,6 +454,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         options.FREE_SUPPORT = False
         options.XRAY_SUPPORT = False
         options.DISK_ONLY = False
+        options.ZIP_CONTAINER = True
         vm_overlay = synthesis.VM_Overlay(base_disk, options, 
                 base_mem=base_memory, 
                 base_diskmeta=base_diskmeta, 
@@ -474,12 +469,13 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         synthesis.rettach_nic(virt_dom, vm_overlay.old_xml_str, xml)
 
     def create_new_using_synthesis(self, context, instance, xml, 
-            image_meta, overlay_meta_url, overlay_data_url):
-        # download meta file and get hash value
-        u = urllib2.urlopen(overlay_meta_url)
-        metadata = u.read()
-        overlay_meta = msgpack.unpackb(metadata)
-        basevm_id = overlay_meta.get(Cloudlet_Const.META_BASE_VM_SHA256, None)
+            image_meta, overlay_url):
+
+        # download vm overlay
+        overlay_package = VMOverlayPackage(overlay_url)
+        meta_raw = overlay_package.read_meta()
+        meta_info = msgpack.unpackb(meta_raw)
+        basevm_id = meta_info.get(Cloudlet_Const.META_BASE_VM_SHA256, None)
 
         # check basevm
         basedisk_snap_id = image_meta['id']
@@ -487,7 +483,6 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             msg = "requested base vm is not compatible with openstack base disk %s != %s" \
                     % (basedisk_snap_id, basevm_id)
             raise exception.ImageNotFound(msg)
-
         meta_data = image_meta.get('properties', None)
         if meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_MEM, None) == None:
             msg = "requested base disk does not have enought %s" \
@@ -502,23 +497,23 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         memhash_path = self._get_cache_image(context, instance, memhash_snap_id)
 
         # download blob
-        u = urllib2.urlopen(overlay_data_url)
-        comp_overlay_blob = u.read()
         fileutils.ensure_tree(libvirt_utils.get_instance_path(instance))
         decomp_overlay = os.path.join(libvirt_utils.get_instance_path(instance),
                 'decomp_overlay')
-
-        # decompress blob
-        decomp_overlay_file = open(decomp_overlay, "w+b")
-        decompressor = LZMADecompressor()
-        decomp_data = decompressor.decompress(comp_overlay_blob)
-        decomp_data += decompressor.flush()
-        decomp_overlay_file.write(decomp_data)
-        decomp_overlay_file.close()
+        overlay_fd = open(decomp_overlay, "w+b")
+        comp_overlay_files = meta_info[Cloudlet_Const.META_OVERLAY_FILES]
+        comp_overlay_files = [item[Cloudlet_Const.META_OVERLAY_FILE_NAME] for item in comp_overlay_files]
+        for comp_filename in comp_overlay_files:
+            comp_data = overlay_package.read_blob(comp_filename)
+            decompressor = LZMADecompressor()
+            decomp_data = decompressor.decompress(comp_data)
+            decomp_data += decompressor.flush()
+            overlay_fd.write(decomp_data)
+        overlay_fd.close()
 
         # recover VM
         launch_disk, launch_mem, fuse, delta_proc, fuse_proc = \
-                synthesis.recover_launchVM(basedisk_path, overlay_meta,
+                synthesis.recover_launchVM(basedisk_path, meta_info,
                         decomp_overlay,
                         base_mem=basemem_path,
                         base_diskmeta=diskhash_path,
