@@ -293,29 +293,11 @@ def get_token(server_address, user, password, tenant_name):
     return api_token, nova_endpoint, glance_endpoint
 
 
-def overlay_download(server_address, uname, password, overlay_name, output_file):
+def overlay_download(server_address, token, glance_endpoint, overlay_name, output_file):
     """ glance API has been changed so the below code does not work
     """
-    #from glance import client
-    #glance_client = client.get_client(server_address, username=uname, password=password)
-    #image_list = glance_client.get_images()
-    #image_id = ''
-    #for image in image_list:
-    #    print "image list : %s" % image.get('name')
-    #    if image.get('name') and image['name'] == overlay_name:
-    #        image_id = image.get('id')
-    #        break
-    #if not image_id:
-    #    raise CloudletClientError("cannot find matching glance image")
-    #
-    #meta, raw = glance_client.get_image(image_id)
-    #if not meta or not raw:
-    #    raise CloudletClientError("cannot download")
-
-    #fout = open(output_file, "wb")
-    #for chunk in raw:
-    #    fout.write(chunk)
-    #fout.close()
+    """ http://api.openstack.org/api-ref-image.html
+    
     import subprocess
     fout = open(output_file, "wb")
     _PIPE = subprocess.PIPE
@@ -432,12 +414,16 @@ def main(argv=None):
     CMD_DOWNLOAD        = "download"
     CMD_SYNTHESIS       = "synthesis"
     CMD_BOOT            = "boot"
+    CMD_EXT_LIST        = "ext-list"
+    CMD_IMAGE_LIST      = "image-list"
     commands = {
             CMD_CREATE_BASE: "create base vm from the running instance",
             CMD_CREATE_OVERLAY: "create VM overlay from the customizaed VM",
             CMD_DOWNLOAD: "Download VM overlay",
             CMD_SYNTHESIS: "VM Synthesis (Need downloadable URLs for VM overlay",
             CMD_BOOT : "Boot VM disk using predefined configuration (testing purpose",
+            CMD_EXT_LIST: "List available extensions",
+            CMD_IMAGE_LIST: "List images",
             }
 
     settings, args = process_command_line(sys.argv[1:], commands)
@@ -463,7 +449,7 @@ def main(argv=None):
                 instance_uuid, snapshot_name)
     elif args[0] == CMD_DOWNLOAD:
         VM_overlay_meta = raw_input("Name of VM overlay file: ")
-        overlay_download(settings.server_address, "admin", "admin", \
+        overlay_download(settings.server_address, token, urlparse(glance_endpoint),\
                 VM_overlay_meta, VM_overlay_meta)
     elif args[0] == CMD_SYNTHESIS:
         overlay_url = raw_input("URL for VM overlay metafile : ")
@@ -471,7 +457,13 @@ def main(argv=None):
         request_synthesis(settings.server_address, token, urlparse(endpoint), \
                 key_name=None, server_name=new_instance_name, \
                 overlay_url=overlay_url)
-    elif args[0] == 'image-list':
+    elif args[0] == CMD_EXT_LIST:
+        filter_name = None
+        if len(args)==2:
+            filter_name = args[1]
+        ext_info = get_extension(settings.server_address, token, urlparse(endpoint), filter_name)
+        print json.dumps(ext_info, indent=2)
+    elif args[0] == CMD_IMAGE_LIST:
         images = get_list(settings.server_address, token, \
                 urlparse(endpoint), "images")
         print json.dumps(images, indent=2)
@@ -486,18 +478,6 @@ def main(argv=None):
         ret = request_cloudlet_ipaddress(settings.server_address, token, urlparse(endpoint), \
                 server_uuid=server_uuid)
         print str(ret)
-    elif args[0] == 'start':
-        instance_name = args[1]
-        request_start_stop(settings.server_address, token, urlparse(endpoint), instance_name, is_request_start=True)
-    elif args[0] == 'stop':
-        instance_name = args[1]
-        request_start_stop(settings.server_address, token, urlparse(endpoint), instance_name, is_request_start=False)
-    elif args[0] == 'ext-list':
-        filter_name = None
-        if len(args)==2:
-            filter_name = args[1]
-        ext_info = get_extension(settings.server_address, token, urlparse(endpoint), filter_name)
-        print json.dumps(ext_info, indent=2)
     else:
         print "No such command"
         sys.exit(1)

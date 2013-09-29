@@ -166,10 +166,9 @@ def download_vm_overlay(request):
 
         body = client.images.data(image_id)
         response = HttpResponse(body, content_type="application/octet-stream")
+        #response["Content-Length"] = "%d" % item.size_total
         response['Content-Disposition'] = 'attachment; filename="%s"' % image_name
         return response
-
-
     except Exception, e:
         LOG.exception("Exception in Downloading.")
         messages.error(request, _('Error Downloading VM overlay: %s') % e)
