@@ -101,7 +101,7 @@ with examples.
 
 
 
-Known Issues
+Current Limitations
 ------------
 
 1. Possible resource leak from unexpected OpenStack termination
