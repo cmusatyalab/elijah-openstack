@@ -284,7 +284,14 @@ class SetSynthesizeDetailsAction(workflows.Action):
             public = {"is_public": True, "status": "active"}
             public_images, _more = glance.image_list_detailed(self.request, filters=public)
             for image in public_images:
-                if image.id == requested_basevm_id:
+                properties = getattr(image, "properties")
+                if properties == None or len(properties) == 0:
+                    continue
+                if properties.get(CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET_TYPE) != \
+                        CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
+                    continue
+                base_sha256_uuid = properties.get(CLOUDLET_TYPE.PROPERTY_KEY_BASE_UUID)
+                if base_sha256_uuid == requested_basevm_id:
                     is_found = True
         except Exception as e:
             msg = "Error while finding matching Base VM with %s" % (requested_basevm_id)

@@ -24,6 +24,7 @@ from oslo.config import cfg
 
 import nova.openstack.common.rpc.proxy
 from nova.openstack.common import jsonutils
+from hashlib import sha256
 
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
@@ -35,6 +36,11 @@ class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
     API has 2.27 BASE_RPC_API_VERSION. 
     """
     BASE_RPC_API_VERSION = '2.28'
+
+    PROPERTY_KEY_CLOUDLET       = "is_cloudlet"
+    PROPERTY_KEY_CLOUDLET_TYPE  = "cloudlet_type"
+    PROPERTY_KEY_NETWORK_INFO   = "network"
+    PROPERTY_KEY_BASE_UUID      = "base_sha256_uuid"
 
     IMAGE_TYPE_BASE_DISK        = "cloudlet_base_disk"
     IMAGE_TYPE_BASE_MEM         = "cloudlet_base_memory"
@@ -128,25 +134,31 @@ class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
             vif_info ={'id':vif['uuid'], 'mac_address':vif['address']}
             net_info.append(vif_info)
 
+        base_sha256_uuid = sha256(str(instance['uuid'])).hexdigest()
+
         disk_properties = {
-                'is_cloudlet': True, 
-                'cloudlet_type' : CloudletAPI.IMAGE_TYPE_BASE_DISK,
-                'network' : net_info, 
+                CloudletAPI.PROPERTY_KEY_CLOUDLET : True, 
+                CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE : CloudletAPI.IMAGE_TYPE_BASE_DISK,
+                CloudletAPI.PROPERTY_KEY_NETWORK_INFO : net_info, 
+                CloudletAPI.PROPERTY_KEY_BASE_UUID: base_sha256_uuid,
                 }
         mem_properties = {
-                'is_cloudlet': True,
-                'cloudlet_type' : CloudletAPI.IMAGE_TYPE_BASE_MEM,
-                'network' : net_info, 
+                CloudletAPI.PROPERTY_KEY_CLOUDLET : True, 
+                CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE : CloudletAPI.IMAGE_TYPE_BASE_MEM,
+                CloudletAPI.PROPERTY_KEY_NETWORK_INFO : net_info, 
+                CloudletAPI.PROPERTY_KEY_BASE_UUID: base_sha256_uuid,
                 }
         diskhash_properties = {
-                'is_cloudlet': True, 
-                'cloudlet_type' : CloudletAPI.IMAGE_TYPE_BASE_DISK_HASH,
-                'network' : net_info, 
+                CloudletAPI.PROPERTY_KEY_CLOUDLET : True, 
+                CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE : CloudletAPI.IMAGE_TYPE_BASE_DISK_HASH,
+                CloudletAPI.PROPERTY_KEY_NETWORK_INFO : net_info, 
+                CloudletAPI.PROPERTY_KEY_BASE_UUID: base_sha256_uuid,
                 }
         memhash_properties = {
-                'is_cloudlet': True,
-                'cloudlet_type' : CloudletAPI.IMAGE_TYPE_BASE_MEM_HASH,
-                'network' : net_info, 
+                CloudletAPI.PROPERTY_KEY_CLOUDLET : True, 
+                CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE : CloudletAPI.IMAGE_TYPE_BASE_MEM_HASH,
+                CloudletAPI.PROPERTY_KEY_NETWORK_INFO : net_info, 
+                CloudletAPI.PROPERTY_KEY_BASE_UUID: base_sha256_uuid,
                 }
         disk_properties.update(extra_properties or {})
         mem_properties.update(extra_properties or {})
@@ -213,8 +225,8 @@ class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
     def cloudlet_create_overlay_finish(self, context, instance, 
             overlay_name, extra_properties=None):
         overlay_meta_properties = {
-                'is_cloudlet': True, 
-                'cloudlet_type' : CloudletAPI.IMAGE_TYPE_OVERLAY,
+                CloudletAPI.PROPERTY_KEY_CLOUDLET: True, 
+                CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE : CloudletAPI.IMAGE_TYPE_OVERLAY,
                 }
         overlay_meta_properties.update(extra_properties or {})
         recv_overlay_meta = self._cloudlet_create_image(context, instance, 
