@@ -15,13 +15,19 @@
 # or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
 # for more details.
 #
+import sys
+import os
+import httplib
+import json
+import subprocess
+import urllib
 
 from optparse import OptionParser
 from urlparse import urlparse
-import httplib
-import json
-import sys
-import urllib
+from tempfile import mkdtemp
+from util import CLOUDLET_TYPE
+
+from cloudlet.package import BaseVMPackage
 
 
 class CloudletClientError(Exception):
@@ -90,7 +96,25 @@ def request_synthesis(server_address, token, end_point, key_name=None,\
     overlay_package = VMOverlayPackage(overlay_url)
     meta_raw = overlay_package.read_meta()
     meta_info = msgpack.unpackb(meta_raw)
-    basevm_uuid = meta_info['base_vm_sha256']
+    requested_basevm_id = meta_info['base_vm_sha256']
+
+    # find matching base VM
+    image_list = get_list(server_address, token, end_point, "images")
+    basevm_uuid = None
+    for image in image_list:
+        properties = image.get("metadata", None)
+        if properties == None or len(properties) == 0:
+            continue
+        if properties.get(CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET_TYPE) != \
+                CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
+            continue
+        base_sha256_uuid = properties.get(CLOUDLET_TYPE.PROPERTY_KEY_BASE_UUID)
+        if base_sha256_uuid == requested_basevm_id:
+            basevm_uuid = image['id']
+            break
+    if basevm_uuid == None:
+        raise CloudletClientError("Cannot find matching Base VM with (%s)" %\
+                str(requested_basevm_id))
 
     # basic data
     flavor_ref, flavor_id = get_ref_id(server_address, token, end_point, "flavors", "m1.tiny")
@@ -294,11 +318,11 @@ def get_token(server_address, user, password, tenant_name):
 
 
 def overlay_download(server_address, token, glance_endpoint, overlay_name, output_file):
-    """ glance API has been changed so the below code does not work
-    """
-    """ http://api.openstack.org/api-ref-image.html
+    """ 
+    glance API has been changed so the below code does not work
+    http://api.openstack.org/api-ref-image.html
+    """ 
     
-    import subprocess
     fout = open(output_file, "wb")
     _PIPE = subprocess.PIPE
     cmd = "glance image-download %s" % (overlay_name)
@@ -307,6 +331,52 @@ def overlay_download(server_address, token, glance_endpoint, overlay_name, outpu
     
     if err:
         print err
+
+def basevm_download(server_address, token, end_point, basedisk_uuid, output_file):
+    image_list = get_list(server_address, token, end_point, "images")
+
+    base_sha256_uuid = None
+    basememory_uuid = None
+    diskhash_uuid = None
+    memoryhash_uuid = None
+    for image in image_list:
+        properties = image.get("metadata", None)
+        if properties == None or len(properties) == 0:
+            continue
+        if properties.get(CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET_TYPE) != \
+                CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
+            continue
+        base_sha256_uuid = properties.get(CLOUDLET_TYPE.PROPERTY_KEY_BASE_UUID)
+        if basedisk_uuid == image['id']:
+            basememory_uuid = properties.get(CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM)
+            diskhash_uuid = properties.get(CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK_HASH)
+            memoryhash_uuid = properties.get(CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM_HASH)
+            break
+
+    if base_sha256_uuid == None or basememory_uuid == None or \
+            diskhash_uuid == None or memoryhash_uuid == None:
+        raise CloudletClientError("Cannot find relevant files for (%s)" %\
+                str(basedisk_uuid))
+
+    temp_dir = mkdtemp(prefix="cloudlet-basevm-")
+    download_list = {
+            basedisk_uuid: os.path.join(temp_dir, 'base_disk.img'),
+            basememory_uuid: os.path.join(temp_dir, 'base_memory.img'),
+            diskhash_uuid: os.path.join(temp_dir, 'base_disk_hash'),
+            memoryhash_uuid: os.path.join(temp_dir, 'base_memory_hash'),
+            }
+
+    for (uuid, filename) in download_list.iteritems():
+        sys.stdout.write("Downloaing %s at (%s)..\n" % \
+                (os.path.basename(filename), filename))
+        sys.stdout.flush()
+        overlay_download(server_address, token, end_point, uuid, filename)
+
+    BaseVMPackage.create(output_file, base_sha256_uuid, \
+            download_list[basedisk_uuid], 
+            download_list[basememory_uuid],
+            download_list[diskhash_uuid],
+            download_list[memoryhash_uuid])
 
 
 def print_usage(commands):
@@ -416,6 +486,7 @@ def main(argv=None):
     CMD_BOOT            = "boot"
     CMD_EXT_LIST        = "ext-list"
     CMD_IMAGE_LIST      = "image-list"
+    CMD_EXPORT_BASE     = "export-base"
     commands = {
             CMD_CREATE_BASE: "create base vm from the running instance",
             CMD_CREATE_OVERLAY: "create VM overlay from the customizaed VM",
@@ -424,6 +495,7 @@ def main(argv=None):
             CMD_BOOT : "Boot VM disk using predefined configuration (testing purpose",
             CMD_EXT_LIST: "List available extensions",
             CMD_IMAGE_LIST: "List images",
+            CMD_EXPORT_BASE: "Export Base VM",
             }
 
     settings, args = process_command_line(sys.argv[1:], commands)
@@ -436,7 +508,6 @@ def main(argv=None):
     if len(args) < 1:
         print "need command"
         sys.exit(1)
-
     if args[0] == CMD_CREATE_BASE:
         instance_name = raw_input("Name of a running instance that you like to make as a base VM : ")
         snapshot_name = raw_input("Set name of Base VM : ")
@@ -451,6 +522,15 @@ def main(argv=None):
         VM_overlay_meta = raw_input("Name of VM overlay file: ")
         overlay_download(settings.server_address, token, urlparse(glance_endpoint),\
                 VM_overlay_meta, VM_overlay_meta)
+    elif args[0] == CMD_EXPORT_BASE:
+        basedisk_uuid = raw_input("UUID of a base disk : ")
+        output_path = os.path.join(os.curdir, "base-%s.zip" % basedisk_uuid)
+        if os.path.exists(output_path) == True:
+            is_overwrite = raw_input("%s exists. Overwirte it? (y/N) " % output_path)
+            if is_overwrite != 'y':
+                sys.exit(1)
+        basevm_download(settings.server_address, token, \
+                urlparse(endpoint), basedisk_uuid, output_path)
     elif args[0] == CMD_SYNTHESIS:
         overlay_url = raw_input("URL for VM overlay metafile : ")
         new_instance_name = raw_input("Set VM's name : ")
@@ -498,3 +578,5 @@ def main(argv=None):
 if __name__ == "__main__":
     status = main()
     sys.exit(status)
+
+

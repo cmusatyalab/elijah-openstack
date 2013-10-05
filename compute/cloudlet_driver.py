@@ -58,7 +58,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         _image_service = glance.get_remote_image_service(context, snapshot_id)
         snapshot_image_service, snapshot_image_id = _image_service
         snapshot = snapshot_image_service.show(context, snapshot_image_id)
-        metadata = {'is_public': False,
+        metadata = {'is_public': True,
                     'status': 'active',
                     'name': snapshot['name'],
                     'properties': {
@@ -212,7 +212,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         (image_service, image_id) = glance.get_remote_image_service(
             context, instance['image_ref'])
         image_meta = image_service.show(context, image_id)
-        memory_snap_id, diskhash_snap_id, memhash_snap_id = \
+        base_sha256_uuid, memory_snap_id, diskhash_snap_id, memhash_snap_id = \
                 self._get_basevm_meta_info(image_meta)
         self._get_cache_image(context, instance, image_meta['id'])
         self._get_cache_image(context, instance, memory_snap_id)
@@ -247,7 +247,6 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
         if os.path.exists(overlay_zip):
             os.remove(overlay_zip)
-
 
     def _get_cache_image(self, context, instance, snapshot_id, suffix=''):
         def basepath(fname='', suffix=suffix):
@@ -306,19 +305,22 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
     def _get_basevm_meta_info(self, image_meta):
         # get memory_snapshot_id for resume case
+        base_sha256_uuid = None
         memory_snap_id = None
         diskhash_snap_id = None
         memhash_snap_id = None
 
         meta_data = image_meta.get('properties', None)
         if meta_data and meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_MEM):
+            base_sha256_uuid = str(meta_data.get(CloudletAPI.PROPERTY_KEY_BASE_UUID))
             memory_snap_id = str(meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_MEM))
             diskhash_snap_id = str(meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_DISK_HASH))
             memhash_snap_id = str(meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_MEM_HASH))
+            LOG.debug(_("cloudlet, get base sha256 uuid: %s" % str(base_sha256_uuid)))
             LOG.debug(_("cloudlet, get memory_snapshot_id: %s" % str(memory_snap_id)))
             LOG.debug(_("cloudlet, get disk_hash_snapshot_id: %s" % str(diskhash_snap_id)))
             LOG.debug(_("cloudlet, get memory_hash_snapshot_id: %s" % str(memhash_snap_id)))
-        return memory_snap_id, diskhash_snap_id, memhash_snap_id
+        return base_sha256_uuid, memory_snap_id, diskhash_snap_id, memhash_snap_id
 
     def _get_VM_overlay_url(self, instance):
         # get overlay from instance metadata for synthesis case
@@ -341,9 +343,8 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             original_meta.append(metadata_dict)
             target_instance['metadata'] = original_meta
 
-
         # get meta info related to VM synthesis
-        memory_snap_id, diskhash_snap_id, memhash_snap_id = \
+        base_sha256_uuid, memory_snap_id, diskhash_snap_id, memhash_snap_id = \
                 self._get_basevm_meta_info(image_meta)
         overlay_url = self._get_VM_overlay_url(instance)
 
@@ -380,7 +381,6 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         libvirt_driver.CONF.libvirt_inject_key = original_inject_key
         instance['metadata'] = original_metadata
 
-
         if overlay_url != None:
             # synthesis from overlay
             LOG.debug(_('cloudlet, synthesis start'))
@@ -401,7 +401,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
             self._create_network_only(xml, instance, network_info, block_device_info)
             self.resume_basevm(instance, xml, basedisk_path, basemem_path, 
-                    diskhash_path, memhash_path, image_meta['id'])
+                    diskhash_path, memhash_path, base_sha256_uuid)
         else:
             self._create_domain_and_network(xml, instance, network_info,
                                             block_device_info)
@@ -475,23 +475,22 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         overlay_package = VMOverlayPackage(overlay_url)
         meta_raw = overlay_package.read_meta()
         meta_info = msgpack.unpackb(meta_raw)
-        basevm_id = meta_info.get(Cloudlet_Const.META_BASE_VM_SHA256, None)
+        basevm_sha256 = meta_info.get(Cloudlet_Const.META_BASE_VM_SHA256, None)
+        image_properties = image_meta.get("properties", None)
+        if image_properties == None:
+            msg = "image does not have properties for cloudlet metadata"
+            raise exception.ImageNotFound(msg)
+        image_sha256 = image_properties.get(CloudletAPI.PROPERTY_KEY_BASE_UUID)
 
         # check basevm
-        basedisk_snap_id = image_meta['id']
-        if basedisk_snap_id != basevm_id:
+        if basevm_sha256 != image_sha256:
             msg = "requested base vm is not compatible with openstack base disk %s != %s" \
-                    % (basedisk_snap_id, basevm_id)
+                    % (basevm_sha256, image_sha256)
             raise exception.ImageNotFound(msg)
-        meta_data = image_meta.get('properties', None)
-        if meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_MEM, None) == None:
-            msg = "requested base disk does not have enought %s" \
-                    % (basedisk_snap_id )
-            raise exception.ImageNotFound(msg)
-        memory_snap_id = str(meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_MEM))
-        diskhash_snap_id = str(meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_DISK_HASH))
-        memhash_snap_id = str(meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_MEM_HASH))
-        basedisk_path = self._get_cache_image(context, instance, basedisk_snap_id)
+        memory_snap_id = str(image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_MEM))
+        diskhash_snap_id = str(image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_DISK_HASH))
+        memhash_snap_id = str(image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_MEM_HASH))
+        basedisk_path = self._get_cache_image(context, instance, image_meta['id'])
         basemem_path = self._get_cache_image(context, instance, memory_snap_id)
         diskhash_path = self._get_cache_image(context, instance, diskhash_snap_id)
         memhash_path = self._get_cache_image(context, instance, memhash_snap_id)
