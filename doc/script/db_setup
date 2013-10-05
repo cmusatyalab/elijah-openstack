@@ -4,7 +4,7 @@ ADMIN_PASSWORD="password"
 SERVICE_PASSWORD="password"
 DEMO_PASSWORD="password"
 OS_SERVICE_TOKEN="password" 
-OS_SERVICE_ENDPOINT="http://127.0.0.1:35357/v2.0" 
+OS_SERVICE_ENDPOINT="http://128.2.210.197:35357/v2.0" 
 SERVICE_TENANT_NAME="service"
 
 
@@ -16,7 +16,7 @@ MYSQL_PASSWORD=password
 
 #
 KEYSTONE_REGION=RegionOne
-KEYSTONE_HOST=127.0.0.1
+KEYSTONE_HOST=128.2.210.197
 
 # Shortcut function to get a newly generated ID 
 function get_field() { 

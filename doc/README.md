@@ -86,7 +86,7 @@
     ImportError: cannot import name exceptions
 
     It is cause by the conflict in sqlalchemy at /usr/local/lib and /usr/lib.
-    So remove sqlalchemy library at /usr/local/lib, which is latest version
+    So remove sqlalchemy/migrate library at /usr/local/lib, which is latest version
 
 
 10. Add new compute node
@@ -94,4 +94,8 @@
 	- install nova-compute nova-network only
 	- ip link set eth1 promisc on
 	- set ip address of br100 to the first address from fix_range set in nova.conf
-	- http://docs.openstack.org/essex/openstack-compute/install/apt/content/installing-additional-compute-nodes.html
+	[[-]] http://docs.openstack.org/essex/openstack-compute/install/apt/content/installing-additional-compute-nodes.html
+
+
+11. ERROR: Unauthorized (HTTP 401)
+	-  The admin user credentials also need to be put into /etc/nova/api-paste.ini.
