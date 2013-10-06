@@ -17,7 +17,8 @@ VM_SYNTEHSIS_REPO = "https://github.com/cmusatyalab/elijah-cloudlet.git"
 PYTHON_LIBRARY_ROOT = "/usr/lib/python2.7/dist-packages"
 NOVA_CONF_PATH = "/etc/nova/nova.conf"
 NOVA_COMPUTE_CONF_PATH = "/etc/nova/nova-compute.conf"
-HORIZON_PATH = "/usr/share/openstack-dashboard/openstack_dashboard/dashboards/project"
+DASHBOARD_PROJECT_PATH = "/usr/share/openstack-dashboard/openstack_dashboard/dashboards/project"
+DASHBOARD_SETTING_FILE = "/usr/share/openstack-dashboard/openstack_dashboard/dashboards/project/dashboard.py"
 HOROZIN_API_PATH = "/usr/share/openstack-dashboard/openstack_dashboard/api"
 
 def deploy_cloudlet_api():
@@ -160,16 +161,24 @@ def check_VM_synthesis_package():
 
 
 def deploy_dashboard():
-    global HORIZON_PATH
+    global DASHBOARD_PROJECT_PATH 
+    global DASHBOARD_SETTING_FILE
     global HOROZIN_API_PATH
 
     # deploy files
     src_dir = os.path.abspath("./dashboard/*")
-    dest_dir = os.path.join(HORIZON_PATH, "cloudlet")
+    dest_dir = os.path.join(DASHBOARD_PROJECT_PATH, "cloudlet")
     if files.exists(dest_dir, use_sudo=True) == False:
         sudo("mkdir -p %s" % dest_dir)
     if put(src_dir, dest_dir, use_sudo=True).failed:
         abort("Cannot copy from %s to %s" % (src_dir, link_dir))
+
+    if sudo("cat %s | grep cloudlet" % DASHBOARD_SETTING_FILE).failed:
+        if sudo("sed -i '/instances/ s/$/ \"cloudlet\",/' %s" % DASHBOARD_SETTING_FILE).failed:
+            msg = "Cannot update cloudlet panel at dashboard"
+            msg += "check file at %s" % DASHBOARD_SETTING_FILE
+            abort(msg)
+
 
 
 def deploy_svirt():
