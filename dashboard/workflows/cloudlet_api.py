@@ -1,5 +1,8 @@
 import logging
 
+import glanceclient as glance_client
+import thread
+
 from django.conf import settings
 from novaclient.v1_1 import client as nova_client
 import httplib
@@ -11,6 +14,37 @@ from novaclient.v1_1.security_groups import SecurityGroup as NovaSecurityGroup
 
 
 LOG = logging.getLogger(__name__)
+
+
+def glanceclient(request):
+    o = urlparse(url_for(request, 'image'))
+    url = "://".join((o.scheme, o.netloc))
+    insecure = getattr(settings, 'OPENSTACK_SSL_NO_VERIFY', False)
+    LOG.debug('glanceclient connection created using token "%s" and url "%s"'
+              % (request.user.token.id, url))
+    return glance_client.Client('1', url, token=request.user.token.id,
+                                insecure=insecure)
+
+
+def image_update(request, image_id, **kwargs):
+    return glanceclient(request).images.update(image_id, **kwargs)
+
+
+def request_import_basevm(request, **kwargs):
+    copy_from = None
+
+    if kwargs.get('copy_from'):
+        copy_from = kwargs.pop('copy_from')
+
+    import pdb;pdb.set_trace()
+    image = glanceclient(request).images.create(**kwargs)
+
+    if copy_from:
+        thread.start_new_thread(image_update,
+                                (request, image.id),
+                                {'copy_from': copy_from})
+
+    return image
 
 def request_create_overlay(request, instance_id):
     token = request.user.token.id

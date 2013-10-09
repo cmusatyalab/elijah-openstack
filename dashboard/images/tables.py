@@ -84,7 +84,7 @@ class DownloadImage(tables.LinkAction):
 class ImportBaseVM(tables.LinkAction):
     name = "import"
     verbose_name = _("Import Base VM")
-    url = "horizon:project:images_and_snapshots:images:create"
+    url = "horizon:project:cloudlet:import"
     classes = ("ajax-modal", "btn-create")
 
 

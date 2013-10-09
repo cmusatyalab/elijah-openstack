@@ -332,6 +332,92 @@ def overlay_download(server_address, token, glance_endpoint, overlay_name, outpu
     if err:
         print err
 
+
+def basevm_import(server_address, uname, password, tenant_name, import_filepath, basevm_name):
+    token, endpoint, glance_endpoint = \
+            get_token(server_address, uname, password, tenant_name)
+
+    from cloudlet.package import PackagingUtil
+    from cloudlet.package import _FileFile
+    import glanceclient as glance_client
+    import zipfile
+
+    (base_hashvalue, disk_name, memory_name, diskhash_name, memoryhash_name) = \
+            PackagingUtil._get_basevm_attribute(import_filepath)
+
+    # check duplicated base VM
+    image_list = get_list(server_address, token, urlparse(endpoint), "images")
+    for image in image_list:
+        properties = image.get("metadata", None)
+        if properties == None or len(properties) == 0:
+            continue
+        if properties.get(CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET_TYPE) != \
+                CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
+            continue
+        base_sha256_uuid = properties.get(CLOUDLET_TYPE.PROPERTY_KEY_BASE_UUID)
+        if base_sha256_uuid == base_hashvalue:
+            msg = "Duplicated base VM is already exists on the system"
+            msg += "UUID of duplicated Base VM: %s" % image['id']
+            raise CloudletClientError(msg)
+
+    # decompress files
+    temp_dir = mkdtemp(prefix="cloudlet-base-")
+    zipbase = zipfile.ZipFile(_FileFile("file:///%s" % import_filepath), 'r')
+    zipbase.extractall(temp_dir)
+    disk_path = os.path.join(temp_dir, disk_name)
+    memory_path = os.path.join(temp_dir, disk_name)
+    diskhash_path = os.path.join(temp_dir, diskhash_name)
+    memoryhash_path = os.path.join(temp_dir, memoryhash_name)
+
+    # upload base disk
+    def _create_param(filepath, image_name, image_type):
+        properties = {
+                "image_type": "snapshot",
+                "image_location":"snapshot",
+                CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET:"True",
+                CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET_TYPE:image_type,
+                CLOUDLET_TYPE.PROPERTY_KEY_BASE_UUID:base_hashvalue,
+            }
+        param = {
+                "name": "%s" % image_name, 
+                "data": open(filepath, "rb"),
+                "size": os.path.getsize(filepath),
+                "is_public":True,
+                "disk_format":"raw",
+                "container_format":"bare",
+                "properties": properties,
+                }
+        return param
+
+    disk_param = _create_param(disk_path, basevm_name + "-disk", 
+            CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK) 
+    memory_param = _create_param(memory_path, basevm_name + "-memory", 
+            CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM) 
+    diskhash_param = _create_param(diskhash_path, basevm_name + "-diskhash", 
+            CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK_HASH) 
+    memoryhash_param = _create_param(memoryhash_path, basevm_name + "-memhash", 
+            CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM_HASH) 
+
+    o = urlparse(glance_endpoint)
+    url = "://".join((o.scheme, o.netloc))
+    gclient = glance_client.Client('1', url, token=token, insecure=True)
+    image = gclient.images.create(**disk_param)
+
+    glance_memory = gclient.images.create(memory_param)
+    glance_diskhash = gclient.images.create(diskhash_param)
+    glance_memoryhash = gclient.images.create(memoryhash_param)
+
+    glance_ref = {
+            CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM: glance_memory.id,
+            CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK_HASH: glance_diskhash.id,
+            CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM_HASH: glance_memoryhash.id,
+            }
+
+    disk_param['properties'].update(glance_ref)
+    glance_disk = gclient.images.create(disk_param)
+    return glance_disk
+
+
 def basevm_download(server_address, token, end_point, basedisk_uuid, output_file):
     image_list = get_list(server_address, token, end_point, "images")
 
@@ -377,6 +463,9 @@ def basevm_download(server_address, token, end_point, basedisk_uuid, output_file
             download_list[basememory_uuid],
             download_list[diskhash_uuid],
             download_list[memoryhash_uuid])
+
+    if os.path.exists(temp_dir) == True:
+        os.remove(temp_dir)
 
 
 def print_usage(commands):
@@ -487,6 +576,7 @@ def main(argv=None):
     CMD_EXT_LIST        = "ext-list"
     CMD_IMAGE_LIST      = "image-list"
     CMD_EXPORT_BASE     = "export-base"
+    CMD_IMPORT_BASE     = "import-base"
     commands = {
             CMD_CREATE_BASE: "create base vm from the running instance",
             CMD_CREATE_OVERLAY: "create VM overlay from the customizaed VM",
@@ -496,6 +586,7 @@ def main(argv=None):
             CMD_EXT_LIST: "List available extensions",
             CMD_IMAGE_LIST: "List images",
             CMD_EXPORT_BASE: "Export Base VM",
+            CMD_IMPORT_BASE: "Import Base VM",
             }
 
     settings, args = process_command_line(sys.argv[1:], commands)
@@ -531,6 +622,15 @@ def main(argv=None):
                 sys.exit(1)
         basevm_download(settings.server_address, token, \
                 urlparse(endpoint), basedisk_uuid, output_path)
+    elif args[0] == CMD_IMPORT_BASE:
+        import_filepath = args[1]
+        if os.access(import_filepath, os.R_OK) == False:
+            sys.stderr("Cannot access the file at %s" % import_filepath)
+            sys.exit(1)
+        basevm_name = raw_input("Input the name of base VM : ")
+        basevm_import(settings.server_address, settings.user_name, 
+                settings.password, settings.tenant_name, 
+                import_filepath, basevm_name)
     elif args[0] == CMD_SYNTHESIS:
         overlay_url = raw_input("URL for VM overlay metafile : ")
         new_instance_name = raw_input("Set VM's name : ")

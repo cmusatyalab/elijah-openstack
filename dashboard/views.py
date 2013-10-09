@@ -30,6 +30,10 @@ from .workflows import ResumeInstance
 from util import CLOUDLET_TYPE
 from util import get_cloudlet_type
 
+from horizon import forms
+from .forms import ImportImageForm
+
+
 LOG = logging.getLogger(__name__)
 
 
@@ -115,7 +119,6 @@ class IndexView(tables.MultiTableView):
 
         return filtered_instances
 
-
     def get_volume_snapshots_data(self):
         if is_service_enabled(self.request, 'volume'):
             try:
@@ -127,6 +130,13 @@ class IndexView(tables.MultiTableView):
         else:
             snapshots = []
         return snapshots
+
+
+class ImportBaseView(forms.ModalFormView):
+    form_class = ImportImageForm
+    template_name = 'project/cloudlet/images/import.html'
+    context_object_name = 'image'
+    success_url = reverse_lazy("horizon:project:cloudlet:index")
 
 
 class ResumeInstanceView(workflows.WorkflowView):

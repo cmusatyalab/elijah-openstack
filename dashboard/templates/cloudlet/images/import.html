@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block title %}{% trans "Import Base VM" %}{% endblock %}
+
+{% block page_header %}
+  {% include "horizon/common/_page_header.html" with title=_("Import Base VM") %}
+{% endblock page_header %}
+
+{% block main %}
+  {% include 'project/cloudlet/images/_import.html' %}
+{% endblock %}
