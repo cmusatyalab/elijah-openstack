@@ -268,7 +268,7 @@ class SetSynthesizeDetailsAction(workflows.Action):
             msg = "URL is not accessible : %s" % overlay_url
             raise forms.ValidationError(_(msg))
 
-        if cleaned_data.get('name', None) == None:
+        if cleaned_data.get('name', None) is None:
             raise forms.ValidationError(_("Need name for the synthesized VM"))
 
         # finally check the header file of VM overlay
@@ -280,7 +280,7 @@ class SetSynthesizeDetailsAction(workflows.Action):
             overlay_package = VMOverlayPackage(overlay_url)
             metadata = overlay_package.read_meta()
             overlay_meta = msgpack.unpackb(metadata)
-            requested_basevm_id = overlay_meta.get(Cloudlet_Const.META_BASE_VM_SHA256, None)
+            requested_basevm_sha256 = overlay_meta.get(Cloudlet_Const.META_BASE_VM_SHA256, None)
             public = {"is_public": True, "status": "active"}
             public_images, _more = glance.image_list_detailed(self.request, filters=public)
             for image in public_images:
@@ -291,7 +291,8 @@ class SetSynthesizeDetailsAction(workflows.Action):
                         CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
                     continue
                 base_sha256_uuid = properties.get(CLOUDLET_TYPE.PROPERTY_KEY_BASE_UUID)
-                if base_sha256_uuid == requested_basevm_id:
+                if base_sha256_uuid == requested_basevm_sha256:
+                    requested_basevm_id = image.id
                     is_found = True
         except Exception as e:
             msg = "Error while finding matching Base VM with %s" % (requested_basevm_id)

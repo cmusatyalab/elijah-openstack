@@ -366,7 +366,7 @@ def basevm_import(server_address, uname, password, tenant_name, import_filepath,
     zipbase = zipfile.ZipFile(_FileFile("file:///%s" % import_filepath), 'r')
     zipbase.extractall(temp_dir)
     disk_path = os.path.join(temp_dir, disk_name)
-    memory_path = os.path.join(temp_dir, disk_name)
+    memory_path = os.path.join(temp_dir, memory_name)
     diskhash_path = os.path.join(temp_dir, diskhash_name)
     memoryhash_path = os.path.join(temp_dir, memoryhash_name)
 

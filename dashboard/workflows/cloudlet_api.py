@@ -36,7 +36,6 @@ def request_import_basevm(request, **kwargs):
     if kwargs.get('copy_from'):
         copy_from = kwargs.pop('copy_from')
 
-    import pdb;pdb.set_trace()
     image = glanceclient(request).images.create(**kwargs)
 
     if copy_from:
