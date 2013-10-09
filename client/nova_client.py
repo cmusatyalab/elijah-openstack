@@ -27,6 +27,11 @@ from urlparse import urlparse
 from tempfile import mkdtemp
 from util import CLOUDLET_TYPE
 
+from cloudlet.package import PackagingUtil
+from cloudlet.package import _FileFile
+import glanceclient as glance_client
+import zipfile
+
 from cloudlet.package import BaseVMPackage
 
 
@@ -334,14 +339,9 @@ def overlay_download(server_address, token, glance_endpoint, overlay_name, outpu
 
 
 def basevm_import(server_address, uname, password, tenant_name, import_filepath, basevm_name):
+
     token, endpoint, glance_endpoint = \
             get_token(server_address, uname, password, tenant_name)
-
-    from cloudlet.package import PackagingUtil
-    from cloudlet.package import _FileFile
-    import glanceclient as glance_client
-    import zipfile
-
     (base_hashvalue, disk_name, memory_name, diskhash_name, memoryhash_name) = \
             PackagingUtil._get_basevm_attribute(import_filepath)
 
@@ -362,6 +362,7 @@ def basevm_import(server_address, uname, password, tenant_name, import_filepath,
 
     # decompress files
     temp_dir = mkdtemp(prefix="cloudlet-base-")
+    sys.stdout.write("Decompressing zipfile(%s) to temp dir(%s)\n" % (import_filepath, temp_dir))
     zipbase = zipfile.ZipFile(_FileFile("file:///%s" % import_filepath), 'r')
     zipbase.extractall(temp_dir)
     disk_path = os.path.join(temp_dir, disk_name)
@@ -401,11 +402,13 @@ def basevm_import(server_address, uname, password, tenant_name, import_filepath,
     o = urlparse(glance_endpoint)
     url = "://".join((o.scheme, o.netloc))
     gclient = glance_client.Client('1', url, token=token, insecure=True)
-    image = gclient.images.create(**disk_param)
 
-    glance_memory = gclient.images.create(memory_param)
-    glance_diskhash = gclient.images.create(diskhash_param)
-    glance_memoryhash = gclient.images.create(memoryhash_param)
+    sys.stdout.write("upload base memory to glance\n")
+    glance_memory = gclient.images.create(**memory_param)
+    sys.stdout.write("upload base disk hash to glance\n")
+    glance_diskhash = gclient.images.create(**diskhash_param)
+    sys.stdout.write("upload base memory hash to glance\n")
+    glance_memoryhash = gclient.images.create(**memoryhash_param)
 
     glance_ref = {
             CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM: glance_memory.id,
@@ -414,7 +417,9 @@ def basevm_import(server_address, uname, password, tenant_name, import_filepath,
             }
 
     disk_param['properties'].update(glance_ref)
-    glance_disk = gclient.images.create(disk_param)
+    sys.stdout.write("upload base disk to glance\n")
+    glance_disk = gclient.images.create(**disk_param)
+    sys.stdout.write("SUCCESS\n")
     return glance_disk
 
 
@@ -465,7 +470,7 @@ def basevm_download(server_address, token, end_point, basedisk_uuid, output_file
             download_list[memoryhash_uuid])
 
     if os.path.exists(temp_dir) == True:
-        os.remove(temp_dir)
+        os.removedirs(temp_dir)
 
 
 def print_usage(commands):
