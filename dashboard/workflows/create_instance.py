@@ -32,6 +32,7 @@ from openstack_dashboard.api import glance
 from openstack_dashboard.usage import quotas
 
 from ..util import CLOUDLET_TYPE
+from ..util import find_basevm_by_sha256
 
 import requests
 from django.core.validators import URLValidator
@@ -74,6 +75,7 @@ class SelectProjectUser(workflows.Step):
 
 
 KEYPAIR_IMPORT_URL = "horizon:project:access_and_security:keypairs:import"
+
 
 class SetResumeDetailAction(workflows.Action):
     image_id = forms.ChoiceField(label=_("Image"), required=True)
@@ -274,36 +276,25 @@ class SetSynthesizeDetailsAction(workflows.Action):
         # finally check the header file of VM overlay
         # to make sure that associated Base VM exists
         from cloudlet.package import VMOverlayPackage
-        is_found = False
-        requested_basevm_id = ''
+        matching_image = None
+        requested_basevm_sha256 = ''
         try:
             overlay_package = VMOverlayPackage(overlay_url)
             metadata = overlay_package.read_meta()
             overlay_meta = msgpack.unpackb(metadata)
             requested_basevm_sha256 = overlay_meta.get(Cloudlet_Const.META_BASE_VM_SHA256, None)
-            public = {"is_public": True, "status": "active"}
-            public_images, _more = glance.image_list_detailed(self.request, filters=public)
-            for image in public_images:
-                properties = getattr(image, "properties")
-                if properties == None or len(properties) == 0:
-                    continue
-                if properties.get(CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET_TYPE) != \
-                        CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
-                    continue
-                base_sha256_uuid = properties.get(CLOUDLET_TYPE.PROPERTY_KEY_BASE_UUID)
-                if base_sha256_uuid == requested_basevm_sha256:
-                    requested_basevm_id = image.id
-                    is_found = True
+            matching_image = find_basevm_by_sha256(self.request, requested_basevm_sha256)
         except Exception as e:
-            msg = "Error while finding matching Base VM with %s" % (requested_basevm_id)
-            raise forms.ValidationError(_(msg))
-        if is_found == False:
-            msg = "Cannot find matching base VM with UUID(%s)" % (requested_basevm_id)
+            msg = "Error while finding matching Base VM with %s" % (requested_basevm_sha256)
             raise forms.ValidationError(_(msg))
 
-        # specify associated base VM from the metadata
-        cleaned_data['image_id'] = str(requested_basevm_id)
-        return cleaned_data
+        if matching_image == None:
+            msg = "Cannot find matching base VM with UUID(%s)" % (requested_basevm_sha256)
+            raise forms.ValidationError(_(msg))
+        else:
+            # specify associated base VM from the metadata
+            cleaned_data['image_id'] = str(matching_image.id)
+            return cleaned_data
 
     def get_help_text(self):
         extra = {}

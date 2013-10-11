@@ -30,20 +30,10 @@ def image_update(request, image_id, **kwargs):
     return glanceclient(request).images.update(image_id, **kwargs)
 
 
-def request_import_basevm(request, **kwargs):
-    copy_from = None
-
-    if kwargs.get('copy_from'):
-        copy_from = kwargs.pop('copy_from')
-
+def request_upload_image(request, **kwargs):
     image = glanceclient(request).images.create(**kwargs)
-
-    if copy_from:
-        thread.start_new_thread(image_update,
-                                (request, image.id),
-                                {'copy_from': copy_from})
-
     return image
+
 
 def request_create_overlay(request, instance_id):
     token = request.user.token.id

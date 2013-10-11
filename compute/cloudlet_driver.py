@@ -235,7 +235,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         del self.vm_overlay_dict[instance['uuid']]
         vm_overlay.create_overlay()
         overlay_zip = vm_overlay.overlay_zipfile
-        print "[INFO] overlay : %s" % str(overlay_zip)
+        LOG.info("[INFO] overlay : %s" % str(overlay_zip))
 
         update_task_state(task_state=task_states.IMAGE_UPLOADING,
                     expected_state=task_states.IMAGE_PENDING_UPLOAD)
@@ -431,6 +431,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         # check resumed base VM list
         vm_overlay = self.vm_overlay_dict.get(instance_uuid, None)
         if vm_overlay != None:
+            vm_overlay.terminate()
             del self.vm_overlay_dict[instance['uuid']]
 
         # check synthesized VM list
