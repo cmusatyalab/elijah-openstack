@@ -57,12 +57,12 @@ class ImportImageForm(forms.SelfHandlingForm):
         try:
             zipbase = zipfile.ZipFile(data['image_file'])
             if BaseVMPackage.MANIFEST_FILENAME not in zipbase.namelist():
-                msg = _('Package does not valid base VM format (no manifest file)')
+                msg = _('File is not valid (No manifest file)')
                 raise ValidationError(msg)
             xml = zipbase.read(BaseVMPackage.MANIFEST_FILENAME)
             tree = etree.fromstring(xml, etree.XMLParser(schema=BaseVMPackage.schema))
         except Exception as e:
-            msg = 'File does not valid base VM format (no manifest file)'
+            msg = 'File is not valid (Not a zipped base VM)'
             raise ValidationError(_(msg))
 
         # Create attributes
