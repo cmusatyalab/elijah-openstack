@@ -12,7 +12,7 @@ TIPs
 	- nova floating-ip-list
 	- auto assign: auto_assign_floating_ip=True at nova.conf
 	  if not enough floating ip error happends, check db. only the ip 
-	  that is not assigned to project can be automatically assigned.
+	  that is **NOT** assigned to project can be automatically assigned.
 
 
 

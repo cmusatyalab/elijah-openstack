@@ -31,6 +31,7 @@ from cloudlet.package import PackagingUtil
 from cloudlet.package import _FileFile
 import glanceclient as glance_client
 import zipfile
+import shutil
 
 from cloudlet.package import BaseVMPackage
 
@@ -470,7 +471,7 @@ def basevm_download(server_address, token, end_point, basedisk_uuid, output_file
             download_list[memoryhash_uuid])
 
     if os.path.exists(temp_dir) == True:
-        os.removedirs(temp_dir)
+        shutil.rmtree(temp_dir)
 
 
 def print_usage(commands):

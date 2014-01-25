@@ -65,8 +65,8 @@ class IndexView(tables.MultiTableView):
             all_snaps, self._more_snapshots = api.glance.image_list_detailed(
                 req, marker=marker)
             snaps = [im for im in all_snaps
-                      if (im.properties.get("cloudlet_type", None) == 
-                          CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY)]
+                      if (im.properties.get("cloudlet_type", None) == CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY)
+                              and (im.owner == req.user.tenant_id)]
         except:
             snaps = []
             exceptions.handle(req, _("Unable to retrieve snapshots."))
