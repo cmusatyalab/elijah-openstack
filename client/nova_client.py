@@ -27,13 +27,13 @@ from urlparse import urlparse
 from tempfile import mkdtemp
 from util import CLOUDLET_TYPE
 
-from cloudlet.package import PackagingUtil
-from cloudlet.package import _FileFile
+from elijah.provisioning.package import PackagingUtil
+from elijah.provisioning.package import _FileFile
+from elijah.provisioning.package import BaseVMPackage
 import glanceclient as glance_client
 import zipfile
 import shutil
 
-from cloudlet.package import BaseVMPackage
 
 
 class CloudletClientError(Exception):
@@ -96,8 +96,8 @@ def request_new_server(server_address, token, end_point, \
 def request_synthesis(server_address, token, end_point, key_name=None,\
         server_name=None, overlay_url=None):
     # read meta data from vm overlay URL
-    from cloudlet.package import VMOverlayPackage
-    from cloudlet import msgpack
+    from elijah.provisioning.package import VMOverlayPackage
+    from elijah.provisioning import msgpack
 
     overlay_package = VMOverlayPackage(overlay_url)
     meta_raw = overlay_package.read_meta()

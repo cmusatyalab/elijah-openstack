@@ -11,8 +11,8 @@ from horizon import messages
 
 from .workflows import cloudlet_api
 
-from cloudlet.package import PackagingUtil 
-from cloudlet.package import BaseVMPackage
+from elijah.provisioning.package import PackagingUtil 
+from elijah.provisioning.package import BaseVMPackage
 import zipfile
 from openstack_dashboard import api
 from tempfile import mkdtemp

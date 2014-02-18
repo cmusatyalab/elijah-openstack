@@ -40,8 +40,8 @@ from django.core.exceptions import ValidationError
 
 import cloudlet_api
 import urllib2
-from cloudlet import msgpack
-from cloudlet.Configuration import Const as Cloudlet_Const
+from elijah.provisioning import msgpack
+from elijah.provisioning.Configuration import Const as Cloudlet_Const
 
 
 LOG = logging.getLogger(__name__)
@@ -275,7 +275,7 @@ class SetSynthesizeDetailsAction(workflows.Action):
 
         # finally check the header file of VM overlay
         # to make sure that associated Base VM exists
-        from cloudlet.package import VMOverlayPackage
+        from elijah.provisioning.package import VMOverlayPackage
         matching_image = None
         requested_basevm_sha256 = ''
         try:

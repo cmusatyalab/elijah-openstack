@@ -34,10 +34,10 @@ from nova.compute.cloudlet_api import CloudletAPI
 
 from lzma import LZMADecompressor
 from xml.etree import ElementTree
-from cloudlet import synthesis
-from cloudlet import msgpack
-from cloudlet.package import VMOverlayPackage
-from cloudlet.Configuration import Const as Cloudlet_Const
+from elijah.provisioning import synthesis
+from elijah.provisioning import msgpack
+from elijah.provisioning.package import VMOverlayPackage
+from elijah.provisioning.Configuration import Const as Cloudlet_Const
 
 
 LOG = openstack_logging.getLogger(__name__)
