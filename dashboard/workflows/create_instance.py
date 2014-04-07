@@ -40,7 +40,10 @@ from django.core.exceptions import ValidationError
 
 import cloudlet_api
 import urllib2
-from elijah.provisioning import msgpack
+try:
+    from elijah.provisioning import msgpack
+except ImportError as e:
+    import msgpack
 from elijah.provisioning.Configuration import Const as Cloudlet_Const
 
 

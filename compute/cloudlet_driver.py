@@ -35,7 +35,10 @@ from nova.compute.cloudlet_api import CloudletAPI
 from lzma import LZMADecompressor
 from xml.etree import ElementTree
 from elijah.provisioning import synthesis
-from elijah.provisioning import msgpack
+try:
+    from elijah.provisioning import msgpack
+except ImportError as e:
+    import msgpack
 from elijah.provisioning.package import VMOverlayPackage
 from elijah.provisioning.Configuration import Const as Cloudlet_Const
 

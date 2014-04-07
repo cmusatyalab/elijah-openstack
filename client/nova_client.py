@@ -97,7 +97,10 @@ def request_synthesis(server_address, token, end_point, key_name=None,\
         server_name=None, overlay_url=None):
     # read meta data from vm overlay URL
     from elijah.provisioning.package import VMOverlayPackage
-    from elijah.provisioning import msgpack
+    try:
+        from elijah.provisioning import msgpack
+    except ImportError as e:
+        import msgpack
 
     overlay_package = VMOverlayPackage(overlay_url)
     meta_raw = overlay_package.read_meta()
