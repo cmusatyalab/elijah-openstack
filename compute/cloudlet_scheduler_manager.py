@@ -17,7 +17,6 @@
 #
 
 
-
 """
 Scheduler Service for Cloudlet.
 This is inherited from default nova scheduler manager.
@@ -32,12 +31,11 @@ from nova import manager
 from nova.scheduler import manager as scheduler_manager
 from nova.openstack.common import log as logging
 
-import time
 from elijah.discovery.ds_register import RegisterThread
 from elijah.discovery.ds_register import RegisterError
 from elijah.discovery.Const import DiscoveryConst
 from elijah.discovery.Const import CLOUDLET_FEATURE
-from elijah.discovery.monitor import resource
+from elijah.discovery.monitor.resource import ResourceMonitor
 
 
 LOG = logging.getLogger(__name__)
@@ -63,9 +61,11 @@ class CloudletSchedulerManager(scheduler_manager.SchedulerManager):
     @manager.periodic_task(spacing=CONF.register_ping_interval)
     def _update_cloudlet_status(self, context):
         LOG.info(_("Send ping to registration server at %s" % (CONF.register_server)))
+        
 
         try:
-            resource_monitor = resource.get_instance()
+            hosts = self.driver.host_manager.get_all_host_states(context)
+            resource_monitor = ResourceMonitor(openstack_hosts=hosts)
             register_server = CONF.register_server
             cloudlet_ip = CONF.my_ip
             cloudlet_rest_port = DiscoveryConst.REST_API_PORT
