@@ -1,17 +1,19 @@
 # Elijah: Cloudlet Infrastructure for Mobile Computing
-# Copyright (C) 2011-2013 Carnegie Mellon University
-# Author: Kiryong Ha (krha@cmu.edu)
 #
-# This program is free software; you can redistribute it and/or modify it
-# under the terms of version 2 of the GNU General Public License as published
-# by the Free Software Foundation.  A copy of the GNU General Public License
-# should have been distributed along with this program in the file
-# LICENSE.GPL.
+#   Author: Kiryong Ha <krha@cmu.edu>
 #
-# This program is distributed in the hope that it will be useful, but
-# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
-# or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
-# for more details.
+#   Copyright (C) 2011-2014 Carnegie Mellon University
+#   Licensed under the Apache License, Version 2.0 (the "License");
+#   you may not use this file except in compliance with the License.
+#   You may obtain a copy of the License at
+#
+#       http://www.apache.org/licenses/LICENSE-2.0
+#
+#   Unless required by applicable law or agreed to in writing, software
+#   distributed under the License is distributed on an "AS IS" BASIS,
+#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#   See the License for the specific language governing permissions and
+#   limitations under the License.
 #
 
 from nova.compute import task_states
@@ -24,9 +26,19 @@ from nova import manager as manager
 from nova.compute import manager as compute_manager
 from nova.openstack.common.notifier import api as notifier
 from nova.virt import driver
+from oslo.config import cfg
 
 
 LOG = logging.getLogger(__name__)
+
+
+cloudlet_discovery_opts = [
+    cfg.StrOpt('register_server',
+               default= "http://reg.findcloudlet.org",
+               help='URL of central Cloud server to send heart beat'),
+    ]
+CONF = cfg.CONF
+CONF.register_opts(cloudlet_discovery_opts)
 
 
 class CloudletComputeManager(compute_manager.ComputeManager):
@@ -128,9 +140,10 @@ class CloudletComputeManager(compute_manager.ComputeManager):
         LOG.info(_("ping to Cloud"))
 
         try:
-            register_server = "http://reg.findcloudlet.org"
             resource_monitor = resource.get_instance()
-            cloudlet_ip = get_local_ipaddress()
+            
+            register_server = CONF.register_server
+            cloudlet_ip = CONF.my_ip
             cloudlet_rest_port = DiscoveryConst.REST_API_PORT
             feature_flag_list = {CLOUDLET_FEATURE.VM_SYNTHESIS_OPENSTACK}
             if self.resource_uri is None:
