@@ -22,23 +22,12 @@ from nova.openstack.common import log as logging
 from nova import utils
 from nova.openstack.common import lockutils
 from nova import exception
-from nova import manager as manager
 from nova.compute import manager as compute_manager
 from nova.openstack.common.notifier import api as notifier
 from nova.virt import driver
-from oslo.config import cfg
 
 
 LOG = logging.getLogger(__name__)
-
-
-cloudlet_discovery_opts = [
-    cfg.StrOpt('register_server',
-               default= "http://reg.findcloudlet.org",
-               help='URL of central Cloud server to send heart beat'),
-    ]
-CONF = cfg.CONF
-CONF.register_opts(cloudlet_discovery_opts)
 
 
 class CloudletComputeManager(compute_manager.ComputeManager):
@@ -127,34 +116,3 @@ class CloudletComputeManager(compute_manager.ComputeManager):
 
         do_terminate_instance(instance, bdms)
 
-    @manager.periodic_task
-    def _update_cloudlet_status(self, context):
-        from elijah.discovery.ds_register import RegisterThread
-        from elijah.discovery.ds_register import get_local_ipaddress
-        from elijah.discovery.ds_register import RegisterError
-        from elijah.discovery.Const import DiscoveryConst
-        from elijah.discovery.Const import CLOUDLET_FEATURE
-        from elijah.discovery.monitor import resource
-
-        self.resource_uri = None
-        LOG.info(_("ping to Cloud"))
-
-        try:
-            resource_monitor = resource.get_instance()
-            
-            register_server = CONF.register_server
-            cloudlet_ip = CONF.my_ip
-            cloudlet_rest_port = DiscoveryConst.REST_API_PORT
-            feature_flag_list = {CLOUDLET_FEATURE.VM_SYNTHESIS_OPENSTACK}
-            if self.resource_uri is None:
-                # Start registration client
-                self.resource_uri = RegisterThread.initial_register(
-                        register_server, resource_monitor, feature_flag_list,
-                        cloudlet_ip, cloudlet_rest_port)
-                LOG.info(_("Success to register to %s" % register_server))
-            else:
-                self.register_client.update_status(register_server,\
-                        self.resource_uri, feature_flag_list, resource_monitor)
-                LOG.info(_("Success to update to %s" % register_server))
-        except RegisterError as e:
-            LOG.debug("Failed to update to Cloud: %s" % str(e))
