@@ -19,30 +19,25 @@
 
 
 """
-Scheduler Service
+Scheduler Service for Cloudlet.
+This is inherited from default nova scheduler manager.
+It added below feature
+ 1. periodic pinging to cloud (configured using register_server option at nova.conf
+ 2. Broadcasting UPnP message to be found by a mobile device
 """
 
-import sys
 
 from oslo.config import cfg
-
-from nova.compute import rpcapi as compute_rpcapi
-from nova.compute import task_states
-from nova.compute import utils as compute_utils
-from nova.compute import vm_states
-from nova.conductor import api as conductor_api
-import nova.context
-from nova import exception
 from nova import manager
-from nova import notifications
-from nova.openstack.common import excutils
-from nova.openstack.common import importutils
-from nova.openstack.common import jsonutils
-from nova.openstack.common import log as logging
-from nova.openstack.common.notifier import api as notifier
-from nova.openstack.common.rpc import common as rpc_common
-
 from nova.scheduler import manager as scheduler_manager
+from nova.openstack.common import log as logging
+
+import time
+from elijah.discovery.ds_register import RegisterThread
+from elijah.discovery.ds_register import RegisterError
+from elijah.discovery.Const import DiscoveryConst
+from elijah.discovery.Const import CLOUDLET_FEATURE
+from elijah.discovery.monitor import resource
 
 
 LOG = logging.getLogger(__name__)
@@ -52,35 +47,25 @@ cloudlet_discovery_opts = [
     cfg.StrOpt('register_server',
                default= "http://reg.findcloudlet.org",
                help='URL of central Cloud server to send heart beat'),
+    cfg.IntOpt('register_ping_interval',
+               default=60,
+               help='Interval in seconds for send heart beat to register server'),
     ]
 CONF = cfg.CONF
 CONF.register_opts(cloudlet_discovery_opts)
 
 
 class CloudletSchedulerManager(scheduler_manager.SchedulerManager):
-    """Chooses a host to run instances on."""
-
-    RPC_API_VERSION = '2.6'
-
     def __init__(self, scheduler_driver=None, *args, **kwargs):
-        import pdb;pdb.set_trace()
+        self.resource_uri = None
         super(CloudletSchedulerManager, self).__init__(*args, **kwargs)
 
-    @manager.periodic_task
+    @manager.periodic_task(spacing=CONF.register_ping_interval)
     def _update_cloudlet_status(self, context):
-        from elijah.discovery.ds_register import RegisterThread
-        from elijah.discovery.ds_register import get_local_ipaddress
-        from elijah.discovery.ds_register import RegisterError
-        from elijah.discovery.Const import DiscoveryConst
-        from elijah.discovery.Const import CLOUDLET_FEATURE
-        from elijah.discovery.monitor import resource
-
-        self.resource_uri = None
-        LOG.info(_("ping to Cloud"))
+        LOG.info(_("Send ping to registration server at %s" % (CONF.register_server)))
 
         try:
             resource_monitor = resource.get_instance()
-            
             register_server = CONF.register_server
             cloudlet_ip = CONF.my_ip
             cloudlet_rest_port = DiscoveryConst.REST_API_PORT
@@ -92,7 +77,7 @@ class CloudletSchedulerManager(scheduler_manager.SchedulerManager):
                         cloudlet_ip, cloudlet_rest_port)
                 LOG.info(_("Success to register to %s" % register_server))
             else:
-                self.register_client.update_status(register_server,\
+                RegisterThread.update_status(register_server,\
                         self.resource_uri, feature_flag_list, resource_monitor)
                 LOG.info(_("Success to update to %s" % register_server))
         except RegisterError as e:
