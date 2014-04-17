@@ -33,9 +33,10 @@ from nova.openstack.common import log as logging
 
 from elijah.discovery.ds_register import RegisterThread
 from elijah.discovery.ds_register import RegisterError
-from elijah.discovery.Const import DiscoveryConst
-from elijah.discovery.Const import CLOUDLET_FEATURE
+from elijah.discovery.config import DiscoveryConst
+from elijah.discovery.config import CLOUDLET_FEATURE
 from elijah.discovery.monitor.resource import ResourceMonitor
+from elijah.discovery.upnp_server import UPnPServer, UPnPError
 
 
 LOG = logging.getLogger(__name__)
@@ -48,6 +49,9 @@ cloudlet_discovery_opts = [
     cfg.IntOpt('register_ping_interval',
                default=60,
                help='Interval in seconds for send heart beat to register server'),
+    cfg.BoolOpt('register_enable_upnp',
+               default=True,
+               help="Whether to turn on UPnP for local discovery"),
     ]
 CONF = cfg.CONF
 CONF.register_opts(cloudlet_discovery_opts)
@@ -56,13 +60,24 @@ CONF.register_opts(cloudlet_discovery_opts)
 class CloudletSchedulerManager(scheduler_manager.SchedulerManager):
     def __init__(self, scheduler_driver=None, *args, **kwargs):
         self.resource_uri = None
+
+        # Start UPnP Server
+        upnp_server = None
+        if CONF.register_enable_upnp is True:
+            try:
+                upnp_server = UPnPServer()
+                upnp_server.start()
+                LOG.info(_("[UPnP] Start UPnP Server"))
+            except UPnPError as e:
+                LOG.warning(str(e))
+                LOG.warning(_("Cannot start UPnP Server"))
+
         super(CloudletSchedulerManager, self).__init__(*args, **kwargs)
 
     @manager.periodic_task(spacing=CONF.register_ping_interval)
     def _update_cloudlet_status(self, context):
         LOG.info(_("Send ping to registration server at %s" % (CONF.register_server)))
         
-
         try:
             hosts = self.driver.host_manager.get_all_host_states(context)
             resource_monitor = ResourceMonitor(openstack_hosts=hosts)
