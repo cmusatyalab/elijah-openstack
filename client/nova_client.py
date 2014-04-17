@@ -1,3 +1,4 @@
+#!/usr/bin/env python 
 # Elijah: Cloudlet Infrastructure for Mobile Computing
 #
 #   Author: Kiryong Ha <krha@cmu.edu>
@@ -58,7 +59,6 @@ def get_list(server_address, token, end_point, request_list):
     response = conn.getresponse()
     data = response.read()
     dd = json.loads(data)
-    #print json.dumps(dd, indent=2)
     conn.close()
     return dd[request_list]
 
@@ -147,7 +147,7 @@ def request_synthesis(server_address, token, end_point, key_name=None,\
     dd = json.loads(data)
     conn.close()
 
-    print json.dumps(dd, indent=2)
+    print json.loads(dd, indent=2)
     return dd
 
 def request_start_stop(server_address, token, end_point, server_name, is_request_start):
@@ -168,7 +168,6 @@ def request_start_stop(server_address, token, end_point, server_name, is_request
 
     conn = httplib.HTTPConnection(end_point[1])
     command = "%s/servers/%s/action" % (end_point[2], server_id)
-    print command
     conn.request("POST", command, params, headers)
     response = conn.getresponse()
     data = response.read()
@@ -198,6 +197,19 @@ def request_cloudlet_base(server_address, token, end_point, server_name, cloudle
     print json.dumps(data, indent=2)
     return data
 
+def send_discovery_query(token, endpoint):
+    #params = json.dumps({"cloudlet-status":{"overlay-name": overlay_name}})
+    params = urllib.urlencode({})
+    headers = { "X-Auth-Token":token, "Content-type":"application/json" }
+
+    conn = httplib.HTTPConnection(endpoint[1])
+    command = "%s/os-cloudlet/status" % (endpoint[2])
+    conn.request("GET", command, params, headers)
+    response = conn.getresponse()
+    data = response.read()
+    conn.close()
+    print json.loads(data)
+    return data
 
 def request_cloudlet_overlay_start(server_address, token, end_point, image_name, key_name):
     #get right iamge
@@ -238,7 +250,7 @@ def request_cloudlet_overlay_start(server_address, token, end_point, image_name,
     print json.dumps(dd, indent=2)
 
 
-def request_cloudlet_overlay_stop(server_address, token, end_point, \
+def request_create_overlay(server_address, token, end_point, \
         instance_uuid, overlay_name):
     server_list = get_list(server_address, token, end_point, "servers")
     server_id = ''
@@ -509,13 +521,13 @@ def process_command_line(argv, commands):
     settings, args = parser.parse_args(argv)
     if settings.user_name == None:
         msg = "Need username for OpenStack API\n"
-        msg += "Check the information using 'nova user-list'"
+        msg += "Check the information using 'keystone user-list'"
         parser.error(msg)
     if settings.password == None:
         parser.error("Need password for OpenStack API")
     if settings.tenant_name == None:
         msg = "Need tenant name for OpenStack API\n"
-        msg += "Check the information using 'nova tenant-list'"
+        msg += "Check the information using 'keystone tenant-list'"
         parser.error(msg)
     
     if not len(args) != 0:
@@ -581,21 +593,21 @@ def main(argv=None):
     CMD_CREATE_OVERLAY  = "create-overlay"
     CMD_DOWNLOAD        = "download"
     CMD_SYNTHESIS       = "synthesis"
-    CMD_BOOT            = "boot"
     CMD_EXT_LIST        = "ext-list"
     CMD_IMAGE_LIST      = "image-list"
     CMD_EXPORT_BASE     = "export-base"
     CMD_IMPORT_BASE     = "import-base"
+    CMD_DISCOVER        = "discovery"
     commands = {
             CMD_CREATE_BASE: "create base vm from the running instance",
             CMD_CREATE_OVERLAY: "create VM overlay from the customizaed VM",
             CMD_DOWNLOAD: "Download VM overlay",
             CMD_SYNTHESIS: "VM Synthesis (Need downloadable URLs for VM overlay",
-            CMD_BOOT : "Boot VM disk using predefined configuration (testing purpose",
             CMD_EXT_LIST: "List available extensions",
             CMD_IMAGE_LIST: "List images",
             CMD_EXPORT_BASE: "Export Base VM",
             CMD_IMPORT_BASE: "Import Base VM",
+            CMD_DISCOVER : "Send discovery query",
             }
 
     settings, args = process_command_line(sys.argv[1:], commands)
@@ -616,12 +628,14 @@ def main(argv=None):
     elif args[0] == CMD_CREATE_OVERLAY:
         instance_uuid = raw_input("UUID of a running instance that you like to create VM overlay : ")
         snapshot_name = raw_input("Set name of VM overlay : ")
-        request_cloudlet_overlay_stop(settings.server_address, token, urlparse(endpoint), \
+        request_create_overlay(settings.server_address, token, urlparse(endpoint), \
                 instance_uuid, snapshot_name)
     elif args[0] == CMD_DOWNLOAD:
         VM_overlay_meta = raw_input("Name of VM overlay file: ")
         overlay_download(settings.server_address, token, urlparse(glance_endpoint),\
                 VM_overlay_meta, VM_overlay_meta)
+    elif args[0] == CMD_DISCOVER:
+        send_discovery_query(token, urlparse(endpoint))
     elif args[0] == CMD_EXPORT_BASE:
         basedisk_uuid = raw_input("UUID of a base disk : ")
         output_path = os.path.join(os.curdir, "base-%s.zip" % basedisk_uuid)
@@ -656,12 +670,6 @@ def main(argv=None):
         images = get_list(settings.server_address, token, \
                 urlparse(endpoint), "images")
         print json.dumps(images, indent=2)
-    elif args[0] == CMD_BOOT:
-        image_name = raw_input("Specify disk image by name : ")
-        new_instance_name = raw_input("Set VM's name : ")
-        images = request_new_server(settings.server_address, \
-                token, urlparse(endpoint), key_name=None, \
-                image_name=image_name, server_name=new_instance_name)
     elif args[0] == 'ip-address':
         server_uuid = args[1]
         ret = request_cloudlet_ipaddress(settings.server_address, token, urlparse(endpoint), \

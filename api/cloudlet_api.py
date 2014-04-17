@@ -262,7 +262,7 @@ class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
         try:
             from elijah.discovery.monitor.resource import ResourceMonitor
             statistics = self.nova_api.db.compute_node_statistics(context)
-            resource_monitor = ResourceMonitor(openstack_hosts=statistics)
+            resource_monitor = ResourceMonitor(openstack_stats=statistics)
             stats = resource_monitor.get_static_resource()
             stats.update(resource_monitor.get_dynamic_resource())
             return stats
