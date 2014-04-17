@@ -30,6 +30,7 @@ from oslo.config import cfg
 from nova import manager
 from nova.scheduler import manager as scheduler_manager
 from nova.openstack.common import log as logging
+from nova.compute.cloudlet_api import CloudletAPI as CloudletAPI
 
 from elijah.discovery.ds_register import RegisterThread
 from elijah.discovery.ds_register import RegisterError
@@ -60,6 +61,7 @@ CONF.register_opts(cloudlet_discovery_opts)
 class CloudletSchedulerManager(scheduler_manager.SchedulerManager):
     def __init__(self, scheduler_driver=None, *args, **kwargs):
         self.resource_uri = None
+        self.cloudlet_api = CloudletAPI()
 
         # Start UPnP Server
         upnp_server = None
@@ -79,8 +81,7 @@ class CloudletSchedulerManager(scheduler_manager.SchedulerManager):
         LOG.info(_("Send ping to registration server at %s" % (CONF.register_server)))
         
         try:
-            hosts = self.driver.host_manager.get_all_host_states(context)
-            resource_monitor = ResourceMonitor(openstack_hosts=hosts)
+            resource_stats = self.cloudlet_api.cloudlet_get_static_status(context, None)
             register_server = CONF.register_server
             cloudlet_ip = CONF.my_ip
             cloudlet_rest_port = DiscoveryConst.REST_API_PORT
@@ -88,12 +89,12 @@ class CloudletSchedulerManager(scheduler_manager.SchedulerManager):
             if self.resource_uri is None:
                 # Start registration client
                 self.resource_uri = RegisterThread.initial_register(
-                        register_server, resource_monitor, feature_flag_list,
+                        register_server, resource_stats, feature_flag_list,
                         cloudlet_ip, cloudlet_rest_port)
                 LOG.info(_("Success to register to %s" % register_server))
             else:
                 RegisterThread.update_status(register_server,\
-                        self.resource_uri, feature_flag_list, resource_monitor)
+                        self.resource_uri, feature_flag_list, resource_stats)
                 LOG.info(_("Success to update to %s" % register_server))
         except RegisterError as e:
             LOG.debug("Failed to update to Cloud: %s" % str(e))

@@ -211,17 +211,12 @@ class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
 
     @nova_api.wrap_check_policy
     def cloudlet_create_overlay_start(self, context, instance, basevm_name, extra_properties=None):
-        instance_p = jsonutils.to_primitive(instance)
-
-        self.nova_api._cast_compute_message('cloudlet_overlay_start', context, instance)
-        self.cast(context, 
-                self.make_msg(
-                        'cloudlet_overlay_start',
-                        instance=instance_p,
-                        basevm_name=basevm_name,
-                        ),
-                topic=nova_rpc._compute_topic(self.topic, context, None, instance),
-                version=CloudletAPI.BASE_RPC_API_VERSION)
+        """
+        currently we're using a openstack mechanism of starting new VM to
+        resume the Base VM. However, We might need this api for guarantee
+        matching VM configuration between base VM and requested instance
+        """
+        pass
 
     @nova_api.check_instance_state(vm_state=[vm_states.ACTIVE])
     def cloudlet_create_overlay_finish(self, context, instance, 
@@ -253,3 +248,23 @@ class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
 
         return recv_overlay_meta
 
+    def cloudlet_get_static_status(self, context, app_request):
+        try:
+            from elijah.discovery.monitor.resource import ResourceMonitor
+            statistics = self.nova_api.db.compute_node_statistics(context)
+            resource_monitor = ResourceMonitor(openstack_stats=statistics)
+            stats = resource_monitor.get_static_resource()
+            return stats
+        except ImportError as e:
+            return {"Cloudlet Discovery is not available"}
+
+    def cloudlet_get_status(self, context, app_request):
+        try:
+            from elijah.discovery.monitor.resource import ResourceMonitor
+            statistics = self.nova_api.db.compute_node_statistics(context)
+            resource_monitor = ResourceMonitor(openstack_hosts=statistics)
+            stats = resource_monitor.get_static_resource()
+            stats.update(resource_monitor.get_dynamic_resource())
+            return stats
+        except ImportError as e:
+            return {"Cloudlet Discovery is not available"}

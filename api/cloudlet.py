@@ -1,24 +1,22 @@
-# Elijah: Cloudlet Infrastructure for Mobile Computing
+# Copyright (C) 2011-2013 Carnegie Mellon University
+# Author: Kiryong Ha (krha@cmu.edu)
 #
-#   Author: Kiryong Ha <krha@cmu.edu>
+# This program is free software; you can redistribute it and/or modify it
+# under the terms of version 2 of the GNU General Public License as published
+# by the Free Software Foundation.  A copy of the GNU General Public License
+# should have been distributed along with this program in the file
+# LICENSE.GPL.
 #
-#   Copyright (C) 2011-2014 Carnegie Mellon University
-#   Licensed under the Apache License, Version 2.0 (the "License");
-#   you may not use this file except in compliance with the License.
-#   You may obtain a copy of the License at
-#
-#       http://www.apache.org/licenses/LICENSE-2.0
-#
-#   Unless required by applicable law or agreed to in writing, software
-#   distributed under the License is distributed on an "AS IS" BASIS,
-#   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#   See the License for the specific language governing permissions and
-#   limitations under the License.
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+# or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# for more details.
 #
 
 import webob
 
 from nova.compute import API
+from nova.compute import HostAPI
 from nova.compute.cloudlet_api import CloudletAPI as CloudletAPI
 from nova import exception
 from nova.api.openstack import extensions
@@ -27,20 +25,44 @@ from nova.openstack.common import log as logging
 
 
 LOG = logging.getLogger(__name__)
+authorize = extensions.extension_authorizer('compute', 'cloudlet')
 
 
 class Cloudlet(extensions.ExtensionDescriptor):
     """Cloudlet compute API support"""
 
     name = "Cloudlet"
-    alias = "os-cloudlet-control"
+    alias = "os-cloudlet"
     namespace = "http://elijah.cs.cmu.edu/compute/ext/cloudlet/api/v1.1"
-    updated = "2013-05-27T00:00:00+00:00"
+    updated = "2014-05-27T00:00:00+00:00"
 
     def get_controller_extensions(self):
         controller = CloudletController()
         extension = extensions.ControllerExtension(self, 'servers', controller)
         return [extension]
+
+    def get_resources(self):
+        resources = [extensions.ResourceExtension('os-cloudlet',
+                CloudletDiscoveryController(),
+                collection_actions={'status': 'GET'},
+                member_actions={})]
+
+        return resources
+
+
+class CloudletDiscoveryController(object):
+    """The Cloudlet Discovery API controller for the OpenStack API."""
+    def __init__(self):
+        self.host_api = HostAPI()
+        self.cloudlet_api = CloudletAPI()
+        super(CloudletDiscoveryController, self).__init__()
+
+    def status(self, req):
+        context = req.environ['nova.context']
+        authorize(context)
+        app_request=None
+        stats = self.cloudlet_api.cloudlet_get_status(context, app_request)
+        return {'cloudlet-status':stats}
 
 
 class CloudletController(wsgi.Controller):
@@ -48,6 +70,7 @@ class CloudletController(wsgi.Controller):
         super(CloudletController, self).__init__(*args, **kwargs)
         self.cloudlet_api = CloudletAPI()
         self.nova_api = API()
+        self.host_api = HostAPI()
 
     def _get_instance(self, context, instance_uuid):
         try:
@@ -57,7 +80,7 @@ class CloudletController(wsgi.Controller):
             raise webob.exc.HTTPNotFound(explanation=msg)
 
     @wsgi.action('cloudlet-base')
-    def _cloudlet_base_creation(self, req, id, body):
+    def cloudlet_base_creation(self, req, id, body):
         """Generate cloudlet base VM
         """
         context = req.environ['nova.context']
@@ -75,18 +98,18 @@ class CloudletController(wsgi.Controller):
         return {'base-disk': disk_meta, 'base-memory':memory_meta}
 
     @wsgi.action('cloudlet-overlay-start')
-    def _cloudlet_overlay_start(self, req, id, body):
+    def cloudlet_overlay_start(self, req, id, body):
         """Resume Base VM to start customization
         overlay_start will follow regular instance creationg process.
         If the image has memory reference, then it automatically resume the base VM
         """
-        # TODO:
-        # We might need this api for gurantee matching VM configuration
-        # between base VM and requested instance
+        # currently we're using a openstack mechanism of starting new VM to
+        # resume the Base VM. However, We might need this api for guarantee
+        # matching VM configuration between base VM and requested instance
         pass
 
     @wsgi.action('cloudlet-overlay-finish')
-    def _cloudlet_overlay_finish(self, req, id, body):
+    def cloudlet_overlay_finish(self, req, id, body):
         """Generate overlay VM from the requested instance
         """
         context = req.environ['nova.context']
