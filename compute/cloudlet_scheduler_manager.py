@@ -36,7 +36,6 @@ from elijah.discovery.ds_register import RegisterThread
 from elijah.discovery.ds_register import RegisterError
 from elijah.discovery.config import DiscoveryConst
 from elijah.discovery.config import CLOUDLET_FEATURE
-from elijah.discovery.monitor.resource import ResourceMonitor
 from elijah.discovery.upnp_server import UPnPServer, UPnPError
 
 
