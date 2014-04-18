@@ -22,7 +22,7 @@ Scheduler Service for Cloudlet.
 This is inherited from default nova scheduler manager.
 It added below feature
  1. periodic pinging to cloud (configured using register_server option at nova.conf
- 2. Broadcasting UPnP message to be found by a mobile device
+ 2. Broadcasting Avahi message for a mobile client within broadcasting domain
 """
 
 
@@ -36,7 +36,8 @@ from elijah.discovery.ds_register import RegisterThread
 from elijah.discovery.ds_register import RegisterError
 from elijah.discovery.config import DiscoveryConst
 from elijah.discovery.config import CLOUDLET_FEATURE
-from elijah.discovery.upnp_server import UPnPServer, UPnPError
+from elijah.discovery.avahi_server import AvahiServerThread
+from elijah.discovery.avahi_server import AvahiDiscoverError
 
 
 LOG = logging.getLogger(__name__)
@@ -49,9 +50,9 @@ cloudlet_discovery_opts = [
     cfg.IntOpt('register_ping_interval',
                default=60,
                help='Interval in seconds for send heart beat to register server'),
-    cfg.BoolOpt('register_enable_upnp',
+    cfg.BoolOpt('register_enable_avahi',
                default=True,
-               help="Whether to turn on UPnP for local discovery"),
+               help="Whether to turn on Avahi server for local discovery"),
     ]
 CONF = cfg.CONF
 CONF.register_opts(cloudlet_discovery_opts)
@@ -62,16 +63,20 @@ class CloudletSchedulerManager(scheduler_manager.SchedulerManager):
         self.resource_uri = None
         self.cloudlet_api = CloudletAPI()
 
-        # Start UPnP Server
-        upnp_server = None
-        if CONF.register_enable_upnp is True:
+        # Start Avahi Server
+        avahi_server = None
+        if CONF.register_enable_avahi is True:
+            # Start Avahi Server
             try:
-                upnp_server = UPnPServer()
-                upnp_server.start()
-                LOG.info(_("[UPnP] Start UPnP Server"))
-            except UPnPError as e:
-                LOG.warning(str(e))
-                LOG.warning(_("Cannot start UPnP Server"))
+                avahi_server = AvahiServerThread(service_name=DiscoveryConst.SERVICE_NAME,
+                        service_port=DiscoveryConst.SERVICE_PORT)
+                avahi_server.start()
+                LOG.info("[Avahi] Start Avahi Server")
+            except AvahiDiscoverError as e:
+                LOG.info(str(e))
+                LOG.info("Cannot start Avahi Server. Start avahi-daemon")
+                avahi_server.terminate()
+                avahi_server = None
 
         super(CloudletSchedulerManager, self).__init__(*args, **kwargs)
 
