@@ -41,9 +41,9 @@ Prerequisites
 4. If you install this OpenStack extension for the purpose of testing Cloudlet
    (VM Synthesis), I would recommend you to play with stand-alone version of
    this work at
-   [elijah-cloudlet](https://github.com/cmusatyalab/elijah-cloudlet).  That is
-   much easier to install and modify since OpenStack is a nontrivial piece of
-   software.
+   [elijah-cloudlet](https://github.com/cmusatyalab/elijah-provisioning).  That
+   is much easier to install and modify since OpenStack is a nontrivial piece
+   of software.
 
 
 Installation
@@ -53,36 +53,37 @@ Here we provide a script to apply this extension to the existing OpenStack.
 It will install cloudlet library and apply patches for the cloudlet extension.
 This patch **does not change any existing source code**, but designed to be
 purely pluggable extension, so you can revert back to original state by
-reversing the installation steps.
+reversing the installation steps. We instantiate our feature by specifying custom compute\_manager (and scheduler\_manager for cloudlet-discovery).
 
 1. Install libraries for the fabric script.
 
 	> $ sudo apt-get install git openssh-server fabric
 
 
-2. Run this installation script at control node. It will install cloudlet
-   extension at localhost for contolling and computing.
+2. Installation at a control node
+  - Cloudlet provisioning (Rapid VM provisoning)
+	> $ sudo fab localhost provisioning_control
 
-		> $ fab localhost install_control
+  - Cloudlet discovery (under development. See at [elijah-discovery](https://github.com/cmusatyalab/elijah-discovery-basic))
+  	> $ sudo fab localhost discovery_control
 
 
-3. Install cloudlet extension at every compute node.  If your OpenStack is
-   single-machine all-in-one node, __you don't need this step__ since
-   *install_control* does already apply all patches on local machine.
+3. Installation at compute nodes:
+   For Cloudlet provisioning, you need to install Cloudlet extension at every
+   compute node.
    
-   You first need to specify IP addresses of your OpenStack machine at the
-   installation script, **fabric.py** file. 
+   Change IP addresses of your OpenStack machine at the **fabric.py** file. 
 
 		> (At fabric.py file)
 		> compute_nodes = [
-		> 		('ssh_username', 'ip address or domain name of node')
-		> 		('krha', 'sleep.elijah.cs.cmu.edu')
+		> 		# ('ssh-account@domain name of compute node')
+		> 		('krha@sleet.elijah.cs.cmu.edu')
 		> 		..
 		> 		]
 
    Then, run the script.
 
-		> $ fab remote install_compute
+		> $ fab remote provisioning_compute
 
 
 How to use
@@ -91,8 +92,8 @@ How to use
 First, if the installation is successful, you should be able to see update
 Dashboard as below.  ![OpenStack cloudlet extension
 dashboard](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot/cloudlet_dashboard.png?raw=true)
-Or you can chech cloudlet extension by listing existing extension using
-standard openstack API.
+Or you can check cloudlet extension by listing available OpenStack extension
+using standard OpenStack API.
 
 You can either use Web interface at Dashboard or take a look at
 ./client/nova_client.py to figure out how to use cloudlet extension API.  We're
@@ -104,11 +105,10 @@ with examples.
 Current Limitations
 ------------
 
-1. Possible resource leak from unexpected OpenStack termination
+* _Early start optimization_ is turned off
 
-2. __Early start optimization__ is turned off
-	- Early start optimization splits VM overlay into multiple segments (files) 
-	- Need better packaging for VM overlay to handle segments
+	Early start optimization start VM even before having the memory snapshot of
+	the VM. Therefore, it might reject socket connection for the first several
+	seconds. We'll update a workaround soon.
 
-3. Example _Base VM_ with portable configuration (e.g. CPU flags)
 
