@@ -57,15 +57,15 @@ reversing the installation steps. We instantiate our feature by specifying custo
 
 1. Install libraries for the fabric script.
 
-	> $ sudo apt-get install git openssh-server fabric
+  > $ sudo apt-get install git openssh-server fabric
 
 
 2. Installation at a control node
   - Cloudlet provisioning (Rapid VM provisoning)
-	> $ sudo fab localhost provisioning_control
+  > $ sudo fab localhost provisioning_control
 
   - Cloudlet discovery (under development. See at [elijah-discovery](https://github.com/cmusatyalab/elijah-discovery-basic))
-  	> $ sudo fab localhost discovery_control
+    > $ sudo fab localhost discovery_control
 
 
 3. Installation at compute nodes:
@@ -74,16 +74,16 @@ reversing the installation steps. We instantiate our feature by specifying custo
    
    Change IP addresses of your OpenStack machine at the **fabric.py** file. 
 
-		> (At fabric.py file)
-		> compute_nodes = [
-		> 		# ('ssh-account@domain name of compute node')
-		> 		('krha@sleet.elijah.cs.cmu.edu')
-		> 		..
-		> 		]
+    > (At fabric.py file)
+    > compute_nodes = [
+    >     # ('ssh-account@domain name of compute node')
+    >     ('krha@sleet.elijah.cs.cmu.edu')
+    >     ..
+    >     ]
 
    Then, run the script.
 
-		> $ fab remote provisioning_compute
+    > $ fab remote provisioning_compute
 
 
 How to use
@@ -102,13 +102,70 @@ with examples.
 
 
 
+TroubleShooting
+-----------------
+
+If you have any problem after installing Cloudlet extension, please follow
+below steps to narrow the problem.
+
+
+1. Restart Cloudlet related services one-by-one to make sure successful installation
+
+  > $ sudo service nova-compute restart  
+  > $ sudo service nova-api restart  
+  > $ sudo service nova-scheduler restart  
+  > $ sudo service apache2 restart  
+
+2. Check status of OpenStack after restarting services
+
+  > $ sudo nova-manage service list  
+  > Binary           Host                                 Zone             Status     State Updated_At  
+  > nova-conductor   krha-cloudlet                        internal         enabled    :-)   2014-05-04 15:32:54  
+  > nova-network     krha-cloudlet                        internal         enabled    :-)   2014-05-04 15:32:54  
+  > nova-consoleauth krha-cloudlet                        internal         enabled    :-)   2014-05-04 15:32:54  
+  > nova-scheduler   krha-cloudlet                        internal         enabled    :-)   2014-05-04 15:32:44  
+  > nova-cert        krha-cloudlet                        internal         enabled    :-)   2014-05-04 15:32:54  
+  > nova-compute     krha-cloudlet                        nova             enabled    :-)   2014-05-04 15:32:54  
+  > $
+
+  If any service is not running, it's time to look at the detail
+  error message in log file. Log files are located at ``/var/log/nova``.
+
+
+3. If you still have problem in using Dashboard even though everything nova
+   related service is successfully running, then it's mostly Dashboard problem. We can debug it by
+   manually running dashboard in debug mode. In OpenStack Grizzly version,
+   Dashboard's web service code (Django) is located at
+   /usr/share/openstack-dashbaord
+
+   You first need to turn on the debug configuration on Django
+
+   > $ cd /usr/share/openstack-dashboard  
+   > $ vi ./settings.py
+
+   Change ``DEBUG = False`` to ``DEBUG = True``. Then, turn on the server using specific port
+
+   > $ ./manage.py runserver 0.0.0.0:9090  
+   > Validating models...  
+   >
+   > 0 errors found  
+   > Django version 1.4.5, using settings 'openstack_dashboard.settings'  
+   > Development server is running at http://0.0.0.0:9090/  
+   > Quit the server with CONTROL-C.  
+   >
+
+   At this point, you check detail debug messages of Dashboard when you connect 
+   __using the specified port (ex. port 9090)__
+
+
+
+
 Current Limitations
 ------------
 
 * _Early start optimization_ is turned off
 
-	Early start optimization start VM even before having the memory snapshot of
-	the VM. Therefore, it might reject socket connection for the first several
-	seconds. We'll update a workaround soon.
-
+  Early start optimization start VM even before having the memory snapshot of
+  the VM. Therefore, it might reject socket connection for the first several
+  seconds. We'll update a workaround soon.
 
