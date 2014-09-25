@@ -22,6 +22,7 @@ from nova import exception
 from nova.api.openstack import extensions
 from nova.api.openstack import wsgi
 from nova.openstack.common import log as logging
+from nova.i18n import _
 
 
 LOG = logging.getLogger(__name__)
@@ -69,15 +70,16 @@ class CloudletController(wsgi.Controller):
     def __init__(self, *args, **kwargs):
         super(CloudletController, self).__init__(*args, **kwargs)
         self.cloudlet_api = CloudletAPI()
-        self.nova_api = API()
         self.host_api = HostAPI()
+        self.compute_api = API()
 
-    def _get_instance(self, context, instance_uuid):
+    def _get_instance(self, context, instance_id, want_objects=False):
         try:
-            return self.nova_api.get(context, instance_uuid)
-        except exception.NotFound:
-            msg = _("Instance not found")
-            raise webob.exc.HTTPNotFound(explanation=msg)
+            return self.compute_api.get(context, instance_id,
+                                        want_objects=want_objects)
+        except exception.InstanceNotFound:
+            msg = _("Server not found")
+            raise exc.HTTPNotFound(explanation=msg)
 
     @wsgi.action('cloudlet-base')
     def cloudlet_base_creation(self, req, id, body):
@@ -93,7 +95,7 @@ class CloudletController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         LOG.debug(_("cloudlet Generate Base VM %r"), id)
-        instance = self._get_instance(context, id)
+        instance = self._get_instance(context, id, want_objects=True)
         disk_meta, memory_meta = self.cloudlet_api.cloudlet_create_base(context, instance, baseVM_name)
         return {'base-disk': disk_meta, 'base-memory':memory_meta}
 
@@ -122,6 +124,6 @@ class CloudletController(wsgi.Controller):
             raise webob.exc.HTTPNotFound(explanation=msg)
 
         LOG.debug(_("cloudlet Generate overlay VM finish %r"), id)
-        instance = self._get_instance(context, id)
+        instance = self._get_instance(context, id, want_objects=True)
         overlay_id = self.cloudlet_api.cloudlet_create_overlay_finish(context, instance, overlay_name)
         return {'overlay-id': overlay_id}

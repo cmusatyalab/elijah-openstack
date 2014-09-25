@@ -19,12 +19,14 @@
 from nova.compute import api as nova_api
 from nova.compute import rpcapi as nova_rpc
 from nova.compute import vm_states
+from nova.compute import utils as compute_utils
 from nova import exception
 from nova.compute import task_states
 from nova.openstack.common import log as logging
 from oslo.config import cfg
+from oslo import messaging
 
-import nova.openstack.common.rpc.proxy
+#import nova.openstack.common.rpc.proxy
 from nova.openstack.common import jsonutils
 from hashlib import sha256
 
@@ -33,16 +35,17 @@ CONF = cfg.CONF
 CONF.import_opt('reclaim_instance_interval', 'nova.compute.cloudlet_manager')
 
 
-class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
+class CloudletAPI(nova_rpc.ComputeAPI):
     """ At the time we implement Cloudlet API in grizzly,
-    API has 2.27 BASE_RPC_API_VERSION. 
+    API has 3.34 BASE_RPC_API_VERSION. 
     """
-    BASE_RPC_API_VERSION = '2.28'
+    BASE_RPC_API_VERSION = '3.34'
 
     PROPERTY_KEY_CLOUDLET       = "is_cloudlet"
     PROPERTY_KEY_CLOUDLET_TYPE  = "cloudlet_type"
     PROPERTY_KEY_NETWORK_INFO   = "network"
     PROPERTY_KEY_BASE_UUID      = "base_sha256_uuid"
+    PROPERTY_KEY_BASE_RESOURCE  = "base_resource_xml_str"
 
     IMAGE_TYPE_BASE_DISK        = "cloudlet_base_disk"
     IMAGE_TYPE_BASE_MEM         = "cloudlet_base_memory"
@@ -54,13 +57,15 @@ class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
     INSTANCE_TYPE_SYNTHESIZED_VM    = "cloudlet_synthesized_vm"
 
     def __init__(self):
-        super(CloudletAPI, self).__init__(
-                topic=CONF.compute_topic,
-                default_version=CloudletAPI.BASE_RPC_API_VERSION)
+        #super(CloudletAPI, self).__init__(
+        #        topic=CONF.compute_topic,
+        #        default_version=CloudletAPI.BASE_RPC_API_VERSION)
+        super(CloudletAPI, self).__init__()
+	target = messaging.Target(topic=CONF.compute_topic, version=CloudletAPI.BASE_RPC_API_VERSION)
         self.nova_api = nova_api.API()
         
     def _cloudlet_create_image(self, context, instance, name, image_type,
-                      backup_type=None, rotation=None, extra_properties=None):
+                      extra_properties=None):
         """Create new image entry in the image service.  This new image
         will be reserved for the compute manager to upload a snapshot
         or backup.
@@ -69,12 +74,11 @@ class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
         :param instance: nova.db.sqlalchemy.models.Instance
         :param name: string for name of the snapshot
         :param image_type: snapshot | backup
-        :param backup_type: daily | weekly
-        :param rotation: int representing how many backups to keep around;
-            None if rotation shouldn't be used (as in the case of snapshots)
         :param extra_properties: dict of extra image properties to include
 
         """
+        if extra_properties is None:
+            extra_properties = {}
         instance_uuid = instance['uuid']
 
         properties = {
@@ -82,53 +86,22 @@ class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
             'user_id': str(context.user_id),
             'image_type': image_type,
         }
-        sent_meta = {
-            'name': name,
-            'is_public': True,
-            'properties': properties,
-        }
+        image_ref = instance.image_ref
+        sent_meta = compute_utils.get_image_metadata(
+            context, self.nova_api.image_api, image_ref, instance)
 
-        # Persist base image ref as a Glance image property
-        system_meta = self.nova_api.db.instance_system_metadata_get(
-                context, instance_uuid)
-        base_image_ref = system_meta.get('image_base_image_ref')
-        if base_image_ref:
-            properties['base_image_ref'] = base_image_ref
+        sent_meta['name'] = name
+        sent_meta['is_public'] = False
 
-        if image_type == 'backup':
-            properties['backup_type'] = backup_type
-
-        elif image_type == 'snapshot':
-            min_ram, min_disk = self.nova_api._get_minram_mindisk_params(context,
-                                                                instance)
-            if min_ram is not None:
-                sent_meta['min_ram'] = min_ram
-            if min_disk is not None:
-                sent_meta['min_disk'] = min_disk
-
+        # The properties set up above and in extra_properties have precedence
         properties.update(extra_properties or {})
+        sent_meta['properties'].update(properties)
 
-        # Now inherit image properties from the base image
-        prefix = 'image_'
-        for key, value in system_meta.items():
-            # Trim off the image_ prefix
-            if key.startswith(prefix):
-                key = key[len(prefix):]
-
-            # Skip properties that are non-inheritable
-            if key in CONF.non_inheritable_image_properties:
-                continue
-
-            # By using setdefault, we ensure that the properties set
-            # up above will not be overwritten by inherited values
-            properties.setdefault(key, value)
-
-        return self.nova_api.image_service.create(context, sent_meta)
+        return self.nova_api.image_api.create(context, sent_meta)
 
     @nova_api.wrap_check_policy
     @nova_api.check_instance_state(vm_state=[vm_states.ACTIVE])
     def cloudlet_create_base(self, context, instance, base_name, extra_properties=None):
-        """Getting disk and memory snapshot of the instance"""
         # add network info
         vifs = self.nova_api.network_api.get_vifs_by_instance(context, instance)
         net_info = []
@@ -136,6 +109,7 @@ class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
             vif_info ={'id':vif['uuid'], 'mac_address':vif['address']}
             net_info.append(vif_info)
 
+        # add instance resource info
         base_sha256_uuid = sha256(str(instance['uuid'])).hexdigest()
 
         disk_properties = {
@@ -189,24 +163,26 @@ class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
         recv_disk_meta = self._cloudlet_create_image(context, instance, disk_name, \
                 snapshot, extra_properties = disk_properties)
 
-        instance = self.nova_api.update(context, instance,
-                               task_state=task_states.IMAGE_SNAPSHOT,
-                               expected_task_state=None)
+        instance.task_state = task_states.IMAGE_SNAPSHOT
+        instance.save(expected_task_state=[None])
 
         # api request
-        instance_p = jsonutils.to_primitive(instance)
-        self.cast(context, 
-                self.make_msg(
-                        'cloudlet_create_base',
-                        instance=instance_p,
+        if self.client.can_send_version('3.17'):
+            version = '3.17'
+        else:
+            version = self._get_compat_version('3.0', '2.25')
+            instance = jsonutils.to_primitive(instance)
+        cctxt = self.client.prepare(server=nova_rpc._compute_host(None, instance),
+                version=version)
+        cctxt.call(context, 'cloudlet_create_base',
+			instance=instance,
                         vm_name=base_name,
                         disk_meta_id=recv_disk_meta['id'], 
                         memory_meta_id=recv_mem_meta['id'],
                         diskhash_meta_id=recv_diskhash_meta['id'], 
                         memoryhash_meta_id=recv_memhash_meta['id']
-                        ),
-                topic=nova_rpc._compute_topic(self.topic, context, None, instance),
-                version=CloudletAPI.BASE_RPC_API_VERSION)
+                        )
+                        
         return recv_disk_meta, recv_mem_meta
 
     @nova_api.wrap_check_policy
@@ -230,22 +206,21 @@ class CloudletAPI(nova.openstack.common.rpc.proxy.RpcProxy):
                 overlay_name, 'snapshot', 
                 extra_properties = overlay_meta_properties)
 
-        instance = self.nova_api.update(context, instance,
-                               task_state=task_states.IMAGE_SNAPSHOT,
-                               expected_task_state=None)
+        instance.task_state = task_states.IMAGE_SNAPSHOT
+        instance.save(expected_task_state=[None])
 
         # api request
-        instance_p = jsonutils.to_primitive(instance)
-        self.cast(context, 
-                self.make_msg(
-                        'cloudlet_overlay_finish',
-                        instance=instance_p,
+        if self.client.can_send_version('3.17'):
+            version = '3.17'
+        else:
+            version = self._get_compat_version('3.0', '2.25')
+            instance = jsonutils.to_primitive(instance)
+        cctxt = self.client.prepare(server=nova_rpc._compute_host(None, instance),
+                version=version)
+        cctxt.cast(context, 'cloudlet_overlay_finish',
+			instance=instance,
                         overlay_name=overlay_name,
-                        overlay_id=recv_overlay_meta['id'], 
-                        ),
-                topic=nova_rpc._compute_topic(self.topic, context, None, instance),
-                version=CloudletAPI.BASE_RPC_API_VERSION)
-
+                        overlay_id=recv_overlay_meta['id'])
         return recv_overlay_meta
 
     def cloudlet_get_static_status(self, context, app_request):

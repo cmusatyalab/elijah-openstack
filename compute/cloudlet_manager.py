@@ -16,23 +16,28 @@
 #   limitations under the License.
 #
 
+import functools
+
 from nova.compute import task_states
-from nova.compute import vm_states
 from nova.openstack.common import log as logging
-from nova import utils
-from nova.openstack.common import lockutils
-from nova import exception
+from nova import objects
 from nova.compute import manager as compute_manager
-from nova.openstack.common.notifier import api as notifier
 from nova.virt import driver
+from nova import rpc
+from nova.i18n import _
+from nova import exception
+from nova.openstack.common import excutils
+from nova import utils
 
 
 LOG = logging.getLogger(__name__)
 
+get_notifier = functools.partial(rpc.get_notifier, service='compute')
+
 
 class CloudletComputeManager(compute_manager.ComputeManager):
     """Manages the running instances from creation to destruction."""
-    RPC_API_VERSION = '2.28'
+    RPC_API_VERSION = '3.34'
 
     def __init__(self, compute_driver=None, *args, **kwargs):
         super(CloudletComputeManager, self).__init__(*args, **kwargs)
@@ -41,8 +46,8 @@ class CloudletComputeManager(compute_manager.ComputeManager):
         # change at /etc/nova/nova-compute.conf
         self.driver = driver.load_compute_driver(self.virtapi, compute_driver)
 
-    @compute_manager.exception.wrap_exception(notifier=notifier, \
-            publisher_id=compute_manager.publisher_id())
+    @compute_manager.object_compat
+    @compute_manager.wrap_exception()
     @compute_manager.reverts_task_state
     @compute_manager.wrap_instance_fault
     def cloudlet_create_base(self, context, instance, vm_name, 
@@ -52,20 +57,18 @@ class CloudletComputeManager(compute_manager.ComputeManager):
         and terminate the instance
         """
         context = context.elevated()
-        current_power_state = self._get_power_state(context, instance)
         LOG.info(_("Generating cloudlet base"), instance=instance)
 
         self._notify_about_instance_usage(context, instance, "snapshot.start")
 
-        def update_task_state(task_state, expected_state=task_states.IMAGE_SNAPSHOT):
-            return self._instance_update(context, instance['uuid'],
-                    task_state=task_state,
-                    expected_task_state=expected_state)
+        def callback_update_task_state(task_state, expected_state=task_states.IMAGE_SNAPSHOT):
+            instance.task_state = task_state
+            instance.save(expected_task_state=expected_state)
+            return instance
 
         self.driver.cloudlet_base(context, instance, vm_name, 
                 disk_meta_id, memory_meta_id, 
-                diskhash_meta_id, memoryhash_meta_id, update_task_state)
-
+                diskhash_meta_id, memoryhash_meta_id, callback_update_task_state)
         instance = self._instance_update(context, instance['uuid'],
                 task_state=None,
                 expected_task_state=task_states.IMAGE_UPLOADING)
@@ -74,8 +77,8 @@ class CloudletComputeManager(compute_manager.ComputeManager):
         self._notify_about_instance_usage( context, instance, "snapshot.end")
         self.cloudlet_terminate_instance(context, instance)
 
-    @compute_manager.exception.wrap_exception(notifier=notifier, \
-            publisher_id=compute_manager.publisher_id())
+    @compute_manager.object_compat
+    @compute_manager.wrap_exception()
     @compute_manager.reverts_task_state
     @compute_manager.wrap_instance_fault
     def cloudlet_overlay_finish(self, context, instance, overlay_name, overlay_id):
@@ -85,34 +88,42 @@ class CloudletComputeManager(compute_manager.ComputeManager):
         context = context.elevated()
         LOG.info(_("Generating VM overlay"), instance=instance)
 
-        def update_task_state(task_state, expected_state=task_states.IMAGE_SNAPSHOT):
-            return self._instance_update(context, instance['uuid'],
-                    task_state=task_state,
-                    expected_task_state=expected_state)
+        def callback_update_task_state(task_state, expected_state=task_states.IMAGE_SNAPSHOT):
+            instance.task_state = task_state
+            instance.save(expected_task_state=expected_state)
+            return instance
 
         self.driver.create_overlay_vm(context, instance, overlay_name, 
-                overlay_id, update_task_state)
-
-        instance = self._instance_update(context, instance['uuid'],
-                task_state=None,
-                expected_task_state=task_states.IMAGE_UPLOADING)
+                overlay_id, callback_update_task_state)
         self.cloudlet_terminate_instance(context, instance)
 
-    # almost identical to terminate_instance method
+    # Direct calling of terminate_instance at the manager.py will cause "InstanceActionNotFound_Remote" 
+    # exception at wrap_instance_event decorator since the VM is already terminated.
+    # Instead, we copy-pasted terminate_instance method
+    @compute_manager.wrap_exception()
+    @compute_manager.reverts_task_state
+    @compute_manager.wrap_instance_fault
     def cloudlet_terminate_instance(self, context, instance):
-        bdms = self._get_instance_volume_bdms(context, instance)
+        bdms = objects.BlockDeviceMappingList.get_by_instance_uuid(
+                context, instance['uuid'])
 
-        @lockutils.synchronized(instance['uuid'], 'nova-')
+        # copy & paste from terminate_instance at manager.py
+        quotas = objects.Quotas.from_reservations(context,
+                                                  None,
+                                                  instance=instance)
+
+        @utils.synchronized(instance['uuid'])
         def do_terminate_instance(instance, bdms):
             try:
-                self._delete_instance(context, instance, bdms,
-                                      reservations=None)
-            except exception.InstanceTerminationFailure as error:
-                msg = _('%s. Setting instance vm_state to ERROR')
-                LOG.error(msg % error, instance=instance)
-                self._set_instance_error_state(context, instance['uuid'])
-            except exception.InstanceNotFound as e:
-                LOG.warn(e, instance=instance)
+                self._delete_instance(context, instance, bdms, quotas)
+            except exception.InstanceNotFound:
+                LOG.info(_("Instance is terminate"), instance=instance)
+            except Exception:
+                # As we're trying to delete always go to Error if something
+                # goes wrong that _delete_instance can't handle.
+                with excutils.save_and_reraise_exception():
+                    LOG.exception(_('Setting instance vm_state to ERROR'),
+                                  instance=instance)
+                    self._set_instance_error_state(context, instance)
 
         do_terminate_instance(instance, bdms)
-

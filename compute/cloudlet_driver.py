@@ -31,9 +31,11 @@ from nova.image import glance
 from nova.compute import task_states
 from nova.openstack.common import fileutils
 from nova.openstack.common import log as openstack_logging
+from nova.openstack.common import loopingcall
 
 from nova.virt.libvirt import driver as libvirt_driver
 from nova.compute.cloudlet_api import CloudletAPI
+from nova.i18n import _
 
 from lzma import LZMADecompressor
 from xml.etree import ElementTree
@@ -133,15 +135,15 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
         # creating base vm requires cold snapshotting
         snapshot_backend = self.image_backend.snapshot(disk_path,
-                snapshot_name,
                 image_type=source_format)
 
         LOG.info(_("Beginning cold snapshot process"),
                     instance=instance)
-        snapshot_backend.snapshot_create()
+        # not available at icehouse
+        #snapshot_backend.snapshot_create()
 
         update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD)
-        snapshot_directory = libvirt_driver.CONF.libvirt_snapshots_directory
+        snapshot_directory = libvirt_driver.CONF.libvirt.snapshots_directory
         fileutils.ensure_tree(snapshot_directory)
         with utils.tempdir(dir=snapshot_directory) as tmpdir:
             try:
@@ -149,7 +151,9 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
                 # At this point, base vm should be "raw" format
                 snapshot_backend.snapshot_extract(out_path, "raw")
             finally:
-                snapshot_backend.snapshot_delete()
+                # snapshotting logic is changed in icehouse. No snapshot_create and snapshot_delete.
+                # snapshot_extract is replacing these two operations.
+                #snapshot_backend.snapshot_delete()
                 LOG.info(_("Snapshot extracted, beginning image upload"),
                          instance=instance)
 
@@ -194,7 +198,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             disk_info = {
                 'dev': disk_dev,
                 'bus': blockinfo.get_disk_bus_for_disk_dev(
-                    libvirt_driver.CONF.libvirt_type, disk_dev
+                    libvirt_driver.CONF.libvirt.virt_type, disk_dev
                     ),
                 'type': 'disk',
                 }
@@ -279,7 +283,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
         # from cache method at virt/libvirt/imagebackend.py 
         abspath = os.path.join(libvirt_driver.CONF.instances_path,
-                libvirt_driver.CONF.base_dir_name, fname)
+                libvirt_driver.CONF.image_cache_subdirectory_name, fname)
         return abspath
 
     def _polish_VM_configuration(self, xml):
@@ -334,9 +338,9 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         instance_meta = instance.get('metadata', None)
         LOG.debug(_("instance meta data : %s" % instance_meta))
         if instance_meta != None:
-            for instance_meta_item in instance_meta:
-                if instance_meta_item.get("key") == "overlay_url":
-                    overlay_url = instance_meta_item.get("value")
+            for (key, value) in instance_meta.iteritems():
+                if key == "overlay_url":
+                    overlay_url = value
         return overlay_url
 
     # overwrite original libvirt_driver's spawn method
@@ -355,25 +359,26 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         overlay_url = self._get_VM_overlay_url(instance)
 
         # original openstack logic
-        disk_info = blockinfo.get_disk_info(libvirt_driver.CONF.libvirt_type,
+        disk_info = blockinfo.get_disk_info(libvirt_driver.CONF.libvirt.virt_type,
                                             instance,
                                             block_device_info,
                                             image_meta)
-        xml = self.to_xml(instance, network_info,
+        xml = self._get_guest_xml(context, instance, network_info,
                           disk_info, image_meta,
-                          block_device_info=block_device_info)
+                          block_device_info=block_device_info,
+                          write_to_disk=True)
 
         # handle xml configuration to make a portable VM
         xml_obj = ElementTree.fromstring(xml)
         xml = self._polish_VM_configuration(xml_obj)
 
         # avoid injecting key, password, and metadata since we're resuming the VM
-        original_inject_password = libvirt_driver.CONF.libvirt_inject_password
-        original_inject_key = libvirt_driver.CONF.libvirt_inject_key
+        original_inject_password = libvirt_driver.CONF.libvirt.inject_password
+        original_inject_key = libvirt_driver.CONF.libvirt.inject_key
         original_metadata = instance.get('metadata')
-        libvirt_driver.CONF.libvirt_inject_password = None
-        libvirt_driver.CONF.libvirt_inject_key = None
-        instance['metadata'] = None
+        libvirt_driver.CONF.libvirt.inject_password = None
+        libvirt_driver.CONF.libvirt.inject_key = None
+        instance['metadata'].clear()
 
         self._create_image(context, instance,
                            disk_info['mapping'],
@@ -383,8 +388,8 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
                            admin_pass=admin_password)
 
         # revert back the configuration
-        libvirt_driver.CONF.libvirt_inject_password = original_inject_password
-        libvirt_driver.CONF.libvirt_inject_key = original_inject_key
+        libvirt_driver.CONF.libvirt.inject_password = original_inject_password
+        libvirt_driver.CONF.libvirt.inject_key = original_inject_key
         instance['metadata'] = original_metadata
 
         if overlay_url != None:
@@ -405,11 +410,13 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             diskhash_path = self._get_cache_image(context, instance, diskhash_snap_id)
             memhash_path = self._get_cache_image(context, instance, memhash_snap_id)
 
+            LOG.debug(_('cloudlet, creating network'))   
             self._create_network_only(xml, instance, network_info, block_device_info)
+            LOG.debug(_('cloudlet, resuming base vm'))
             self.resume_basevm(instance, xml, basedisk_path, basemem_path, 
                     diskhash_path, memhash_path, base_sha256_uuid)
         else:
-            self._create_domain_and_network(xml, instance, network_info,
+            self._create_domain_and_network(context, xml, instance, network_info,
                                             block_device_info)
 
         LOG.debug(_("Instance is running"), instance=instance)
@@ -421,9 +428,9 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             if state == power_state.RUNNING:
                 LOG.info(_("Instance spawned successfully."),
                          instance=instance)
-                raise utils.LoopingCallDone()
+                raise loopingcall.LoopingCallDone()
 
-        timer = utils.FixedIntervalLoopingCall(_wait_for_boot)
+        timer = loopingcall.FixedIntervalLoopingCall(_wait_for_boot)
         timer.start(interval=0.5).wait()
 
     # overwrite original libvirt_driver's _destroy method
