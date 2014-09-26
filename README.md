@@ -55,35 +55,51 @@ This patch **does not change any existing source code**, but designed to be
 purely pluggable extension, so you can revert back to original state by
 reversing the installation steps. We instantiate our feature by specifying custom compute\_manager (and scheduler\_manager for cloudlet-discovery).
 
-1. Install libraries for the fabric script.
+1. Install libraries for the fabric script
 
   > $ sudo apt-get install git openssh-server fabric
 
 
-2. Installation at a control node
-  - Cloudlet provisioning (Rapid VM provisoning)
-  > $ sudo fab localhost provisioning_control
+2. Play with DevStack
 
-  - Cloudlet discovery (under development. See at [elijah-discovery](https://github.com/cmusatyalab/elijah-discovery-basic))
-    > $ sudo fab localhost discovery_control
+  [DevStack](http://devstack.org/) provides convenient way to quickly test
+OpenStack. If you configured your OpenStack with DevStack, you provide
+installation script as follows:
+
+    > $ fab localhost devstack_single_machine
+    > (Enter password of your account)
+
+    > (Restart you devstack)
+    > $ ./unstack
+    > $ ./rejoin-stack.sh
 
 
-3. Installation at compute nodes:
-   For Cloudlet provisioning, you need to install Cloudlet extension at every
-   compute node.
-   
-   Change IP addresses of your OpenStack machine at the **fabric.py** file. 
+3. Install at OpenStack
 
-    > (At fabric.py file)
-    > compute_nodes = [
-    >     # ('ssh-account@domain name of compute node')
-    >     ('krha@sleet.elijah.cs.cmu.edu')
-    >     ..
-    >     ]
-
-   Then, run the script.
-
-    > $ fab remote provisioning_compute
+  1. Installation at a control node
+    - Cloudlet provisioning (Rapid VM provisoning)
+    > $ sudo fab localhost provisioning_control
+  
+    - Cloudlet discovery (under development. See at [elijah-discovery](https://github.com/cmusatyalab/elijah-discovery-basic))
+      > $ sudo fab localhost discovery_control
+  
+  
+  2. Installation at compute nodes:
+     For Cloudlet provisioning, you need to install Cloudlet extension at every
+     compute node.
+     
+     Change IP addresses of your OpenStack machine at the **fabric.py** file. 
+  
+      > (At fabric.py file)
+      > compute_nodes = [
+      >     # ('ssh-account@domain name of compute node')
+      >     ('krha@sleet.elijah.cs.cmu.edu')
+      >     ..
+      >     ]
+  
+     Then, run the script.
+  
+      > $ fab remote provisioning_compute
 
 
 How to use
