@@ -21,7 +21,7 @@ NOVA_CONF_PATH = "/etc/nova/nova.conf"
 NOVA_COMPUTE_CONF_PATH = "/etc/nova/nova-compute.conf"
 DASHBOARD_PROJECT_PATH = "/usr/share/openstack-dashboard/openstack_dashboard/dashboards/project"
 DASHBOARD_SETTING_FILE = "/usr/share/openstack-dashboard/openstack_dashboard/dashboards/project/dashboard.py"
-HOROZIN_API_PATH = "/usr/share/openstack-dashboard/openstack_dashboard/api"
+HORIZON_API_PATH = "/usr/share/openstack-dashboard/openstack_dashboard/api"
 
 
 def deploy_cloudlet_api():
@@ -216,7 +216,7 @@ def check_discovery_package():
 def deploy_dashboard():
     global DASHBOARD_PROJECT_PATH 
     global DASHBOARD_SETTING_FILE
-    global HOROZIN_API_PATH
+    global HORIZON_API_PATH
 
     # deploy files
     src_dir = os.path.abspath("./dashboard/*")
@@ -270,6 +270,8 @@ def discovery_control():
 
 @task
 def provisioning_control():
+    import pdb;pdb.set_trace()
+    return
     check_VM_synthesis_package()
     with hide('stdout'):
         check_system_requirement()
@@ -277,7 +279,6 @@ def provisioning_control():
         deploy_compute_manager()
         deploy_svirt()
         deploy_dashboard()
-
     sys.stdout.write("[SUCCESS] Finished installation")
 
 
@@ -289,6 +290,20 @@ def provisioning_compute():
         deploy_cloudlet_api()
         deploy_compute_manager()
         deploy_svirt()
-
     sys.stdout.write("[SUCCESS] Finished installation")
+
+
+@task
+def devstack_single_machine():
+    global PYTHON_LIBRARY_ROOT
+    global DASHBOARD_PROJECT_PATH
+    global DASHBOARD_SETTING_FILE
+    global HORIZON_API_PATH
+
+    DASHBOARD_PROJECT_PATH = "/opt/stack/horizon/openstack_dashboard/dashboards/project"
+    DASHBOARD_SETTING_FILE = "/opt/stack/horizon/openstack_dashboard/dashboards/project/dashboard.py"
+    HORIZON_API_PATH = "/opt/stack/horizon/openstack_dashboard/api"
+    PYTHON_LIBRARY_ROOT = "/opt/stack/nova/"
+
+    provisioning_control()
 
