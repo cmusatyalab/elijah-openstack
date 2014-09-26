@@ -89,10 +89,10 @@ class SetResumeDetailAction(workflows.Action):
                                        widget=forms.CheckboxSelectMultiple(),
                                        help_text=_("Launch instance in these "
                                                    "security groups."))
-    # We intentionally disable this options
-    # since you cannot specify this options for the resumed VM
-    #flavor = forms.ChoiceField(label=_("Flavor"), required=True,
-    #                          help_text=_("Size of image to launch."))
+
+    # TODO: automatic flavor selection according to the base VM resource usage
+    flavor = forms.ChoiceField(label=_("Flavor"), required=True,
+                              help_text=_("Size of image to launch."))
     #keypair_id = forms.DynamicChoiceField(label=_("Keypair"),
     #                                   required=False,
     #                                   help_text=_("Which keypair to use for "
@@ -115,7 +115,7 @@ class SetResumeDetailAction(workflows.Action):
             public = {"is_public": True,
                       "status": "active"}
             try:
-                public_images, _more = glance.image_list_detailed(
+                public_images, _more, _prev = glance.image_list_detailed(
                     request, filters=public)
             except:
                 public_images = []
@@ -131,7 +131,7 @@ class SetResumeDetailAction(workflows.Action):
             owner = {"property-owner_id": project_id,
                      "status": "active"}
             try:
-                owned_images, _more = glance.image_list_detailed(
+                owned_images, _more, _prev = glance.image_list_detailed(
                     request, filters=owner)
             except:
                 owned_images = []
@@ -202,7 +202,8 @@ class SetResumeDetailAction(workflows.Action):
 
     def populate_security_group_ids_choices(self, request, context):
         try:
-            groups = api.nova.security_group_list(request)
+            groups = api.network.security_group_list(request)
+            #groups = api.nova.SecurityGroupManager.list(request)
             security_group_list = [(sg.name, sg.name) for sg in groups]
         except:
             exceptions.handle(request,
@@ -234,11 +235,9 @@ class SetSynthesizeDetailsAction(workflows.Action):
                                        widget=forms.CheckboxSelectMultiple(),
                                        help_text=_("Launch instance in these "
                                                    "security groups."))
-    # We intentionally disable this options
-    # since you cannot specify this options for the resumed VM
-    #
-    #flavor = forms.ChoiceField(label=_("Flavor"), required=True,
-    #                          help_text=_("Size of image to launch."))
+    # TODO: automatic flavor selection according to the base VM resource usage
+    flavor = forms.ChoiceField(label=_("Flavor"), required=True,
+                              help_text=_("Size of image to launch."))
     #keypair_id = forms.DynamicChoiceField(label=_("Keypair"),
     #                                   required=False,
     #                                   help_text=_("Which keypair to use for "
@@ -258,7 +257,7 @@ class SetSynthesizeDetailsAction(workflows.Action):
             raise forms.ValidationError(_("Need URL to fetch VM overlay"))
 
         # check url format
-        val = URLValidator(verify_exists=False)
+        val = URLValidator()
         try:
             val(overlay_url)
         except ValidationError, e:
@@ -330,7 +329,8 @@ class SetSynthesizeDetailsAction(workflows.Action):
 
     def populate_security_group_ids_choices(self, request, context):
         try:
-            groups = api.nova.security_group_list(request)
+            groups = api.network.security_group_list(request)
+            #groups = api.nova.SecurityGroupManager.list(request)
             security_group_list = [(sg.name, sg.name) for sg in groups]
         except:
             exceptions.handle(request,
@@ -404,7 +404,8 @@ class SetAccessControlsAction(workflows.Action):
 
     def populate_groups_choices(self, request, context):
         try:
-            groups = api.nova.security_group_list(request)
+            groups = api.network.security_group_list(request)
+            #groups = api.nova.SecurityGroupManager.list(request)
             security_group_list = [(sg.name, sg.name) for sg in groups]
         except:
             exceptions.handle(request,
@@ -435,16 +436,6 @@ class ResumeInstance(workflows.Workflow):
             return message % {"count": _("instance"), "name": name}
 
     def handle(self, request, context):
-        # this flavor is required to create new instance but will be discarded since
-        # we're resuming the VM. Later we should get flavor information from the resumed VM
-        # TODO: get flavor information from the base VM
-        try:
-            flavors = api.nova.flavor_list(request)
-            context['flavor'] = flavors[0].id
-        except:
-            exceptions.handle(request,
-                              _('Unable to retrieve instance flavors.'))
-
         dev_mapping = None
         user_script = None
         try:
@@ -486,18 +477,8 @@ class SynthesisInstance(workflows.Workflow):
             return message % {"count": _("instance"), "name": name}
 
     def handle(self, request, context):
-        # this flavor is required to create new instance but will be discarded since
-        # we're resuming the VM. Later we should get flavor information from the resumed VM
-        # TODO: get flavor information from the base VM
         try:
-            flavors = api.nova.flavor_list(request)
-            context['flavor'] = flavors[0].id
-        except:
-            exceptions.handle(request,
-                              _('Unable to retrieve instance flavors.'))
-
-        try:
-            cloudlet_api.request_synthesis(
+            ret_json = cloudlet_api.request_synthesis(
                     request, 
                     context['name'],
                     context['image_id'],
@@ -506,6 +487,10 @@ class SynthesisInstance(workflows.Workflow):
                     context['security_group_ids'],
                     context['overlay_url'],
                     )
+            error_msg = ret_json.get("badRequest", None)
+            if error_msg is not None:
+                msg = error_msg.get("message", "Failed to request VM synthesis")
+                raise Exception(msg)
             return True
         except:
             exceptions.handle(request)

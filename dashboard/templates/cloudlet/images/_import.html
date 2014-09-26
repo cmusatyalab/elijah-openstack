@@ -2,7 +2,7 @@
 {% load i18n %}
 
 {% block form_id %}import_basevm_form{% endblock %}
-{% block form_action %}{% url horizon:project:cloudlet:import%}{% endblock %}
+{% block form_action %}{% url 'horizon:project:cloudlet:import' %}{% endblock %}
 {% block form_attrs %}enctype="multipart/form-data"{% endblock %}
 
 {% block modal-header %}{% trans "Import Base VM" %}{% endblock %}
@@ -27,5 +27,5 @@
 
 {% block modal-footer %}
   <input class="btn btn-primary pull-right" type="submit" value="{% trans "Import Base VM" %}" />
-  <a href="{% url horizon:project:images_and_snapshots:index %}" class="btn secondary cancel close">{% trans "Cancel" %}</a>
+  <a href="{% url 'horizon:project:cloudlet:index' %}" class="btn secondary cancel close">{% trans "Cancel" %}</a>
 {% endblock %}

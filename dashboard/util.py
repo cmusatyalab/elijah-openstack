@@ -67,7 +67,7 @@ def find_basevm_by_sha256(request, sha256_value):
     from openstack_dashboard.api import glance
 
     public = {"is_public": True, "status": "active"}
-    public_images, _more = glance.image_list_detailed(request, filters=public)
+    public_images, _more, _prev = glance.image_list_detailed(request, filters=public)
     for image in public_images:
         properties = getattr(image, "properties")
         if properties == None or len(properties) == 0:

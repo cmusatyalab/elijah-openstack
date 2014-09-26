@@ -97,7 +97,6 @@ def request_synthesis(request, vm_name, base_disk_id, flavor_id, key_name, \
     data = response.read()
     dd = json.loads(data)
     conn.close()
-
     return dd
 
 

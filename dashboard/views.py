@@ -58,6 +58,9 @@ class IndexView(tables.MultiTableView):
     table_classes = (BaseVMsTable, VMOverlaysTable, InstancesTable, VolumeSnapshotsTable)
     template_name = 'project/cloudlet/index.html'
 
+    def has_prev_data(self, table):
+        return getattr(self, "_prev_%s" % table.name, False)
+
     def has_more_data(self, table):
         return getattr(self, "_more_%s" % table.name, False)
 
@@ -65,7 +68,7 @@ class IndexView(tables.MultiTableView):
         marker = self.request.GET.get(BaseVMsTable._meta.pagination_param, None)
         try:
             (all_images,
-             self._more_images) = api.glance.image_list_detailed(self.request,
+             self._more_images, self._prev_images) = api.glance.image_list_detailed(self.request,
                                                                  marker=marker)
             images = [im for im in all_images
                       if im.properties.get("cloudlet_type", None) == \
@@ -79,7 +82,7 @@ class IndexView(tables.MultiTableView):
         req = self.request
         marker = req.GET.get(VMOverlaysTable._meta.pagination_param, None)
         try:
-            all_snaps, self._more_snapshots = api.glance.image_list_detailed(
+            all_snaps, self._more_snapshots, self._prev_snaps = api.glance.image_list_detailed(
                 req, marker=marker)
             snaps = [im for im in all_snaps
                       if (im.properties.get("cloudlet_type", None) == CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY)
@@ -93,7 +96,7 @@ class IndexView(tables.MultiTableView):
 
         # Gather synthesized instances
         try:
-            instances = api.nova.server_list(self.request)
+            (instances, self._more_instances) = api.nova.server_list(self.request)
         except:
             instances = []
             exceptions.handle(self.request,

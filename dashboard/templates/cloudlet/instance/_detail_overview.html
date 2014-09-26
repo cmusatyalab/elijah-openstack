@@ -74,7 +74,7 @@
   <dl>
     <dt>{% trans "Key Name" %}</dt>
     <dd>{{ instance.key_name|default:"<em>None</em>" }}</dd>
-    {% url horizon:project:images_and_snapshots:images:detail instance.image.id as image_url %}
+    {% url 'horizon:project:cloudlet:images:detail' instance.image.id as image_url %}
     <dt>{% trans "Image Name" %}</dt>
     <dd><a href="{{ image_url }}">{{ instance.image_name }}</a></dd>
     {% for key, value in instance.metadata.items %}
@@ -91,7 +91,7 @@
       {% for volume in instance.volumes %}
         <dt>{% trans "Attached To" %}</dt>
         <dd>
-          <a href="{% url horizon:project:volumes:detail volume.volumeId %}">{{ volume.name }}</a><span> {% trans "on" %} {{ volume.device }}</span>
+          <a href="{% url 'horizon:project:volumes:detail' volume.volumeId %}">{{ volume.name }}</a><span> {% trans "on" %} {{ volume.device }}</span>
         </dd>
         {% empty %}
           <dt>{% trans "Volume" %}</dt>
