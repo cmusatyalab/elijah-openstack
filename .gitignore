@@ -6,3 +6,4 @@
 *.mem
 *.pyc
 *.class
+.ropeproject

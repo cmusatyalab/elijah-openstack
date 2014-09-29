@@ -131,7 +131,7 @@ def deploy_scheduler():
     scheduler_file = os.path.abspath("./compute/cloudlet_manager.py")
     scheduler_lib_dir = os.path.join(PYTHON_LIBRARY_ROOT, "nova/scheduler/")
 
-    deploy_files = [ 
+    deploy_files = [
             (scheduler_file, scheduler_lib_dir),
             ]
 
@@ -155,7 +155,7 @@ def deploy_scheduler():
 def check_system_requirement():
     msg = "Tested only Ubuntu 12.04/14.04 LTS\n"
     msg += "But the current distribution isn't"
-    
+
     # OS distribution
     cmd = "cat /etc/lsb-release | grep DISTRIB_CODENAME | awk -F'=' '{print $2}'"
     with settings(hide('everything'), warn_only=True):
@@ -216,7 +216,7 @@ def check_discovery_package():
 
 
 def deploy_dashboard():
-    global DASHBOARD_PROJECT_PATH 
+    global DASHBOARD_PROJECT_PATH
     global DASHBOARD_SETTING_FILE
     global HORIZON_API_PATH
 
@@ -250,6 +250,10 @@ def deploy_svirt():
     security_rule = open("./svirt-profile", "r").read()
     if files.append(libvirt_svirt_file, security_rule, use_sudo=True) == False:
         abort("Cannot add security profile to libvirt-qemu")
+
+    # disable aa-complain /usr/lib/libvirt/virt-aa-helper
+    if sudo("aa-complain /usr/lib/libvirt/virt-aa-helper").failed:
+        abort("Cannot exclude virt-aa-helper from apparmor")
 
 
 @task

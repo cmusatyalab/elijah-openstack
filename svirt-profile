@@ -5,5 +5,8 @@
   /var/tmp/**/disk/image rw,
   /var/tmp/**/memory/image rwm,
 
+  # for cloudlets
+  /usr/local/bin/cloudlet_qemu-system-x86_64 rmix,
+
   # for rettaching NIC
   /dev/vhost-net rw,
