@@ -316,7 +316,7 @@ def devstack_single_machine():
 
     #deploy_compute_manager()
     provisioning_control()
-    sys.stdout.write("Restart DevStack!!\n")
-    sys.stdout.write("Terminate using unstack.sh\n")
-    sys.stdout.write("Restart using rejoin-stack.sh\n")
+    sys.stdout.write("You should restart DevStack to activate changes!!\n")
+    sys.stdout.write("  1. Terminate using unstack.sh\n")
+    sys.stdout.write("  2. Restart using rejoin-stack.sh\n")
 
