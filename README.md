@@ -67,6 +67,9 @@ guidance](http://devstack.org/guides/single-machine.html)).
     > $ adduser stack  
     > $ git clone https://github.com/openstack-dev/devstack.git  
     > $ sudo echo "stack ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers  
+
+    Log out current user, and login with stack account.
+
     > $ cd devstack  
     > $ cp samples/local.conf local.conf  
     > (Modify configuration if you need. Details are at [here](http://devstack.org/guides/single-machine.html)).  
@@ -172,15 +175,7 @@ Troubleshooting
 If you have any problem after installing Cloudlet extension, please follow
 below steps to narrow the problem.
 
-
-1. Restart Cloudlet related services one-by-one to make sure successful installation
-
-  > $ sudo service nova-compute restart  
-  > $ sudo service nova-api restart  
-  > $ sudo service nova-scheduler restart  
-  > $ sudo service apache2 restart  
-
-2. Check status of OpenStack after restarting services
+1. Check status of OpenStack after restarting services
 
   > $ sudo nova-manage service list  
   > Binary           Host                                 Zone             Status     State Updated_At  
@@ -192,15 +187,17 @@ below steps to narrow the problem.
   > nova-compute     krha-cloudlet                        nova             enabled    :-)   2014-05-04 15:32:54  
   > $
 
-  If any service is not running, it's time to look at the detail
-  error message in log file. Log files are located at ``/var/log/nova``.
+  If any service is not running, Check error message of that service. In
+  DevStack, you can find relevant tab at the screen ( 'screen -x' to attach to
+  DevStack screen). In regular OpenStack log files are located under
+  ``/var/log/nova``.
 
 
-3. If you still have problem in using Dashboard even though everything nova
-   related service is successfully running, then it's mostly Dashboard problem. We can debug it by
-   manually running dashboard in debug mode. In OpenStack Grizzly version,
-   Dashboard's web service code (Django) is located at
-   /usr/share/openstack-dashbaord
+2. If you still have problem in using Web interface though everything nova
+related service is successfully running, then it's likely to be a Dashboard
+problem. We can debug it by manually running dashboard in debug mode. In
+regular OpenStack, Dashboard's code (Django) is located at
+/usr/share/openstack-dashbaord
 
    You first need to turn on the debug configuration on Django
 
@@ -220,6 +217,10 @@ below steps to narrow the problem.
 
    At this point, you check detail debug messages of Dashboard when you connect 
    __using the specified port (ex. port 9090)__
+
+
+In DevStack, mostly of steps are as same except that Dashboard root directory is
+"/opt/stack/horizon".
 
 
 
