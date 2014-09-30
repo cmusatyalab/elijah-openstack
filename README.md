@@ -20,22 +20,14 @@ cloudlet open source project are licensed under the [Apache License, Version
 
 
 
-Prerequisites
+Tested Platform
 -------------
 
-1. cloudlet-provisioning library: This repository only has logics for OpenStack
-binding with Cloudlet code. Therefore, you should first install cloudlet
-related library.  For cloudlet-provisioning, you can install it at
-[elijah-provisioning](https://github.com/cmusatyalab/elijah-provisioning).
+- We have tested at Ubuntu 14.04 LTS 64 bits with OpenStack Icehouse.
 
-2. OpenStack Icehouse: Please install OpenStack first, and test it's full
-functionality. Since OpenStack installation itself requires significant
-efforts, we strongly recommend
-[DevStack](http://devstack.org/guides/single-machine.html) All-in-One (single
-machine) for simple test purpose. DevStack will mostaly automatically prepare
-OpenStack for you.
-
-3. We have tested at Ubuntu 14.04 LTS 64 bits with OpenStack Icehouse.
+- For those we have Ubuntu 12.04 LTS, we provide [Grizzly
+    version](https://github.com/cmusatyalab/elijah-openstack/tree/grizzly).
+    But we strongly recommend using Ubuntu 14.04 LTS and Icehouse.
 
 
 
@@ -44,7 +36,7 @@ Installation (Using DevStack)
 
 This repo is OpenStack extension for cloudlet. Therefore, you need to install
 OpenStack and [cloudlet
-libary](https://github.com/cmusatyalab/elijah-provisioning) before installing
+library](https://github.com/cmusatyalab/elijah-provisioning) before installing
 this extension. Since installing OpenStack is not trivial, we recommend
 [DevStack](http://devstack.org/), which provides a set of script to quickly
 install and test OpenStack. And for cloudlet library, we provide [fabric
@@ -53,10 +45,6 @@ installed cloudlet library, please start from 3. Or if you already have running
 OpenStack, please start with "Installation (on running OpenStack)".
 
 1. Prepare [Ubuntu 14.04 64bit](http://releases.ubuntu.com/14.04/ubuntu-14.04.1-desktop-amd64.iso)
-
-  For those we have Ubuntu 12.04 LTS, we provide [Grizzly
-  version](https://github.com/cmusatyalab/elijah-openstack/tree/grizzly). But
-  we strongly recommend using Ubuntu 14.04 LTS and Icehouse.
 
 
 2. Install cloudlet library
@@ -112,14 +100,14 @@ guidance](http://devstack.org/guides/single-machine.html)).
 
 
 
-Installation (on working Openstack)
+Installation (on working OpenStack)
 -----------------------------------
 
 If you have already running OpenStack, please follow this instruction.
 
 1. At a control node
 
-  - Cloudlet provisioning (Rapid VM provisoning)
+  - Cloudlet provisioning (Rapid VM provisioning)
 
         > $ sudo fab localhost provisioning_control  
 
@@ -170,7 +158,7 @@ can download VM overlay using "Download VM overlay" button.
 
 To perform VM synthesis, please use "Start VM Synthesis" button at Instance
 table. You need to input URL of the VM overlay you just downloaded.
-![Start Vm Synthesis](https://github.com/cmusatyalab/elijah-openstack/blob/icehouse/doc/screenshot/vm_synthesis.png?raw=true)
+![Start VM Synthesis](https://github.com/cmusatyalab/elijah-openstack/blob/icehouse/doc/screenshot/vm_synthesis.png?raw=true)
 
 
 Alternatively, you can use command line client program at at
@@ -178,7 +166,7 @@ Alternatively, you can use command line client program at at
 
 
 
-TroubleShooting
+Troubleshooting
 -----------------
 
 If you have any problem after installing Cloudlet extension, please follow
