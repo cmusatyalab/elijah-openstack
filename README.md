@@ -23,98 +23,158 @@ cloudlet open source project are licensed under the [Apache License, Version
 Prerequisites
 -------------
 
-1. OpenStack installation: This work assumes that you already have working
-   OpenStack.  For installation of OpenStack, you can follow the [official
-   documentation](http://docs.openstack.org/grizzly/openstack-compute/install/apt/openstack-install-guide-apt-grizzly.pdf).
-   Since OpenStack is a collection of multiple semi-independent project, its
-   installation is not trivial if you don't have any experience. But once you
-   have installed that, cloudlet patch would be simple. Please take a look at
-   (my note) for the installation tip.
+1. cloudlet-provisioning library: This repository only has logics for OpenStack
+binding with Cloudlet code. Therefore, you should first install cloudlet
+related library.  For cloudlet-provisioning, you can install it at
+[elijah-provisioning](https://github.com/cmusatyalab/elijah-provisioning).
+
+2. OpenStack Icehouse: Please install OpenStack first, and test it's full
+functionality. Since OpenStack installation itself requires significant
+efforts, we strongly recommend
+[DevStack](http://devstack.org/guides/single-machine.html) All-in-One (single
+machine) for simple test purpose. DevStack will mostaly automatically prepare
+OpenStack for you.
+
+3. We have tested at Ubuntu 14.04 LTS 64 bits with OpenStack Icehouse.
 
 
-2. You need extra IP address to allocate IP to the synthesized VM. You can
-   still execute VM synthesis using this extension, but can't use a mobile
-   device to access to the synthesized VM.
 
-3. The tested platform is Ubuntu 12.04 LTS 64 bits.
+Installation (Using DevStack)
+-----------------------------
 
-4. If you install this OpenStack extension for the purpose of testing Cloudlet
-   (VM Synthesis), I would recommend you to play with stand-alone version of
-   this work at
-   [elijah-cloudlet](https://github.com/cmusatyalab/elijah-provisioning).  That
-   is much easier to install and modify since OpenStack is a nontrivial piece
-   of software.
+This repo is OpenStack extension for cloudlet. Therefore, you need to install
+OpenStack and [cloudlet
+libary](https://github.com/cmusatyalab/elijah-provisioning) before installing
+this extension. Since installing OpenStack is not trivial, we recommend
+[DevStack](http://devstack.org/), which provides a set of script to quickly
+install and test OpenStack. And for cloudlet library, we provide [fabric
+script](http://www.fabfile.org/en/latest/) to help you install. If you already
+installed cloudlet library, please start from 3. Or if you already have running
+OpenStack, please start with "Installation (on running OpenStack)".
 
+1. Prepare [Ubuntu 14.04 64bit](http://releases.ubuntu.com/14.04/ubuntu-14.04.1-desktop-amd64.iso)
 
-Installation
-------------
-
-Here we provide a script to apply this extension to the existing OpenStack.
-It will install cloudlet library and apply patches for the cloudlet extension.
-This patch **does not change any existing source code**, but designed to be
-purely pluggable extension, so you can revert back to original state by
-reversing the installation steps. We instantiate our feature by specifying custom compute\_manager (and scheduler\_manager for cloudlet-discovery).
-
-1. Install libraries for the fabric script
-
-  > $ sudo apt-get install git openssh-server fabric
+  For those we have Ubuntu 12.04 LTS, we provide [Grizzly
+  version](https://github.com/cmusatyalab/elijah-openstack/tree/grizzly). But
+  we strongly recommend using Ubuntu 14.04 LTS and Icehouse.
 
 
-2. Play with DevStack
+2. Install cloudlet library
 
-  [DevStack](http://devstack.org/) provides convenient way to quickly test
-OpenStack. If you configured your OpenStack with DevStack, you provide
-installation script as follows:
+    > $ cd ~  
+    > $ sudo apt-get install git openssh-server fabric git  
+    > $ git clone https://github.com/cmusatyalab/elijah-provisioning  
+    > $ cd elijah-provisioning  
+    > $ fab localhost install  
+    > (Enter password of your account)  
 
-    > $ fab localhost devstack_single_machine
-    > (Enter password of your account)
-
-    > (Restart you devstack)
-    > $ ./unstack
-    > $ ./rejoin-stack.sh
+    For more details and troubleshooting, please read [elijah-provisioning
+    repo](https://github.com/cmusatyalab/elijah-provisioning).
 
 
-3. Install at OpenStack
+3. Install OpenStack using DevStack (This instruction simply follows [DevStack
+guidance](http://devstack.org/guides/single-machine.html)).
 
-  1. Installation at a control node
-    - Cloudlet provisioning (Rapid VM provisoning)
-    > $ sudo fab localhost provisioning_control
-  
-    - Cloudlet discovery (under development. See at [elijah-discovery](https://github.com/cmusatyalab/elijah-discovery-basic))
-      > $ sudo fab localhost discovery_control
-  
-  
-  2. Installation at compute nodes:
-     For Cloudlet provisioning, you need to install Cloudlet extension at every
-     compute node.
-     
-     Change IP addresses of your OpenStack machine at the **fabric.py** file. 
-  
-      > (At fabric.py file)
-      > compute_nodes = [
-      >     # ('ssh-account@domain name of compute node')
-      >     ('krha@sleet.elijah.cs.cmu.edu')
-      >     ..
-      >     ]
-  
-     Then, run the script.
-  
-      > $ fab remote provisioning_compute
+    > $ cd ~  
+    > $ adduser stack  
+    > $ git clone https://github.com/openstack-dev/devstack.git  
+    > $ sudo echo "stack ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers  
+    > $ cd devstack  
+    > $ cp samples/local.conf local.conf  
+    > (Modify configuration if you need. Details are at [here](http://devstack.org/guides/single-machine.html)).  
+    > $ ./stack.sh  
+
+    Please make sure that all the functions of OpenStack is working by
+    connecting to OpenStack Web interface
+
+
+4. Finally, install cloudlet OpenStack extension
+
+    > $ cd ~  
+    > $ git clone https://github.com/cmusatyalab/elijah-openstack  
+    > $ cd elijah-openstack  
+    > $ fab localhost devstack_single_machine  
+    > (Enter password of your account)  
+
+    After successful installation, please restart OpenStack to reflect changes.
+
+    > (Restart you devstack)  
+    > $ ./unstack  
+    > $ ./rejoin-stack.sh  
+    > (Sometime, you need to manually restart apache2 and keystone-all)  
+
+    This fabric script will check cloudlet library version as well as OpenStack
+    installation, and just place relevant files at right directories.  It
+    **does not change any existing OpenStack code**, but designed to be purely
+    pluggable extension, so you can revert back to original state by reversing
+    the installation steps. We instantiate our feature by chaging nova
+    configuration file at /etc/nova/nova.conf
+
+
+
+Installation (on working Openstack)
+-----------------------------------
+
+If you have already running OpenStack, please follow this instruction.
+
+1. At a control node
+
+  - Cloudlet provisioning (Rapid VM provisoning)
+
+        > $ sudo fab localhost provisioning_control  
+
+  - (Optional) Cloudlet discovery (under development. See at
+      [elijah-discovery](https://github.com/cmusatyalab/elijah-discovery-basic))
+
+        > $ sudo fab localhost discovery_control  
+
+
+2. At compute nodes: 
+
+  For Cloudlet provisioning, you need to install Cloudlet library at every compute node.
+  Change IP addresses of your OpenStack machine at the **fabric.py** file. 
+
+    > (At fabric.py file)  
+    > compute_nodes = [  
+    >     # ('ssh-account@domain name of compute node')  
+    >     ('krha@sleet.elijah.cs.cmu.edu')  
+    >     ..  
+    >     ]  
+
+  Then, run the script.
+
+    > $ fab remote provisioning_compute  
+
 
 
 How to use
 -----------
 
-First, if the installation is successful, you should be able to see update
-Dashboard as below.  ![OpenStack cloudlet extension
-dashboard](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot/cloudlet_dashboard.png?raw=true)
+If the installation is successful, you will see a new panel at project tab as
+below.  
+![OpenStack cloudlet extension dashboard](https://github.com/cmusatyalab/elijah-openstack/blob/icehouse/doc/screenshot/cloudlet_dashboard_icehouse.png?raw=true)
 Or you can check cloudlet extension by listing available OpenStack extension
-using standard OpenStack API.
+using standard OpenStack REST API.
 
-You can either use Web interface at Dashboard or take a look at
-./client/nova_client.py to figure out how to use cloudlet extension API.  We're
-currently working on documentation of this extension and will be updated soon
-with examples.
+Then, you can import [Sample Base
+VM](https://storage.cmusatyalab.org/cloudlet-vm/precise-baseVM.zip) using
+"Import Base VM".  
+![Import Base VM](https://github.com/cmusatyalab/elijah-openstack/blob/icehouse/doc/screenshot/import_basevm.png?raw=true)
+
+To resume Base VM, please use "Resume Base VM" button at Images table, and use
+"Create VM overlay" button when you ready to create VM overlay from the resumed
+VM. Then it will create _VM overlay_ as belows: 
+![Creating VM overlay](https://github.com/cmusatyalab/elijah-openstack/blob/icehouse/doc/screenshot/creating_vm_overlay.png?raw=true)
+After finishing creating VM overlay (this process can take a long time), you
+can download VM overlay using "Download VM overlay" button.
+
+To perform VM synthesis, please use "Start VM Synthesis" button at Instance
+table. You need to input URL of the VM overlay you just downloaded.
+![Start Vm Synthesis](https://github.com/cmusatyalab/elijah-openstack/blob/icehouse/doc/screenshot/vm_synthesis.png?raw=true)
+
+
+Alternatively, you can use command line client program at at
+./client/nova_client.py 
 
 
 
