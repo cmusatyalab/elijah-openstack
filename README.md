@@ -151,6 +151,7 @@ Then, you can import [Sample Base
 VM](https://storage.cmusatyalab.org/cloudlet-vm/precise-baseVM.zip) using
 "Import Base VM".  
 ![Import Base VM](https://github.com/cmusatyalab/elijah-openstack/blob/icehouse/doc/screenshot/import_basevm.png?raw=true)
+(login account: cloudlet, password: cloudlet)
 
 To resume Base VM, please use "Resume Base VM" button at Images table, and use
 "Create VM overlay" button when you ready to create VM overlay from the resumed
