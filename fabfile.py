@@ -281,11 +281,11 @@ def discovery_control():
 def provisioning_control():
     check_VM_synthesis_package()
     with hide('stdout'):
-        #check_system_requirement()
+        check_system_requirement()
         deploy_cloudlet_api()
         deploy_compute_manager()
         deploy_svirt()
-        #deploy_dashboard()
+        deploy_dashboard()
     sys.stdout.write("[SUCCESS] Finished installation\n")
 
 
@@ -314,7 +314,6 @@ def devstack_single_machine():
     PYTHON_LIBRARY_ROOT = "/opt/stack/nova/"
     NOVA_COMPUTE_CONF_PATH = NOVA_CONF_PATH
 
-    #deploy_compute_manager()
     provisioning_control()
     sys.stdout.write("You should restart DevStack to activate changes!!\n")
     sys.stdout.write("  1. Terminate using unstack.sh\n")
