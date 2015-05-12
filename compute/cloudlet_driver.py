@@ -363,7 +363,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
                                             instance,
                                             block_device_info,
                                             image_meta)
-        xml = self._get_guest_xml(context, instance, network_info,
+        xml = self.to_xml(context, instance, network_info,
                           disk_info, image_meta,
                           block_device_info=block_device_info,
                           write_to_disk=True)
@@ -397,8 +397,8 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             LOG.debug(_('cloudlet, synthesis start'))
             # append metadata to the instance
             self._create_network_only(xml, instance, network_info, block_device_info)
-            synthesized_vm = self.create_new_using_synthesis(context, instance, 
-                    xml, image_meta, overlay_url)
+            synthesized_vm = self.create_new_using_synthesis(context, instance,
+                                                             xml, image_meta, overlay_url)
             instance_uuid = str(instance.get('uuid', ''))
             self.synthesized_vm_dics[instance_uuid] = synthesized_vm
         elif memory_snap_id != None:
@@ -410,10 +410,10 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             diskhash_path = self._get_cache_image(context, instance, diskhash_snap_id)
             memhash_path = self._get_cache_image(context, instance, memhash_snap_id)
 
-            LOG.debug(_('cloudlet, creating network'))   
+            LOG.debug(_('cloudlet, creating network'))
             self._create_network_only(xml, instance, network_info, block_device_info)
             LOG.debug(_('cloudlet, resuming base vm'))
-            self.resume_basevm(instance, xml, basedisk_path, basemem_path, 
+            self.resume_basevm(instance, xml, basedisk_path, basemem_path,
                     diskhash_path, memhash_path, base_sha256_uuid)
         else:
             self._create_domain_and_network(context, xml, instance, network_info,
