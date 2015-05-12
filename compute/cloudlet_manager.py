@@ -24,7 +24,7 @@ from nova import objects
 from nova.compute import manager as compute_manager
 from nova.virt import driver
 from nova import rpc
-from nova.i18n import _
+from nova.openstack.common.gettextutils import _
 from nova import exception
 from nova.openstack.common import excutils
 from nova import utils

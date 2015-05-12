@@ -35,7 +35,7 @@ from nova.openstack.common import loopingcall
 
 from nova.virt.libvirt import driver as libvirt_driver
 from nova.compute.cloudlet_api import CloudletAPI
-from nova.i18n import _
+from nova.openstack.common.gettextutils import _
 
 from lzma import LZMADecompressor
 from xml.etree import ElementTree

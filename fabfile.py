@@ -106,9 +106,9 @@ def deploy_compute_manager():
 
     # use custom driver inherited from libvitDriver
     _replace_compute_manager(NOVA_CONF_PATH, "compute_driver",\
-            "libvirt.cloudlet_driver.CloudletDriver")
+            "nova.virt.libvirt.cloudlet_driver.CloudletDriver")
     _replace_compute_manager(NOVA_COMPUTE_CONF_PATH, "compute_driver",\
-            "libvirt.cloudlet_driver.CloudletDriver")
+            "nova.virt.libvirt.cloudlet_driver.CloudletDriver")
 
     # use specific CPU-mode
     _replace_compute_manager(NOVA_CONF_PATH, "libvirt_cpu_mode",\
@@ -281,11 +281,11 @@ def discovery_control():
 def provisioning_control():
     check_VM_synthesis_package()
     with hide('stdout'):
-        check_system_requirement()
+        #check_system_requirement()
         deploy_cloudlet_api()
         deploy_compute_manager()
         deploy_svirt()
-        deploy_dashboard()
+        #deploy_dashboard()
     sys.stdout.write("[SUCCESS] Finished installation\n")
 
 

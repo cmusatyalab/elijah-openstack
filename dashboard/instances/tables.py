@@ -192,8 +192,7 @@ class CreateOverlayAction(tables.BatchAction):
         return is_active and is_resumed_base
 
     def action(self, request, obj_id):
-        cloudlet_api.request_create_overlay(request, obj_id)
-
+        ret_dict = cloudlet_api.request_create_overlay(request, obj_id)
 
 
 class VMSynthesisLink(tables.LinkAction):
