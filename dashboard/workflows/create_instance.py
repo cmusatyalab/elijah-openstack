@@ -115,8 +115,8 @@ class SetResumeDetailAction(workflows.Action):
             public = {"is_public": True,
                       "status": "active"}
             try:
-                public_images, _more, _prev = glance.image_list_detailed(
-                    request, filters=public)
+                public_images, _more =\
+                    glance.image_list_detailed(request, filters=public)
             except:
                 public_images = []
                 exceptions.handle(request,
@@ -131,8 +131,8 @@ class SetResumeDetailAction(workflows.Action):
             owner = {"property-owner_id": project_id,
                      "status": "active"}
             try:
-                owned_images, _more, _prev = glance.image_list_detailed(
-                    request, filters=owner)
+                owned_images, _more =\
+                    glance.image_list_detailed(request, filters=owner)
             except:
                 owned_images = []
                 exceptions.handle(request,
