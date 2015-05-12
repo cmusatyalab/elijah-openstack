@@ -20,7 +20,8 @@ import functools
 
 from nova.compute import task_states
 from nova.openstack.common import log as logging
-from nova import objects
+from nova.objects import block_device as block_device_obj
+from nova.objects import quotas as quotas_obj
 from nova.compute import manager as compute_manager
 from nova.virt import driver
 from nova import rpc
@@ -104,11 +105,11 @@ class CloudletComputeManager(compute_manager.ComputeManager):
     @compute_manager.reverts_task_state
     @compute_manager.wrap_instance_fault
     def cloudlet_terminate_instance(self, context, instance):
-        bdms = objects.BlockDeviceMappingList.get_by_instance_uuid(
+        bdms = block_device_obj.BlockDeviceMappingList.get_by_instance_uuid(
                 context, instance['uuid'])
 
         # copy & paste from terminate_instance at manager.py
-        quotas = objects.Quotas.from_reservations(context,
+        quotas = quotas_obj.Quotas.from_reservations(context,
                                                   None,
                                                   instance=instance)
 

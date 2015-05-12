@@ -61,9 +61,9 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         #        topic=CONF.compute_topic,
         #        default_version=CloudletAPI.BASE_RPC_API_VERSION)
         super(CloudletAPI, self).__init__()
-	target = messaging.Target(topic=CONF.compute_topic, version=CloudletAPI.BASE_RPC_API_VERSION)
+        target = messaging.Target(topic=CONF.compute_topic, version=CloudletAPI.BASE_RPC_API_VERSION)
         self.nova_api = nova_api.API()
-        
+
     def _cloudlet_create_image(self, context, instance, name, image_type,
                       extra_properties=None):
         """Create new image entry in the image service.  This new image
@@ -88,7 +88,7 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         }
         image_ref = instance.image_ref
         sent_meta = compute_utils.get_image_metadata(
-            context, self.nova_api.image_api, image_ref, instance)
+            context, self.nova_api.image_service, image_ref, instance)
 
         sent_meta['name'] = name
         sent_meta['is_public'] = False
@@ -96,8 +96,7 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         # The properties set up above and in extra_properties have precedence
         properties.update(extra_properties or {})
         sent_meta['properties'].update(properties)
-
-        return self.nova_api.image_api.create(context, sent_meta)
+        return self.nova_api.image_service.create(context, sent_meta)
 
     @nova_api.wrap_check_policy
     @nova_api.check_instance_state(vm_state=[vm_states.ACTIVE])
