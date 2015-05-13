@@ -47,6 +47,10 @@ class CLOUDLET_TYPE(object):
     IMAGE_TYPE_BASE_MEM_HASH    = "cloudlet_base_memory_hash"
     IMAGE_TYPE_OVERLAY          = "cloudlet_overlay"
 
+class CLOUDLET_COMMAND(object):
+    PROPERTY_KEY_HANDOFF_TYPE   = "type"
+    PROPERTY_KEY_HANDOFF_NAME   = "handoff_vm_name"
+
 
 def get_cloudlet_type(instance):
     import glanceclient.exc as glance_exceptions

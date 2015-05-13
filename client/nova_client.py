@@ -27,6 +27,7 @@ from optparse import OptionParser
 from urlparse import urlparse
 from tempfile import mkdtemp
 from client_util import CLOUDLET_TYPE
+from client_util import CLOUDLET_COMMAND
 from client_util import find_matching_flavor
 from client_util import get_resource_size
 from client_util import create_flavor
@@ -293,7 +294,33 @@ def request_create_overlay(server_address, token, end_point, \
     data = response.read()
     conn.close()
     print data
-   
+
+
+def request_create_residue(server_address, token, end_point, \
+        instance_uuid, residue_name):
+    server_list = get_list(server_address, token, end_point, "servers")
+    server_id = ''
+    for server in server_list:
+        if server['id'] == instance_uuid:
+            server_id = server['id']
+    if not server_id:
+        raise CloudletClientError("cannot find matching server name")
+
+    params = json.dumps({
+        "cloudlet-handoff": {
+            CLOUDLET_COMMAND.PROPERTY_KEY_HANDOFF_TYPE: "file",
+            CLOUDLET_COMMAND.PROPERTY_KEY_HANDOFF_NAME: residue_name, }
+    })
+    headers = { "X-Auth-Token":token, "Content-type":"application/json" }
+
+    conn = httplib.HTTPConnection(end_point[1])
+    command = "%s/servers/%s/action" % (end_point[2], server_id)
+    conn.request("POST", command, params, headers)
+    response = conn.getresponse()
+    data = response.read()
+    conn.close()
+    print data
+
 
 def request_cloudlet_ipaddress(server_address, token, end_point, server_uuid):
     params = urllib.urlencode({})
@@ -629,22 +656,24 @@ def main(argv=None):
     CMD_CREATE_OVERLAY  = "create-overlay"
     CMD_DOWNLOAD        = "download"
     CMD_SYNTHESIS       = "synthesis"
+    CMD_RESIDUE         = "residue"
     CMD_EXT_LIST        = "ext-list"
     CMD_IMAGE_LIST      = "image-list"
     CMD_EXPORT_BASE     = "export-base"
     CMD_IMPORT_BASE     = "import-base"
     CMD_DISCOVER        = "discovery"
     commands = {
-            CMD_CREATE_BASE: "create base vm from the running instance",
-            CMD_CREATE_OVERLAY: "create VM overlay from the customizaed VM",
-            CMD_DOWNLOAD: "Download VM overlay",
-            CMD_SYNTHESIS: "VM Synthesis (Need downloadable URLs for VM overlay",
-            CMD_EXT_LIST: "List available extensions",
-            CMD_IMAGE_LIST: "List images",
-            CMD_EXPORT_BASE: "Export Base VM",
-            CMD_IMPORT_BASE: "Import Base VM",
-            CMD_DISCOVER : "Send discovery query",
-            }
+        CMD_CREATE_BASE: "create base vm from the running instance",
+        CMD_CREATE_OVERLAY: "create VM overlay from the customizaed VM",
+        CMD_DOWNLOAD: "Download VM overlay",
+        CMD_SYNTHESIS: "VM Synthesis (Need downloadable URLs for VM overlay)",
+        CMD_RESIDUE: "Create VM residue of running VM",
+        CMD_EXT_LIST: "List available extensions",
+        CMD_IMAGE_LIST: "List images",
+        CMD_EXPORT_BASE: "Export Base VM",
+        CMD_IMPORT_BASE: "Import Base VM",
+        CMD_DISCOVER : "Send discovery query",
+    }
 
     settings, args = process_command_line(sys.argv[1:], commands)
     print "Connecting to %s for tenant %s" % \
@@ -709,6 +738,20 @@ def main(argv=None):
                               urlparse(endpoint), key_name=None,
                               server_name=new_instance_name,
                               overlay_url=overlay_url)
+        except CloudletClientError as e:
+            sys.stderr.write("Error: %s\n" % str(e))
+    elif args[0] == CMD_RESIDUE:
+        if len(args) == 3:
+            instance_uuid = str(args[1])
+            residue_name = str(args[2])
+        else:
+            instance_uuid = raw_input("UUID of a running instance that you like to create VM overlay : ")
+            residue_name = raw_input("Set name of VM residue: ")
+        try:
+            request_create_residue(settings.server_address,
+                                   token, urlparse(endpoint),
+                                   instance_uuid,
+                                   residue_name)
         except CloudletClientError as e:
             sys.stderr.write("Error: %s\n" % str(e))
     elif args[0] == CMD_EXT_LIST:
