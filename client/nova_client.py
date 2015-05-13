@@ -132,20 +132,25 @@ def request_synthesis(server_address, token, end_point, key_name=None,\
     if basevm_uuid == None:
         raise CloudletClientError("Cannot find matching Base VM with (%s)" %\
                 str(requested_basevm_id))
-    if basevm_xml == None:
-        msg = "Cannot find resource information of base VM (%s)" %\
-                str(requested_basevm_id)
-        raise CloudletClientError(msg)
 
+    # NOT IMPLEMENTED YET
     # Find matching flavor. Otherwise create a new one.
-    cpu_count, memory_mb = get_resource_size(basevm_xml)
+    #if basevm_xml == None:
+    #    msg = "Cannot find resource information of base VM (%s)" %\
+    #            str(requested_basevm_id)
+    #    raise CloudletClientError(msg)
+    #cpu_count, memory_mb = get_resource_size(basevm_xml)
+    #flavor_list = get_list(server_address, token, end_point, "flavors")
+    #flavor_ref, flavor_id = find_matching_flavor(flavor_list, cpu_count, memory_mb)
+    #if flavor_ref == None or flavor_id == None:
+    #    sys.stdout.write("Cannot find matching flavor, create a new one\n")
+    #    flavor_name = "cloudlet-%s" % basevm_name
+    #    flavor_ref, flavor_id = create_flavor(server_address, token, \
+    #            urlparse(end_point), cpu_count, memory_mb, flavor_name)
+
+    # todo: assign small flavor
     flavor_list = get_list(server_address, token, end_point, "flavors")
-    flavor_ref, flavor_id = find_matching_flavor(flavor_list, cpu_count, memory_mb)
-    if flavor_ref == None or flavor_id == None:
-        sys.stdout.write("Cannot find matching flavor, create a new one\n")
-        flavor_name = "cloudlet-%s" % basevm_name
-        flavor_ref, flavor_id = create_flavor(server_address, token, \
-                urlparse(end_point), cpu_count, memory_mb, flavor_name)
+    flavor_id = flavor_list[1]['links'][0]['href']
 
     # generate request
     meta_data = {"overlay_url": overlay_url}
@@ -367,7 +372,6 @@ def overlay_download(server_address, token, glance_endpoint, overlay_name, outpu
     cmd = "glance image-download %s" % (overlay_name)
     proc = subprocess.Popen(cmd.split(" "), stdout=fout, stderr=_PIPE)
     out, err = proc.communicate()
-    
     if err:
         print err
 
@@ -382,7 +386,7 @@ def basevm_import(server_address, uname, password, tenant_name, import_filepath,
                 CLOUDLET_TYPE.PROPERTY_KEY_BASE_UUID:base_hashvalue,
             }
         param = {
-                "name": "%s" % image_name, 
+                "name": "%s" % image_name,
                 "data": open(filepath, "rb"),
                 "size": os.path.getsize(filepath),
                 "is_public":True,
@@ -422,27 +426,19 @@ def basevm_import(server_address, uname, password, tenant_name, import_filepath,
     diskhash_path = os.path.join(temp_dir, diskhash_name)
     memoryhash_path = os.path.join(temp_dir, memoryhash_name)
 
-    ## tmp
-    #temp_dir = "/tmp/cloudlet-base-F9gars"
-    #disk_path = os.path.join(temp_dir, memoryhash_name)
-    #memory_path = os.path.join(temp_dir, memory_name)
-    #diskhash_path = os.path.join(temp_dir, memoryhash_name)
-    #memoryhash_path = os.path.join(temp_dir, memoryhash_name)
-    ## tmp
-
     # get resource information of the Base VM
     memory_header = elijah_memory_util._QemuMemoryHeader(open(memory_path))
     libvirt_xml_str = memory_header.xml
 
     # upload base disk
-    disk_param = _create_param(disk_path, basevm_name + "-disk", 
-            CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK) 
-    memory_param = _create_param(memory_path, basevm_name + "-memory", 
-            CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM) 
-    diskhash_param = _create_param(diskhash_path, basevm_name + "-diskhash", 
-            CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK_HASH) 
-    memoryhash_param = _create_param(memoryhash_path, basevm_name + "-memhash", 
-            CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM_HASH) 
+    disk_param = _create_param(disk_path, basevm_name + "-disk",
+            CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK)
+    memory_param = _create_param(memory_path, basevm_name + "-memory",
+            CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM)
+    diskhash_param = _create_param(diskhash_path, basevm_name + "-diskhash",
+            CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK_HASH)
+    memoryhash_param = _create_param(memoryhash_path, basevm_name + "-memhash",
+            CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM_HASH)
 
     o = urlparse(glance_endpoint)
     url = "://".join((o.scheme, o.netloc))
@@ -702,12 +698,17 @@ def main(argv=None):
         except CloudletClientError as e:
             sys.stderr.write("Error: %s\n" % str(e))
     elif args[0] == CMD_SYNTHESIS:
-        overlay_url = raw_input("URL for VM overlay metafile : ")
-        new_instance_name = raw_input("Set VM's name : ")
+        if len(args) == 3:
+            overlay_url = str(args[1])
+            new_instance_name = str(args[2])
+        else:
+            overlay_url = raw_input("URL for VM overlay metafile : ")
+            new_instance_name = raw_input("Set VM's name : ")
         try:
-            request_synthesis(settings.server_address, token, urlparse(endpoint), \
-                    key_name=None, server_name=new_instance_name, \
-                    overlay_url=overlay_url)
+            request_synthesis(settings.server_address, token,
+                              urlparse(endpoint), key_name=None,
+                              server_name=new_instance_name,
+                              overlay_url=overlay_url)
         except CloudletClientError as e:
             sys.stderr.write("Error: %s\n" % str(e))
     elif args[0] == CMD_EXT_LIST:
