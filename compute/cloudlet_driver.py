@@ -40,12 +40,14 @@ from nova.openstack.common.gettextutils import _
 from lzma import LZMADecompressor
 from xml.etree import ElementTree
 from elijah.provisioning import synthesis
+from elijah.provisioning import handoff
 try:
     from elijah.provisioning import msgpack
 except ImportError as e:
     import msgpack
 from elijah.provisioning.package import VMOverlayPackage
 from elijah.provisioning.Configuration import Const as Cloudlet_Const
+from elijah.provisioning.Configuration import Options
 
 
 LOG = openstack_logging.getLogger(__name__)
@@ -58,7 +60,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         super(CloudletDriver, self).__init__(read_only)
 
         # manage VM overlay list
-        self.vm_overlay_dict = dict()
+        self.resumed_vm_dict = dict()
         # manage synthesized VM list
         self.synthesized_vm_dics = dict()
 
@@ -106,7 +108,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             disk_meta_id, memory_meta_id, 
             diskhash_meta_id, memoryhash_meta_id, update_task_state):
         """create base vm and save it to glance
-        """ 
+        """
         try:
             virt_dom = self._lookup_by_name(instance['name'])
         except exception.InstanceNotFound:
@@ -163,24 +165,22 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             memhash_path = os.path.join(tmpdir, snapshot_name+"-mem_hash")
 
             update_task_state(task_state=task_states.IMAGE_UPLOADING,
-                     expected_state=task_states.IMAGE_PENDING_UPLOAD) 
-            
+                     expected_state=task_states.IMAGE_PENDING_UPLOAD)
             synthesis._create_baseVM(self._conn, virt_dom, out_path, basemem_path, 
                     diskhash_path, memhash_path, nova_util=libvirt_utils)
 
-            self._update_to_glance(context, image_service, out_path, 
+            self._update_to_glance(context, image_service, out_path,
                     disk_meta_id, disk_metadata)
             LOG.info(_("Base disk upload complete"), instance=instance)
-            self._update_to_glance(context, image_service, basemem_path, 
+            self._update_to_glance(context, image_service, basemem_path,
                     memory_meta_id, mem_metadata)
             LOG.info(_("Base memory image upload complete"), instance=instance)
-            self._update_to_glance(context, image_service, diskhash_path, 
+            self._update_to_glance(context, image_service, diskhash_path,
                     diskhash_meta_id, diskhash_metadata)
             LOG.info(_("Base disk upload complete"), instance=instance)
             self._update_to_glance(context, image_service, memhash_path, \
                     memoryhash_meta_id, memhash_metadata)
             LOG.info(_("Base memory image upload complete"), instance=instance)
-            
             # restore vm to gracefully terminate using openstack logic
             #self._conn.restore(basemem_path)
 
@@ -239,10 +239,10 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
                 instance, overlay_id)
         update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD)
 
-        vm_overlay = self.vm_overlay_dict.get(instance['uuid'], None)
+        vm_overlay = self.resumed_vm_dict.get(instance['uuid'], None)
         if vm_overlay == None:
             raise exception.InstanceNotRunning(instance_id=instance['uuid'])
-        del self.vm_overlay_dict[instance['uuid']]
+        del self.resumed_vm_dict[instance['uuid']]
         vm_overlay.create_overlay()
         overlay_zip = vm_overlay.overlay_zipfile
         LOG.info("[INFO] overlay : %s" % str(overlay_zip))
@@ -257,6 +257,83 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
         if os.path.exists(overlay_zip):
             os.remove(overlay_zip)
+
+    def perform_vmhandoff(self, context, instance, 
+                          handoff_type, dest_vm_name,
+                          update_task_state,
+                          residue_glance_id=None):
+        try:
+            virt_dom = self._lookup_by_name(instance['name'])
+        except exception.InstanceNotFound:
+            raise exception.InstanceNotRunning(instance_id=instance['uuid'])
+
+        # get the file path for Base VM and VM overlay
+        (image_service, image_id) = glance.get_remote_image_service(
+            context, instance['image_ref'])
+        image_meta = image_service.show(context, image_id)
+        base_sha256_uuid, memory_snap_id, diskhash_snap_id, memhash_snap_id = \
+                self._get_basevm_meta_info(image_meta)
+        basedisk_path =self._get_cache_image(context, instance, image_meta['id'])
+        basemem_path = self._get_cache_image(context, instance, memory_snap_id)
+        diskhash_path =self._get_cache_image(context, instance, diskhash_snap_id)
+        memhash_path = self._get_cache_image(context, instance, memhash_snap_id)
+        base_vm_paths = [basedisk_path, basemem_path, diskhash_path, memhash_path]
+        '''
+        import subprocess
+        waiting_time = 200
+        LOG.info("subprocess start waiting: %d" % waiting_time)
+        output = subprocess.check_output(["/home/stack/test", "%s" % waiting_time])
+        LOG.info("subprocess output: %s" % output)
+        '''
+        if residue_glance_id:
+            # create VM residue and save it to Glance
+            update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD)
+            synthesized_vm = self.synthesized_vm_dics.get(instance['uuid'], None)
+            if synthesized_vm == None:
+                raise exception.InstanceNotRunning(instance_id=instance['uuid'])
+            del self.synthesized_vm_dics[instance['uuid']]
+            residue_filepath = self._handoff(base_vm_paths, base_sha256_uuid,
+                                             synthesized_vm, dest_vm_name)
+            LOG.info("[INFO] residue at %s" % residue_filepath)
+
+            # export to glance
+            (image_service, image_id) = glance.get_remote_image_service(
+                context, instance['image_ref'])
+            meta_metadata = self._get_snapshot_metadata(virt_dom, context, \
+                    instance, residue_glance_id)
+            update_task_state(task_state=task_states.IMAGE_UPLOADING,
+                        expected_state=task_states.IMAGE_PENDING_UPLOAD)
+            self._update_to_glance(context, image_service, residue_filepath,
+                                   residue_glance_id, meta_metadata)
+            LOG.info(_("VM residue upload complete"), instance=instance)
+
+    def _handoff(self, base_vm_paths, base_hashvalue, synthesized_vm, migration_dest_name):
+        """
+        """
+        (basedisk_path, basemem_path, basedisk_meta, basemem_meta) = base_vm_paths
+        # preload basevm hash dictionary for creating residue
+        preload_thread = handoff.PreloadResidueData(basedisk_meta, basemem_meta)
+        preload_thread.daemon = True
+        preload_thread.start()
+        preload_thread.join()
+
+        options = Options()
+        options.TRIM_SUPPORT = True
+        options.FREE_SUPPORT = True
+        options.DISK_ONLY = False
+        try:
+            residue_filepath = handoff.create_residue(base_vm_paths,
+                                                      base_hashvalue,
+                                                      preload_thread.basedisk_hashdict,
+                                                      preload_thread.basemem_hashdict,
+                                                      synthesized_vm,
+                                                      options,
+                                                      migration_dest_name)
+            return residue_filepath
+        except synthesis.CloudletGenerationError as e:
+            LOG.error("Cannot create residue : %s" % (str(e)))
+        return None
+
 
     def _get_cache_image(self, context, instance, snapshot_id, suffix=''):
         def basepath(fname='', suffix=suffix):
@@ -440,12 +517,12 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         # get meta info related to VM synthesis
         instance_uuid = str(instance.get('uuid', ''))
         overlay_url = self._get_VM_overlay_url(instance)
-        
+
         # check resumed base VM list
-        vm_overlay = self.vm_overlay_dict.get(instance_uuid, None)
+        vm_overlay = self.resumed_vm_dict.get(instance_uuid, None)
         if vm_overlay != None:
             vm_overlay.terminate()
-            del self.vm_overlay_dict[instance['uuid']]
+            del self.resumed_vm_dict[instance['uuid']]
 
         # check synthesized VM list
         synthesized_VM = self.synthesized_vm_dics.get(instance_uuid, None)
@@ -469,17 +546,16 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         options.XRAY_SUPPORT = False
         options.DISK_ONLY = False
         options.ZIP_CONTAINER = True
-        vm_overlay = synthesis.VM_Overlay(base_disk, options, 
-                base_mem=base_memory, 
-                base_diskmeta=base_diskmeta, 
-                base_memmeta=base_memmeta,
-                base_hashvalue=base_hashvalue,
-                nova_xml=xml,
-                nova_util=libvirt_utils,
-                nova_conn=self._conn)
+        vm_overlay = synthesis.VM_Overlay(base_disk, options,
+                                          base_mem=base_memory,
+                                          base_diskmeta=base_diskmeta,
+                                          base_memmeta=base_memmeta,
+                                          base_hashvalue=base_hashvalue,
+                                          nova_xml=xml,
+                                          nova_util=libvirt_utils,
+                                          nova_conn=self._conn)
         virt_dom = vm_overlay.resume_basevm()
-        self.vm_overlay_dict[instance['uuid']] = vm_overlay
-
+        self.resumed_vm_dict[instance['uuid']] = vm_overlay
         synthesis.rettach_nic(virt_dom, vm_overlay.old_xml_str, xml)
 
     def create_new_using_synthesis(self, context, instance, xml, 
@@ -535,13 +611,17 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         # resume VM
         LOG.info(_("Starting VM synthesis"), instance=instance)
         synthesized_vm = synthesis.SynthesizedVM(launch_disk, launch_mem, fuse,
-                disk_only=False, qemu_args=False, nova_xml=xml, nova_conn=self._conn)
+                                                 disk_only=False,
+                                                 qemu_args=False,
+                                                 nova_xml=xml,
+                                                 nova_conn=self._conn,
+                                                 nova_util=libvirt_utils)
 
         # testing non-thread resume
         delta_proc.start()
         fuse_proc.start()
         delta_proc.join()
-        fuse_proc.join() 
+        fuse_proc.join()
         LOG.info(_("Finish VM synthesis"), instance=instance)
 
         synthesized_vm.resume()

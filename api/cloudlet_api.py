@@ -176,12 +176,11 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         cctxt.call(context, 'cloudlet_create_base',
 			instance=instance,
                         vm_name=base_name,
-                        disk_meta_id=recv_disk_meta['id'], 
+                        disk_meta_id=recv_disk_meta['id'],
                         memory_meta_id=recv_mem_meta['id'],
-                        diskhash_meta_id=recv_diskhash_meta['id'], 
+                        diskhash_meta_id=recv_diskhash_meta['id'],
                         memoryhash_meta_id=recv_memhash_meta['id']
                         )
-                        
         return recv_disk_meta, recv_mem_meta
 
     @nova_api.wrap_check_policy
@@ -197,12 +196,12 @@ class CloudletAPI(nova_rpc.ComputeAPI):
     def cloudlet_create_overlay_finish(self, context, instance, 
             overlay_name, extra_properties=None):
         overlay_meta_properties = {
-                CloudletAPI.PROPERTY_KEY_CLOUDLET: True, 
+                CloudletAPI.PROPERTY_KEY_CLOUDLET: True,
                 CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE : CloudletAPI.IMAGE_TYPE_OVERLAY,
                 }
         overlay_meta_properties.update(extra_properties or {})
-        recv_overlay_meta = self._cloudlet_create_image(context, instance, 
-                overlay_name, 'snapshot', 
+        recv_overlay_meta = self._cloudlet_create_image(context, instance,
+                overlay_name, 'snapshot',
                 extra_properties = overlay_meta_properties)
 
         instance.task_state = task_states.IMAGE_SNAPSHOT
@@ -217,10 +216,44 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         cctxt = self.client.prepare(server=nova_rpc._compute_host(None, instance),
                 version=version)
         cctxt.cast(context, 'cloudlet_overlay_finish',
-			instance=instance,
-                        overlay_name=overlay_name,
-                        overlay_id=recv_overlay_meta['id'])
+                   instance=instance,
+                   overlay_name=overlay_name,
+                   overlay_id=recv_overlay_meta['id'])
         return recv_overlay_meta
+
+    @nova_api.check_instance_state(vm_state=[vm_states.ACTIVE])
+    def cloudlet_handoff(self, context, instance,
+                         handoff_type, dest_vm_name,
+                         extra_properties=None):
+        recv_residue_meta = None
+        recv_overlay_meta_id = None
+        if handoff_type == "file":
+            residue_meta_properties = {
+                    CloudletAPI.PROPERTY_KEY_CLOUDLET: True,
+                    CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE : CloudletAPI.IMAGE_TYPE_OVERLAY,
+                    }
+            residue_meta_properties.update(extra_properties or {})
+            recv_residue_meta = self._cloudlet_create_image(context, instance,
+                                                            dest_vm_name, 'snapshot',
+                                                            extra_properties = residue_meta_properties)
+            instance.task_state = task_states.IMAGE_SNAPSHOT
+            instance.save(expected_task_state=[None])
+            recv_overlay_meta_id = recv_residue_meta['id']
+
+        # api request
+        if self.client.can_send_version('3.17'):
+            version = '3.17'
+        else:
+            version = self._get_compat_version('3.0', '2.25')
+            instance = jsonutils.to_primitive(instance)
+        cctxt = self.client.prepare(server=nova_rpc._compute_host(None, instance),
+                                    version=version)
+        cctxt.cast(context, 'cloudlet_handoff',
+                   instance=instance,
+                   handoff_type=handoff_type,
+                   dest_vm_name=dest_vm_name,
+                   residue_glance_id=recv_overlay_meta_id)
+        return recv_residue_meta
 
     def cloudlet_get_static_status(self, context, app_request):
         try:
@@ -242,3 +275,4 @@ class CloudletAPI(nova_rpc.ComputeAPI):
             return stats
         except ImportError as e:
             return {"Cloudlet Discovery is not available"}
+

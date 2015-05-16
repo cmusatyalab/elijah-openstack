@@ -97,7 +97,9 @@ class CloudletController(wsgi.Controller):
 
         LOG.debug(_("cloudlet Generate Base VM %r"), id)
         instance = self._get_instance(context, id, want_objects=True)
-        disk_meta, memory_meta = self.cloudlet_api.cloudlet_create_base(context, instance, baseVM_name)
+        disk_meta, memory_meta = self.cloudlet_api.cloudlet_create_base(context,
+                                                                        instance,
+                                                                        baseVM_name)
         return {'base-disk': disk_meta, 'base-memory':memory_meta}
 
     @wsgi.action('cloudlet-overlay-start')
@@ -126,5 +128,29 @@ class CloudletController(wsgi.Controller):
 
         LOG.debug(_("cloudlet Generate overlay VM finish %r"), id)
         instance = self._get_instance(context, id, want_objects=True)
-        overlay_id = self.cloudlet_api.cloudlet_create_overlay_finish(context, instance, overlay_name)
+        overlay_id = self.cloudlet_api.cloudlet_create_overlay_finish(context,
+                                                                      instance,
+                                                                      overlay_name)
         return {'overlay-id': overlay_id}
+
+    @wsgi.action('cloudlet-handoff')
+    def cloudlet_handoff(self, req, id, body):
+        """Perform VM migration acorss OpenStack
+        """
+        context = req.environ['nova.context']
+        payload = body['cloudlet-handoff']
+        handoff_type = payload.get("type", None)
+        dest_vm_name = payload.get("handoff_vm_name", None)
+        if handoff_type == None:
+            msg = _("Specify Handoff type")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+        if dest_vm_name == None:
+            msg = _("Need VM name at handoff dest")
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+        LOG.debug(_("cloudlet handoff %r (type:%s, name:%s)"),
+                  id, handoff_type, dest_vm_name)
+        instance = self._get_instance(context, id, want_objects=True)
+        residue_id = self.cloudlet_api.cloudlet_handoff(context, instance,
+                                                        handoff_type,
+                                                        dest_vm_name)
+        return {'overlay': "success"}
