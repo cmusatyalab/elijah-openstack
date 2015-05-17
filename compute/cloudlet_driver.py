@@ -37,7 +37,6 @@ from nova.virt.libvirt import driver as libvirt_driver
 from nova.compute.cloudlet_api import CloudletAPI
 from nova.openstack.common.gettextutils import _
 
-from lzma import LZMADecompressor
 from xml.etree import ElementTree
 from elijah.provisioning import synthesis
 from elijah.provisioning import handoff
@@ -45,9 +44,11 @@ try:
     from elijah.provisioning import msgpack
 except ImportError as e:
     import msgpack
+from elijah.provisioning import compression
 from elijah.provisioning.package import VMOverlayPackage
 from elijah.provisioning.Configuration import Const as Cloudlet_Const
 from elijah.provisioning.Configuration import Options
+from elijah.provisioning.Configuration import VMOverlayCreationMode
 
 
 LOG = openstack_logging.getLogger(__name__)
@@ -278,13 +279,6 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         diskhash_path =self._get_cache_image(context, instance, diskhash_snap_id)
         memhash_path = self._get_cache_image(context, instance, memhash_snap_id)
         base_vm_paths = [basedisk_path, basemem_path, diskhash_path, memhash_path]
-        '''
-        import subprocess
-        waiting_time = 200
-        LOG.info("subprocess start waiting: %d" % waiting_time)
-        output = subprocess.check_output(["/home/stack/test", "%s" % waiting_time])
-        LOG.info("subprocess output: %s" % output)
-        '''
         if residue_glance_id:
             # create VM residue and save it to Glance
             update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD)
@@ -294,7 +288,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             del self.synthesized_vm_dics[instance['uuid']]
             residue_filepath = self._handoff(base_vm_paths, base_sha256_uuid,
                                              synthesized_vm, dest_vm_name)
-            LOG.info("[INFO] residue at %s" % residue_filepath)
+            LOG.info("[INFO] residue saved at %s" % residue_filepath)
 
             # export to glance
             (image_service, image_id) = glance.get_remote_image_service(
@@ -310,9 +304,9 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
     def _handoff(self, base_vm_paths, base_hashvalue, synthesized_vm, migration_dest_name):
         """
         """
-        (basedisk_path, basemem_path, basedisk_meta, basemem_meta) = base_vm_paths
         # preload basevm hash dictionary for creating residue
-        preload_thread = handoff.PreloadResidueData(basedisk_meta, basemem_meta)
+        (basedisk_path, basemem_path, diskhash_path, memhash_path) = base_vm_paths
+        preload_thread = handoff.PreloadResidueData(diskhash_path, memhash_path)
         preload_thread.daemon = True
         preload_thread.start()
         preload_thread.join()
@@ -321,18 +315,51 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         options.TRIM_SUPPORT = True
         options.FREE_SUPPORT = True
         options.DISK_ONLY = False
+
+        # Testing Handoff Data structure
+        from tempfile import mkdtemp    # replace it with util.tempdir
+        residue_tmp_dir = mkdtemp(prefix="cloudlet-residue-")
+        residue_zipfile = os.path.join(residue_tmp_dir, "vm_residue")
+        handoff_datafile = os.path.join(residue_tmp_dir, "handoff_data")
+        return_residue = "file:%s" % residue_zipfile
+
+        # handoff mode --> fix it to be serializable
+        handoff_mode = None
+        #NUM_CPU_CORES = 2
+        #VMOverlayCreationMode.LIVE_MIGRATION_STOP = VMOverlayCreationMode.LIVE_MIGRATION_FINISH_USE_SNAPSHOT_SIZE
+        #handoff_mode = VMOverlayCreationMode.get_pipelined_multi_process_finite_queue(num_cores=NUM_CPU_CORES)
+        #handoff_mode.COMPRESSION_ALGORITHM_TYPE = Cloudlet_Const.COMPRESSION_GZIP
+        #handoff_mode.COMPRESSION_ALGORITHM_SPEED = 1
+        #handoff_mode.MEMORY_DIFF_ALGORITHM = "none"
+        #handoff_mode.DISK_DIFF_ALGORITHM = "none"
+
+        # final data structure for handoff
+        handoff_ds = handoff.HandoffData()
+        LOG.debug("save handoff data to %s" % handoff_datafile)
+        handoff_ds.save_data(
+            base_vm_paths, base_hashvalue,
+            preload_thread.basedisk_hashdict,
+            preload_thread.basemem_hashdict,
+            options, return_residue, handoff_mode,
+            synthesized_vm.fuse.mountpoint, synthesized_vm.qemu_logfile,
+            synthesized_vm.qmp_channel, synthesized_vm.machine.ID(),
+            synthesized_vm.fuse.modified_disk_chunks, self.uri(),
+        )
+        handoff_ds.to_file(handoff_datafile)
+        import subprocess
         try:
-            residue_filepath = handoff.create_residue(base_vm_paths,
-                                                      base_hashvalue,
-                                                      preload_thread.basedisk_hashdict,
-                                                      preload_thread.basemem_hashdict,
-                                                      synthesized_vm,
-                                                      options,
-                                                      migration_dest_name)
-            return residue_filepath
-        except synthesis.CloudletGenerationError as e:
-            LOG.error("Cannot create residue : %s" % (str(e)))
-        return None
+            LOG.debug("start handoff")
+            output = subprocess.check_output([
+                "/usr/local/bin/handoff-proc",
+                "%s" % handoff_datafile])
+            LOG.debug("finish handoff")
+        except subprocess.CalledProcessError as e:
+            msg = "Failed to launch subprocess"
+            raise exception.ImageNotFound(msg)
+        if os.path.exists(residue_zipfile) == False:
+            raise exception.ImageNotFound(msg)
+        LOG.info("Save new VM overlay at: %s" % (os.path.abspath(residue_zipfile)))
+        return residue_zipfile
 
 
     def _get_cache_image(self, context, instance, snapshot_id, suffix=''):
@@ -589,45 +616,40 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         fileutils.ensure_tree(libvirt_utils.get_instance_path(instance))
         decomp_overlay = os.path.join(libvirt_utils.get_instance_path(instance),
                 'decomp_overlay')
-        overlay_fd = open(decomp_overlay, "w+b")
-        comp_overlay_files = meta_info[Cloudlet_Const.META_OVERLAY_FILES]
-        comp_overlay_files = [item[Cloudlet_Const.META_OVERLAY_FILE_NAME] for item in comp_overlay_files]
-        for comp_filename in comp_overlay_files:
-            comp_data = overlay_package.read_blob(comp_filename)
-            decompressor = LZMADecompressor()
-            decomp_data = decompressor.decompress(comp_data)
-            decomp_data += decompressor.flush()
-            overlay_fd.write(decomp_data)
-        overlay_fd.close()
+
+        meta_info = compression.decomp_overlayzip(overlay_url, decomp_overlay)
 
         # recover VM
         launch_disk, launch_mem, fuse, delta_proc, fuse_proc = \
-                synthesis.recover_launchVM(basedisk_path, meta_info,
-                        decomp_overlay,
-                        base_mem=basemem_path,
-                        base_diskmeta=diskhash_path,
-                        base_memmeta=memhash_path)
+                synthesis.recover_launchVM(
+                    basedisk_path, meta_info,
+                    decomp_overlay,
+                    base_mem=basemem_path,
+                    base_diskmeta=diskhash_path,
+                    base_memmeta=memhash_path)
 
         # resume VM
         LOG.info(_("Starting VM synthesis"), instance=instance)
-        synthesized_vm = synthesis.SynthesizedVM(launch_disk, launch_mem, fuse,
-                                                 disk_only=False,
-                                                 qemu_args=False,
-                                                 nova_xml=xml,
-                                                 nova_conn=self._conn,
-                                                 nova_util=libvirt_utils)
+        synthesized_vm = synthesis.SynthesizedVM(
+            launch_disk, launch_mem, fuse,
+            disk_only=False,
+            qemu_args=False,
+            nova_xml=xml,
+            nova_conn=self._conn,
+            nova_util=libvirt_utils
+        )
 
         # testing non-thread resume
         delta_proc.start()
         fuse_proc.start()
-        delta_proc.join()
+        #delta_proc.join()
         fuse_proc.join()
         LOG.info(_("Finish VM synthesis"), instance=instance)
 
         synthesized_vm.resume()
 
         # rettach nic card
-        synthesis.rettach_nic(synthesized_vm.machine, 
+        synthesis.rettach_nic(synthesized_vm.machine,
                 synthesized_vm.old_xml_str, xml)
 
         return synthesized_vm
