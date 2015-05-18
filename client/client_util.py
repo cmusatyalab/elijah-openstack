@@ -48,8 +48,7 @@ class CLOUDLET_TYPE(object):
     IMAGE_TYPE_OVERLAY          = "cloudlet_overlay"
 
 class CLOUDLET_COMMAND(object):
-    PROPERTY_KEY_HANDOFF_TYPE   = "type"
-    PROPERTY_KEY_HANDOFF_NAME   = "handoff_vm_name"
+    PROPERTY_KEY_HANDOFF_URL    = "handoff_url"
 
 
 def get_cloudlet_type(instance):

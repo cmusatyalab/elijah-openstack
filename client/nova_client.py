@@ -25,6 +25,7 @@ import urllib
 
 from optparse import OptionParser
 from urlparse import urlparse
+from urlparse import urlsplit
 from tempfile import mkdtemp
 from client_util import CLOUDLET_TYPE
 from client_util import CLOUDLET_COMMAND
@@ -296,8 +297,8 @@ def request_create_overlay(server_address, token, end_point, \
     print data
 
 
-def request_create_residue(server_address, token, end_point, \
-        instance_uuid, residue_name):
+def request_handoff(server_address, token, end_point,
+                    instance_uuid, handoff_url):
     server_list = get_list(server_address, token, end_point, "servers")
     server_id = ''
     for server in server_list:
@@ -308,8 +309,8 @@ def request_create_residue(server_address, token, end_point, \
 
     params = json.dumps({
         "cloudlet-handoff": {
-            CLOUDLET_COMMAND.PROPERTY_KEY_HANDOFF_TYPE: "file",
-            CLOUDLET_COMMAND.PROPERTY_KEY_HANDOFF_NAME: residue_name, }
+            CLOUDLET_COMMAND.PROPERTY_KEY_HANDOFF_URL: handoff_url,
+        }
     })
     headers = { "X-Auth-Token":token, "Content-type":"application/json" }
 
@@ -558,7 +559,7 @@ def print_usage(commands):
     MAX_SPACE = 20
     for (comm, desc) in commands.iteritems():
         space = ""
-        if len(comm) < MAX_SPACE: 
+        if len(comm) < MAX_SPACE:
             space = " " * (20-len(comm))
         usage += "  %s%s : %s\n" % (comm, space, desc)
     return usage
@@ -592,7 +593,7 @@ def process_command_line(argv, commands):
         msg = "Need tenant name for OpenStack API\n"
         msg += "Check the information using 'keystone tenant-list'"
         parser.error(msg)
-    
+
     if not len(args) != 0:
         parser.error("Need command, Choose among :\n  %s" % " | ".join(commands))
     mode = str(args[0]).lower()
@@ -656,7 +657,7 @@ def main(argv=None):
     CMD_CREATE_OVERLAY  = "create-overlay"
     CMD_DOWNLOAD        = "download"
     CMD_SYNTHESIS       = "synthesis"
-    CMD_RESIDUE         = "residue"
+    CMD_HANDOFF         = "handoff"
     CMD_EXT_LIST        = "ext-list"
     CMD_IMAGE_LIST      = "image-list"
     CMD_EXPORT_BASE     = "export-base"
@@ -667,7 +668,7 @@ def main(argv=None):
         CMD_CREATE_OVERLAY: "create VM overlay from the customizaed VM",
         CMD_DOWNLOAD: "Download VM overlay",
         CMD_SYNTHESIS: "VM Synthesis (Need downloadable URLs for VM overlay)",
-        CMD_RESIDUE: "Create VM residue of running VM",
+        CMD_HANDOFF: "Perform VM handoff to destination URL",
         CMD_EXT_LIST: "List available extensions",
         CMD_IMAGE_LIST: "List images",
         CMD_EXPORT_BASE: "Export Base VM",
@@ -740,18 +741,22 @@ def main(argv=None):
                               overlay_url=overlay_url)
         except CloudletClientError as e:
             sys.stderr.write("Error: %s\n" % str(e))
-    elif args[0] == CMD_RESIDUE:
+    elif args[0] == CMD_HANDOFF:
         if len(args) == 3:
             instance_uuid = str(args[1])
-            residue_name = str(args[2])
+            handoff_url = str(args[2])
         else:
             instance_uuid = raw_input("UUID of a running instance that you like to create VM overlay : ")
-            residue_name = raw_input("Set name of VM residue: ")
+            handoff_url = raw_input("URL of handoff destination")
+        parsed_handoff_url = urlsplit(handoff_url)
+        if parsed_handoff_url.scheme != "file" and parsed_handoff_url.scheme != "tcp":
+            msg = "invalid handoff_url (%s). Only support file and tcp scheme" % handoff_url
+            raise CloudletClientError(msg)
         try:
-            request_create_residue(settings.server_address,
-                                   token, urlparse(endpoint),
-                                   instance_uuid,
-                                   residue_name)
+            request_handoff(settings.server_address,
+                            token, urlparse(endpoint),
+                            instance_uuid,
+                            handoff_url)
         except CloudletClientError as e:
             sys.stderr.write("Error: %s\n" % str(e))
     elif args[0] == CMD_EXT_LIST:
