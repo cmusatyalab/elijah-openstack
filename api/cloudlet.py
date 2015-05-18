@@ -14,6 +14,7 @@
 #
 
 import webob
+from urlparse import urlsplit
 
 from nova.compute import API
 from nova.compute import HostAPI
@@ -139,18 +140,26 @@ class CloudletController(wsgi.Controller):
         """
         context = req.environ['nova.context']
         payload = body['cloudlet-handoff']
-        handoff_type = payload.get("type", None)
-        dest_vm_name = payload.get("handoff_vm_name", None)
-        if handoff_type == None:
-            msg = _("Specify Handoff type")
+        handoff_url = payload.get("handoff_url", None)
+        if handoff_url == None:
+            msg = _("Specify Handoff url")
             raise webob.exc.HTTPBadRequest(explanation=msg)
-        if dest_vm_name == None:
-            msg = _("Need VM name at handoff dest")
+        parsed_handoff_url = urlsplit(handoff_url)
+        if parsed_handoff_url.scheme != "file" and parsed_handoff_url.scheme != "tcp":
+            msg = "Invalid handoff_url (%s). " % handoff_url
+            msg += "Only support file and tcp scheme."
             raise webob.exc.HTTPBadRequest(explanation=msg)
-        LOG.debug(_("cloudlet handoff %r (type:%s, name:%s)"),
-                  id, handoff_type, dest_vm_name)
+        if len(parsed_handoff_url.netloc) == 0:
+            msg = "Invalid handoff_url (%s). " % handoff_url
+            msg += "Need destination (residue name or handoff destination address)"
+            raise webob.exc.HTTPBadRequest(explanation=msg)
+        LOG.debug(_("cloudlet handoff %r (handoff_url:%s)"),
+                  id, handoff_url)
         instance = self._get_instance(context, id, want_objects=True)
-        residue_id = self.cloudlet_api.cloudlet_handoff(context, instance,
-                                                        handoff_type,
-                                                        dest_vm_name)
-        return {'overlay': "success"}
+        residue_id = self.cloudlet_api.cloudlet_handoff(context,
+                                                        instance,
+                                                        handoff_url)
+        if residue_id:
+            return {'handoff': "%s" % residue_id}
+        else:
+            return {'handoff': "%s" % handoff_url}

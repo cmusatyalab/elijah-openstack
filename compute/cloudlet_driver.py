@@ -20,6 +20,9 @@
 import os
 import uuid
 import hashlib
+import subprocess
+from urlparse import urlsplit
+from tempfile import mkdtemp    # replace it with util.tempdir
 
 from nova.virt.libvirt import blockinfo
 from nova.compute import power_state
@@ -145,7 +148,8 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         # not available at icehouse
         #snapshot_backend.snapshot_create()
 
-        update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD)
+        update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD,
+                          expected_state=None)
         snapshot_directory = libvirt_driver.CONF.libvirt.snapshots_directory
         fileutils.ensure_tree(snapshot_directory)
         with utils.tempdir(dir=snapshot_directory) as tmpdir:
@@ -167,7 +171,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
             update_task_state(task_state=task_states.IMAGE_UPLOADING,
                      expected_state=task_states.IMAGE_PENDING_UPLOAD)
-            synthesis._create_baseVM(self._conn, virt_dom, out_path, basemem_path, 
+            synthesis._create_baseVM(self._conn, virt_dom, out_path, basemem_path,
                     diskhash_path, memhash_path, nova_util=libvirt_utils)
 
             self._update_to_glance(context, image_service, out_path,
@@ -238,7 +242,8 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             context, instance['image_ref'])
         meta_metadata = self._get_snapshot_metadata(virt_dom, context, \
                 instance, overlay_id)
-        update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD)
+        update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD,
+                          expected_state=None)
 
         vm_overlay = self.resumed_vm_dict.get(instance['uuid'], None)
         if vm_overlay == None:
@@ -246,7 +251,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         del self.resumed_vm_dict[instance['uuid']]
         vm_overlay.create_overlay()
         overlay_zip = vm_overlay.overlay_zipfile
-        LOG.info("[INFO] overlay : %s" % str(overlay_zip))
+        LOG.info("overlay : %s" % str(overlay_zip))
 
         update_task_state(task_state=task_states.IMAGE_UPLOADING,
                     expected_state=task_states.IMAGE_PENDING_UPLOAD)
@@ -259,13 +264,14 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         if os.path.exists(overlay_zip):
             os.remove(overlay_zip)
 
-    def perform_vmhandoff(self, context, instance, 
-                          handoff_type, dest_vm_name,
-                          update_task_state,
-                          residue_glance_id=None):
+    def perform_vmhandoff(self, context, instance, handoff_url,
+                          update_task_state, residue_glance_id=None):
         try:
             virt_dom = self._lookup_by_name(instance['name'])
         except exception.InstanceNotFound:
+            raise exception.InstanceNotRunning(instance_id=instance['uuid'])
+        synthesized_vm = self.synthesized_vm_dics.get(instance['uuid'], None)
+        if synthesized_vm == None:
             raise exception.InstanceNotRunning(instance_id=instance['uuid'])
 
         # get the file path for Base VM and VM overlay
@@ -279,17 +285,21 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         diskhash_path =self._get_cache_image(context, instance, diskhash_snap_id)
         memhash_path = self._get_cache_image(context, instance, memhash_snap_id)
         base_vm_paths = [basedisk_path, basemem_path, diskhash_path, memhash_path]
-        if residue_glance_id:
-            # create VM residue and save it to Glance
-            update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD)
-            synthesized_vm = self.synthesized_vm_dics.get(instance['uuid'], None)
-            if synthesized_vm == None:
-                raise exception.InstanceNotRunning(instance_id=instance['uuid'])
-            del self.synthesized_vm_dics[instance['uuid']]
-            residue_filepath = self._handoff(base_vm_paths, base_sha256_uuid,
-                                             synthesized_vm, dest_vm_name)
-            LOG.info("[INFO] residue saved at %s" % residue_filepath)
 
+        update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD,
+                          expected_state=None)
+        try:
+            residue_filepath = self._handoff(base_vm_paths, base_sha256_uuid,
+                                            synthesized_vm, handoff_url)
+        except subprocess.CalledProcessError as e:
+            msg = "failed to perform VM handoff:\n"
+            msg += str(e)
+            raise exception.ImageNotFound(msg)
+
+        del self.synthesized_vm_dics[instance['uuid']]
+        if residue_filepath:
+            LOG.info("residue saved at %s" % residue_filepath)
+        if residue_filepath and residue_glance_id:
             # export to glance
             (image_service, image_id) = glance.get_remote_image_service(
                 context, instance['image_ref'])
@@ -298,16 +308,18 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             update_task_state(task_state=task_states.IMAGE_UPLOADING,
                         expected_state=task_states.IMAGE_PENDING_UPLOAD)
             self._update_to_glance(context, image_service, residue_filepath,
-                                   residue_glance_id, meta_metadata)
-            LOG.info(_("VM residue upload complete"), instance=instance)
+                                    residue_glance_id, meta_metadata)
+        # clean up
+        LOG.info(_("VM residue upload complete"), instance=instance)
+        if residue_filepath and os.path.exists(residue_filepath):
+            os.remove(residue_filepath)
 
-    def _handoff(self, base_vm_paths, base_hashvalue, synthesized_vm, migration_dest_name):
+    def _handoff(self, base_vm_paths, base_hashvalue, synthesized_vm, handoff_url):
         """
         """
         # preload basevm hash dictionary for creating residue
         (basedisk_path, basemem_path, diskhash_path, memhash_path) = base_vm_paths
         preload_thread = handoff.PreloadResidueData(diskhash_path, memhash_path)
-        preload_thread.daemon = True
         preload_thread.start()
         preload_thread.join()
 
@@ -316,22 +328,19 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         options.FREE_SUPPORT = True
         options.DISK_ONLY = False
 
-        # Testing Handoff Data structure
-        from tempfile import mkdtemp    # replace it with util.tempdir
+        # Set up temp file path for data structure and residue
         residue_tmp_dir = mkdtemp(prefix="cloudlet-residue-")
-        residue_zipfile = os.path.join(residue_tmp_dir, "vm_residue")
         handoff_datafile = os.path.join(residue_tmp_dir, "handoff_data")
-        return_residue = "file:%s" % residue_zipfile
+
+        residue_zipfile = None
+        dest_handoff_url = handoff_url
+        parsed_handoff_url = urlsplit(handoff_url)
+        if parsed_handoff_url.scheme == "file":
+            residue_zipfile = os.path.join(residue_tmp_dir, Cloudlet_Const.OVERLAY_ZIP)
+            dest_handoff_url = "file://%s" % os.path.abspath(residue_zipfile)
 
         # handoff mode --> fix it to be serializable
-        handoff_mode = None
-        #NUM_CPU_CORES = 2
-        #VMOverlayCreationMode.LIVE_MIGRATION_STOP = VMOverlayCreationMode.LIVE_MIGRATION_FINISH_USE_SNAPSHOT_SIZE
-        #handoff_mode = VMOverlayCreationMode.get_pipelined_multi_process_finite_queue(num_cores=NUM_CPU_CORES)
-        #handoff_mode.COMPRESSION_ALGORITHM_TYPE = Cloudlet_Const.COMPRESSION_GZIP
-        #handoff_mode.COMPRESSION_ALGORITHM_SPEED = 1
-        #handoff_mode.MEMORY_DIFF_ALGORITHM = "none"
-        #handoff_mode.DISK_DIFF_ALGORITHM = "none"
+        handoff_mode = None # use default
 
         # final data structure for handoff
         handoff_ds = handoff.HandoffData()
@@ -340,25 +349,17 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             base_vm_paths, base_hashvalue,
             preload_thread.basedisk_hashdict,
             preload_thread.basemem_hashdict,
-            options, return_residue, handoff_mode,
+            options, dest_handoff_url, handoff_mode,
             synthesized_vm.fuse.mountpoint, synthesized_vm.qemu_logfile,
             synthesized_vm.qmp_channel, synthesized_vm.machine.ID(),
             synthesized_vm.fuse.modified_disk_chunks, self.uri(),
         )
         handoff_ds.to_file(handoff_datafile)
-        import subprocess
-        try:
-            LOG.debug("start handoff")
-            output = subprocess.check_output([
-                "/usr/local/bin/handoff-proc",
-                "%s" % handoff_datafile])
-            LOG.debug("finish handoff")
-        except subprocess.CalledProcessError as e:
-            msg = "Failed to launch subprocess"
-            raise exception.ImageNotFound(msg)
-        if os.path.exists(residue_zipfile) == False:
-            raise exception.ImageNotFound(msg)
-        LOG.info("Save new VM overlay at: %s" % (os.path.abspath(residue_zipfile)))
+        LOG.debug("start handoff")
+        output = subprocess.check_output([
+            "/usr/local/bin/handoff-proc", "%s" % handoff_datafile
+        ])
+        LOG.debug("finish handoff")
         return residue_zipfile
 
 

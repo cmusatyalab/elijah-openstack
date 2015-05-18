@@ -16,6 +16,7 @@
 #   limitations under the License.
 #
 
+from urlparse import urlsplit
 from nova.compute import api as nova_api
 from nova.compute import rpcapi as nova_rpc
 from nova.compute import vm_states
@@ -37,7 +38,7 @@ CONF.import_opt('reclaim_instance_interval', 'nova.compute.cloudlet_manager')
 
 class CloudletAPI(nova_rpc.ComputeAPI):
     """ At the time we implement Cloudlet API in grizzly,
-    API has 3.34 BASE_RPC_API_VERSION. 
+    API has 3.34 BASE_RPC_API_VERSION.
     """
     BASE_RPC_API_VERSION = '3.34'
 
@@ -222,12 +223,13 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         return recv_overlay_meta
 
     @nova_api.check_instance_state(vm_state=[vm_states.ACTIVE])
-    def cloudlet_handoff(self, context, instance,
-                         handoff_type, dest_vm_name,
-                         extra_properties=None):
+    def cloudlet_handoff(self, context, instance, handoff_url, extra_properties=None):
         recv_residue_meta = None
         recv_overlay_meta_id = None
-        if handoff_type == "file":
+        parsed_handoff_url = urlsplit(handoff_url)
+        residue_glance_id = None
+        if parsed_handoff_url.scheme == "file":
+            dest_vm_name = parsed_handoff_url.netloc
             residue_meta_properties = {
                     CloudletAPI.PROPERTY_KEY_CLOUDLET: True,
                     CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE : CloudletAPI.IMAGE_TYPE_OVERLAY,
@@ -235,10 +237,10 @@ class CloudletAPI(nova_rpc.ComputeAPI):
             residue_meta_properties.update(extra_properties or {})
             recv_residue_meta = self._cloudlet_create_image(context, instance,
                                                             dest_vm_name, 'snapshot',
-                                                            extra_properties = residue_meta_properties)
+                                                            extra_properties=residue_meta_properties)
             instance.task_state = task_states.IMAGE_SNAPSHOT
             instance.save(expected_task_state=[None])
-            recv_overlay_meta_id = recv_residue_meta['id']
+            residue_glance_id = recv_residue_meta['id']
 
         # api request
         if self.client.can_send_version('3.17'):
@@ -250,10 +252,9 @@ class CloudletAPI(nova_rpc.ComputeAPI):
                                     version=version)
         cctxt.cast(context, 'cloudlet_handoff',
                    instance=instance,
-                   handoff_type=handoff_type,
-                   dest_vm_name=dest_vm_name,
-                   residue_glance_id=recv_overlay_meta_id)
-        return recv_residue_meta
+                   handoff_url=handoff_url,
+                   residue_glance_id=residue_glance_id)
+        return residue_glance_id
 
     def cloudlet_get_static_status(self, context, app_request):
         try:

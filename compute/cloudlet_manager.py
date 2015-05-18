@@ -102,20 +102,20 @@ class CloudletComputeManager(compute_manager.ComputeManager):
     @compute_manager.wrap_exception()
     @compute_manager.reverts_task_state
     @compute_manager.wrap_instance_fault
-    def cloudlet_handoff(self, context, instance, handoff_type, dest_vm_name, residue_glance_id=None):
+    def cloudlet_handoff(self, context, instance, handoff_url, residue_glance_id=None):
         """
         Perform VM handoff
         """
         context = context.elevated()
-        LOG.info(_("Perform VM handoff"), instance=instance)
+        LOG.info(_("VM handoff to %s" % handoff_url), instance=instance)
 
         def callback_update_task_state(task_state, expected_state=task_states.IMAGE_SNAPSHOT):
             instance.task_state = task_state
             instance.save(expected_task_state=expected_state)
             return instance
 
-        self.driver.perform_vmhandoff(context, instance, handoff_type,
-                                      dest_vm_name, callback_update_task_state,
+        self.driver.perform_vmhandoff(context, instance, handoff_url,
+                                      callback_update_task_state,
                                       residue_glance_id)
         self.cloudlet_terminate_instance(context, instance)
 
