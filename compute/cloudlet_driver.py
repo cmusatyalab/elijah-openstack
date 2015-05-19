@@ -441,17 +441,16 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         # get overlay from instance metadata for synthesis case
         overlay_url = None
         instance_meta = instance.get('metadata', None)
-        LOG.debug(_("instance meta data : %s" % instance_meta))
         if instance_meta != None:
             for (key, value) in instance_meta.iteritems():
                 if key == "overlay_url":
                     overlay_url = value
         return overlay_url
 
-    # overwrite original libvirt_driver's spawn method
     def spawn(self, context, instance, image_meta, injected_files,
               admin_password, network_info=None, block_device_info=None):
-
+        """overwrite original libvirt_driver's spawn method
+        """
         # add metadata to the instance
         def _append_metadata(target_instance, metadata_dict):
             original_meta = target_instance.get('metadata', None) or list()
@@ -461,7 +460,14 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         # get meta info related to VM synthesis
         base_sha256_uuid, memory_snap_id, diskhash_snap_id, memhash_snap_id = \
                 self._get_basevm_meta_info(image_meta)
-        overlay_url = self._get_VM_overlay_url(instance)
+        overlay_url = None
+        handoff_info = None
+        instance_meta = instance.get('metadata', None)
+        if instance_meta is not None:
+            if "overlay_url" in instance_meta.keys():
+                overlay_url = instance_meta.get("overlay_url")
+            elif "handoff_info" in instance_meta.keys():
+                handoff_info = isntance_meta.get("handoff_info")
 
         # original openstack logic
         disk_info = blockinfo.get_disk_info(libvirt_driver.CONF.libvirt.virt_type,
@@ -497,26 +503,43 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         libvirt_driver.CONF.libvirt.inject_key = original_inject_key
         instance['metadata'] = original_metadata
 
-        if overlay_url != None:
-            # synthesis from overlay
+        if overlay_url is not None:
+            # spawn instance using VM synthesis
             LOG.debug(_('cloudlet, synthesis start'))
             # append metadata to the instance
-            self._create_network_only(xml, instance, network_info, block_device_info)
+            self._create_network_only(xml, instance, network_info,
+                                      block_device_info)
             synthesized_vm = self.create_new_using_synthesis(context, instance,
-                                                             xml, image_meta, overlay_url)
+                                                             xml, image_meta,
+                                                             overlay_url)
             instance_uuid = str(instance.get('uuid', ''))
             self.synthesized_vm_dics[instance_uuid] = synthesized_vm
-        elif memory_snap_id != None:
+        elif handoff_info is not None:
+            # spawn instance using VM handoff
+            LOG.debug(_('cloudlet, Handoff start'))
+            self._create_network_only(xml, instance, network_info,
+                                      block_device_info)
+            synthesized_vm = self.create_new_handoff(context, instance, xml,
+                                                     image_meta, handoff_info)
+            instance_uuid = str(instance.get('uuid', ''))
+            self.synthesized_vm_dics[instance_uuid] = synthesized_vm
+            pass
+        elif memory_snap_id is not None:
             # resume from memory snapshot
             LOG.debug(_('cloudlet, resume from memory snapshot'))
             # append metadata to the instance
-            basedisk_path = self._get_cache_image(context, instance, image_meta['id'])
-            basemem_path = self._get_cache_image(context, instance, memory_snap_id)
-            diskhash_path = self._get_cache_image(context, instance, diskhash_snap_id)
-            memhash_path = self._get_cache_image(context, instance, memhash_snap_id)
+            basedisk_path = self._get_cache_image(context, instance,
+                                                  image_meta['id'])
+            basemem_path = self._get_cache_image(context, instance,
+                                                 memory_snap_id)
+            diskhash_path = self._get_cache_image(context, instance,
+                                                  diskhash_snap_id)
+            memhash_path = self._get_cache_image(context, instance,
+                                                 memhash_snap_id)
 
             LOG.debug(_('cloudlet, creating network'))
-            self._create_network_only(xml, instance, network_info, block_device_info)
+            self._create_network_only(xml, instance, network_info,
+                                      block_device_info)
             LOG.debug(_('cloudlet, resuming base vm'))
             self.resume_basevm(instance, xml, basedisk_path, basemem_path,
                     diskhash_path, memhash_path, base_sha256_uuid)
@@ -538,13 +561,13 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         timer = loopingcall.FixedIntervalLoopingCall(_wait_for_boot)
         timer.start(interval=0.5).wait()
 
-    # overwrite original libvirt_driver's _destroy method
     def _destroy(self, instance):
+        """overwrite original libvirt_driver's _destroy method
+        """
         super(CloudletDriver, self)._destroy(instance)
 
         # get meta info related to VM synthesis
         instance_uuid = str(instance.get('uuid', ''))
-        overlay_url = self._get_VM_overlay_url(instance)
 
         # check resumed base VM list
         vm_overlay = self.resumed_vm_dict.get(instance_uuid, None)
@@ -656,3 +679,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         return synthesized_vm
 
 
+    def create_new_handoff(self, context, instance, xml, 
+                           image_meta, handoff_info):
+        import pdb;pdb.set_trace()
+        pass

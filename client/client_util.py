@@ -49,6 +49,7 @@ class CLOUDLET_TYPE(object):
 
 class CLOUDLET_COMMAND(object):
     PROPERTY_KEY_HANDOFF_URL    = "handoff_url"
+    PROPERTY_KEY_HANDOFF_DEST   = "dest_token"
 
 
 def get_cloudlet_type(instance):

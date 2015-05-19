@@ -16,7 +16,9 @@
 #   limitations under the License.
 #
 
+from urlparse import urlparse
 from urlparse import urlsplit
+import httplib
 from nova.compute import api as nova_api
 from nova.compute import rpcapi as nova_rpc
 from nova.compute import vm_states
@@ -34,6 +36,10 @@ from hashlib import sha256
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
 CONF.import_opt('reclaim_instance_interval', 'nova.compute.cloudlet_manager')
+
+
+class HandoffError(Exception):
+    pass
 
 
 class CloudletAPI(nova_rpc.ComputeAPI):
@@ -113,27 +119,27 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         base_sha256_uuid = sha256(str(instance['uuid'])).hexdigest()
 
         disk_properties = {
-                CloudletAPI.PROPERTY_KEY_CLOUDLET : True, 
+                CloudletAPI.PROPERTY_KEY_CLOUDLET : True,
                 CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE : CloudletAPI.IMAGE_TYPE_BASE_DISK,
-                CloudletAPI.PROPERTY_KEY_NETWORK_INFO : net_info, 
+                CloudletAPI.PROPERTY_KEY_NETWORK_INFO : net_info,
                 CloudletAPI.PROPERTY_KEY_BASE_UUID: base_sha256_uuid,
                 }
         mem_properties = {
-                CloudletAPI.PROPERTY_KEY_CLOUDLET : True, 
+                CloudletAPI.PROPERTY_KEY_CLOUDLET : True,
                 CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE : CloudletAPI.IMAGE_TYPE_BASE_MEM,
-                CloudletAPI.PROPERTY_KEY_NETWORK_INFO : net_info, 
+                CloudletAPI.PROPERTY_KEY_NETWORK_INFO : net_info,
                 CloudletAPI.PROPERTY_KEY_BASE_UUID: base_sha256_uuid,
                 }
         diskhash_properties = {
-                CloudletAPI.PROPERTY_KEY_CLOUDLET : True, 
+                CloudletAPI.PROPERTY_KEY_CLOUDLET : True,
                 CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE : CloudletAPI.IMAGE_TYPE_BASE_DISK_HASH,
-                CloudletAPI.PROPERTY_KEY_NETWORK_INFO : net_info, 
+                CloudletAPI.PROPERTY_KEY_NETWORK_INFO : net_info,
                 CloudletAPI.PROPERTY_KEY_BASE_UUID: base_sha256_uuid,
                 }
         memhash_properties = {
-                CloudletAPI.PROPERTY_KEY_CLOUDLET : True, 
+                CloudletAPI.PROPERTY_KEY_CLOUDLET : True,
                 CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE : CloudletAPI.IMAGE_TYPE_BASE_MEM_HASH,
-                CloudletAPI.PROPERTY_KEY_NETWORK_INFO : net_info, 
+                CloudletAPI.PROPERTY_KEY_NETWORK_INFO : net_info,
                 CloudletAPI.PROPERTY_KEY_BASE_UUID: base_sha256_uuid,
                 }
         disk_properties.update(extra_properties or {})
@@ -175,13 +181,13 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         cctxt = self.client.prepare(server=nova_rpc._compute_host(None, instance),
                 version=version)
         cctxt.call(context, 'cloudlet_create_base',
-			instance=instance,
-                        vm_name=base_name,
-                        disk_meta_id=recv_disk_meta['id'],
-                        memory_meta_id=recv_mem_meta['id'],
-                        diskhash_meta_id=recv_diskhash_meta['id'],
-                        memoryhash_meta_id=recv_memhash_meta['id']
-                        )
+                   instance=instance,
+                   vm_name=base_name,
+                   disk_meta_id=recv_disk_meta['id'],
+                   memory_meta_id=recv_mem_meta['id'],
+                   diskhash_meta_id=recv_diskhash_meta['id'],
+                   memoryhash_meta_id=recv_memhash_meta['id']
+                   )
         return recv_disk_meta, recv_mem_meta
 
     @nova_api.wrap_check_policy
@@ -223,12 +229,13 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         return recv_overlay_meta
 
     @nova_api.check_instance_state(vm_state=[vm_states.ACTIVE])
-    def cloudlet_handoff(self, context, instance, handoff_url, extra_properties=None):
+    def cloudlet_handoff(self, context, instance, handoff_url, dest_token=None, extra_properties=None):
         recv_residue_meta = None
         recv_overlay_meta_id = None
         parsed_handoff_url = urlsplit(handoff_url)
         residue_glance_id = None
         if parsed_handoff_url.scheme == "file":
+            # save the VM residue to glance file
             dest_vm_name = parsed_handoff_url.netloc
             residue_meta_properties = {
                     CloudletAPI.PROPERTY_KEY_CLOUDLET: True,
@@ -241,6 +248,12 @@ class CloudletAPI(nova_rpc.ComputeAPI):
             instance.task_state = task_states.IMAGE_SNAPSHOT
             instance.save(expected_task_state=[None])
             residue_glance_id = recv_residue_meta['id']
+        elif parsed_handoff_url.scheme == "http":
+            # handoff to other OpenStack
+            # Send message to the destination
+            instance_uuid = instance['uuid']
+            image_ref = instance.image_ref
+            self._prepare_handoff_dest(urlparse(handoff_url), dest_token, instance)
 
         # api request
         if self.client.can_send_version('3.17'):
@@ -255,6 +268,94 @@ class CloudletAPI(nova_rpc.ComputeAPI):
                    handoff_url=handoff_url,
                    residue_glance_id=residue_glance_id)
         return residue_glance_id
+
+
+    def _prepare_handoff_dest(self, end_point, dest_token, instance):
+        # information of current VM at source
+        instance_name = instance['display_name']
+        flavor_memory = instance['memory_mb']
+        flavor_cpu = instance['vcpus']
+        requested_basevm_id = instance['system_metadata']['image_base_sha256_uuid']
+
+        # find matching base VM
+        image_list = self._get_server_info(end_point, dest_token, "images")
+        basevm_uuid = None
+        for image in image_list:
+            properties = image.get("metadata", None)
+            if properties == None or len(properties) == 0:
+                continue
+            if properties.get(CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE) != \
+                    CloudletAPI.IMAGE_TYPE_BASE_DISK:
+                continue
+            base_sha256_uuid = properties.get(CloudletAPI.PROPERTY_KEY_BASE_UUID)
+            if base_sha256_uuid == requested_basevm_id:
+                basevm_uuid = image['id']
+                break
+        if basevm_uuid == None:
+            msg = "Cannot find matching Base VM with (%s) at (%s)" %\
+                (str(requested_basevm_id), end_point.netloc)
+            raise HandoffError(msg)
+
+        # Find matching flavor. 
+        def find_matching_flavor(flavor_list, cpu_count, memory_mb):
+            for flavor in flavor_list:
+                vcpu = int(flavor['vcpus'])
+                ram_mb = int(flavor['ram'])
+                if vcpu == cpu_count and ram_mb == memory_mb:
+                    flavor_ref = flavor['links'][0]['href']
+                    flavor_id = flavor['id']
+                    return flavor_ref, flavor_id
+            return None, None
+        flavor_list = self._get_server_info(end_point, dest_token, "flavors")
+        flavor_ref, flavor_id = find_matching_flavor(flavor_list, flavor_cpu, flavor_memory)
+        if flavor_ref == None or flavor_id == None:
+            msg = "Cannot find matching flavo with cpu=%d, memory=%d at %s" %\
+                (flavor_cpu, flavor_memory, end_point.netloc)
+            raise HandoffError(msg)
+
+        import pdb;pdb.set_trace()
+        # generate request
+        meta_data = {"handoff_info": instance_name}
+        s = {
+            "server":
+            {
+                "name": instance_name, "imageRef": str(basevm_uuid),
+                "flavorRef": flavor_id, "metadata": meta_data,
+                "min_count":"1", "max_count":"1",
+                "key_name": None,
+            }
+        }
+        params = jsonutils.dumps(s)
+        headers = { "X-Auth-Token":dest_token, "Content-type":"application/json" }
+        conn = httplib.HTTPConnection(end_point[1])
+        conn.request("POST", "%s/servers" % end_point[2], params, headers)
+        LOG.info("request handoff to %s" % (end_point.netloc))
+        response = conn.getresponse()
+        data = response.read()
+        dd = jsonutils.loads(data)
+        conn.close()
+        return dd
+
+    def _get_server_info(self, end_point, token, request_list):
+        if not request_list in ('images', 'flavors', 'extensions', 'servers'):
+            LOG.debug("Error, Cannot support listing for %s\n" % request_list)
+            return None
+
+        params = ''
+        headers = { "X-Auth-Token":token, "Content-type":"application/json" }
+        if request_list == 'extensions':
+            end_string = "%s/%s" % (end_point[2], request_list)
+        else:
+            end_string = "%s/%s/detail" % (end_point[2], request_list)
+
+        # HTTP response
+        conn = httplib.HTTPConnection(end_point[1])
+        conn.request("GET", end_string, params, headers)
+        response = conn.getresponse()
+        data = response.read()
+        dd = jsonutils.loads(data)
+        conn.close()
+        return dd[request_list]
 
     def cloudlet_get_static_status(self, context, app_request):
         try:

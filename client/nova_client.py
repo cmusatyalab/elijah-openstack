@@ -222,19 +222,21 @@ def request_cloudlet_base(server_address, token, end_point, server_name, cloudle
     print json.dumps(data, indent=2)
     return data
 
+
 def send_discovery_query(token, endpoint):
     #params = json.dumps({"cloudlet-status":{"overlay-name": overlay_name}})
     params = urllib.urlencode({})
     headers = { "X-Auth-Token":token, "Content-type":"application/json" }
 
     conn = httplib.HTTPConnection(endpoint[1])
-    command = "%s/os-cloudlet/status" % (endpoint[2])
+    command = "%s/discovery/status" % (endpoint[2])
     conn.request("GET", command, params, headers)
     response = conn.getresponse()
     data = response.read()
     conn.close()
     print json.loads(data)
     return data
+
 
 def request_cloudlet_overlay_start(server_address, token, end_point, image_name, key_name):
     #get right iamge
@@ -298,7 +300,7 @@ def request_create_overlay(server_address, token, end_point, \
 
 
 def request_handoff(server_address, token, end_point,
-                    instance_uuid, handoff_url):
+                    instance_uuid, handoff_url, dest_token=None):
     server_list = get_list(server_address, token, end_point, "servers")
     server_id = ''
     for server in server_list:
@@ -310,6 +312,7 @@ def request_handoff(server_address, token, end_point,
     params = json.dumps({
         "cloudlet-handoff": {
             CLOUDLET_COMMAND.PROPERTY_KEY_HANDOFF_URL: handoff_url,
+            CLOUDLET_COMMAND.PROPERTY_KEY_HANDOFF_DEST: dest_token,
         }
     })
     headers = { "X-Auth-Token":token, "Content-type":"application/json" }
@@ -553,6 +556,12 @@ def basevm_download(server_address, token, end_point, basedisk_uuid, output_file
         shutil.rmtree(temp_dir)
 
 
+def _load_credential(filepath):
+    with open(filepath) as fd:
+        dd = json.loads(fd.read())
+        return dd['server_addr'], dd['account'], dd['password'], dd['tenant']
+
+
 def print_usage(commands):
     usage = "\n%prog command [option]\n"
     usage += "Command list:\n"
@@ -626,7 +635,7 @@ def get_ref_id(server_address, token, end_point, ref_string, name):
     conn = httplib.HTTPConnection(end_point[1])
     conn.request("GET", "%s/%s" % (end_point[2], ref_string), params, headers)
     print "requesting %s/%s" % (end_point[2], ref_string)
-    
+
     # HTTP response
     response = conn.getresponse()
     data = response.read()
@@ -680,7 +689,7 @@ def main(argv=None):
     print "Connecting to %s for tenant %s" % \
             (settings.server_address, settings.tenant_name)
     token, endpoint, glance_endpoint = \
-            get_token(settings.server_address, settings.user_name, 
+            get_token(settings.server_address, settings.user_name,
                     settings.password, settings.tenant_name)
 
     if len(args) < 1:
@@ -742,21 +751,41 @@ def main(argv=None):
         except CloudletClientError as e:
             sys.stderr.write("Error: %s\n" % str(e))
     elif args[0] == CMD_HANDOFF:
-        if len(args) == 3:
+        if len(args) == 4:
             instance_uuid = str(args[1])
-            handoff_url = str(args[2])
+            handoff_type = str(args[2])
         else:
-            instance_uuid = raw_input("UUID of a running instance that you like to create VM overlay : ")
-            handoff_url = raw_input("URL of handoff destination")
-        parsed_handoff_url = urlsplit(handoff_url)
-        if parsed_handoff_url.scheme != "file" and parsed_handoff_url.scheme != "tcp":
-            msg = "invalid handoff_url (%s). Only support file and tcp scheme" % handoff_url
+            instance_uuid = raw_input("UUID of a running instance that you like to create VM overlay: ")
+            handoff_type = raw_input("URL of handoff destination: ")
+
+        handoff_url = ""
+        dest_token = None
+        if handoff_type == "file":
+            # create residue
+            handoff_url == "file:///"
+        elif handoff_type == "network":
+            # handoff to other openstack
+            if len(args) == 4:
+                handoff_dest_credential_file = str(args[3])
+            else:
+                handoff_dest_credential_file = raw_input("Credential file for the handoff destination: ")
+            # get token for the handoff destination
+            dest_addr, dest_account, dest_passwd, dest_tenant = \
+                _load_credential(handoff_dest_credential_file)
+            dest_token, dest_endpoint, dest_glance_endpoint = \
+                    get_token(dest_addr, dest_account, dest_passwd,
+                            dest_tenant)
+            handoff_url = dest_endpoint
+        else:
+            msg = "invalid handoff_url (%s). Only support file and network scheme" % handoff_url
             raise CloudletClientError(msg)
+
         try:
             request_handoff(settings.server_address,
                             token, urlparse(endpoint),
                             instance_uuid,
-                            handoff_url)
+                            handoff_url,
+                            dest_token)
         except CloudletClientError as e:
             sys.stderr.write("Error: %s\n" % str(e))
     elif args[0] == CMD_EXT_LIST:

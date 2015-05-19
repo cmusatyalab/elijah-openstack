@@ -34,22 +34,21 @@ authorize = extensions.extension_authorizer('compute', 'cloudlet')
 class Cloudlet(extensions.ExtensionDescriptor):
     """Cloudlet compute API support"""
 
-    name = "Cloudlet"
+    name = "Cloudlets"
     alias = "os-cloudlet"
     namespace = "http://elijah.cs.cmu.edu/compute/ext/cloudlet/api/v1.1"
     updated = "2014-05-27T00:00:00+00:00"
 
     def get_controller_extensions(self):
-        controller = CloudletController()
-        extension = extensions.ControllerExtension(self, 'servers', controller)
-        return [extension]
+        servers_extension = extensions.ControllerExtension(
+                self, 'servers', CloudletController())
+        return [servers_extension]
 
     def get_resources(self):
         resources = [extensions.ResourceExtension('os-cloudlet',
                 CloudletDiscoveryController(),
                 collection_actions={'status': 'GET'},
                 member_actions={})]
-
         return resources
 
 
@@ -69,6 +68,7 @@ class CloudletDiscoveryController(object):
 
 
 class CloudletController(wsgi.Controller):
+
     def __init__(self, *args, **kwargs):
         super(CloudletController, self).__init__(*args, **kwargs)
         self.cloudlet_api = CloudletAPI()
@@ -82,6 +82,20 @@ class CloudletController(wsgi.Controller):
         except exception.InstanceNotFound:
             msg = _("Server not found")
             raise exc.HTTPNotFound(explanation=msg)
+
+    @wsgi.extends
+    def create(self, req, body):
+        context = req.environ['nova.context']
+        if 'server' in body and 'metadata' in body['server']:
+            metadata = body['server']['metadata']
+            if 'overlay_url' in metadata:
+                # create VM using synthesis
+                pass
+            elif 'handoff_info' in metadata:
+                # create VM using VM handoff
+                pass
+            resp_obj = (yield)
+            #self._show(req, resp_obj)
 
     @wsgi.action('cloudlet-base')
     def cloudlet_base_creation(self, req, id, body):
@@ -141,24 +155,35 @@ class CloudletController(wsgi.Controller):
         context = req.environ['nova.context']
         payload = body['cloudlet-handoff']
         handoff_url = payload.get("handoff_url", None)
+        dest_token = payload.get("dest_token", None)
         if handoff_url == None:
-            msg = _("Specify Handoff url")
+            msg = _("Need Handoff URL")
             raise webob.exc.HTTPBadRequest(explanation=msg)
         parsed_handoff_url = urlsplit(handoff_url)
-        if parsed_handoff_url.scheme != "file" and parsed_handoff_url.scheme != "tcp":
+        if parsed_handoff_url.scheme != "file" and\
+                parsed_handoff_url.scheme != "http" and\
+                parsed_handoff_url.scheme != "https":
             msg = "Invalid handoff_url (%s). " % handoff_url
-            msg += "Only support file and tcp scheme."
+            msg += "Only support file and http scheme."
             raise webob.exc.HTTPBadRequest(explanation=msg)
         if len(parsed_handoff_url.netloc) == 0:
             msg = "Invalid handoff_url (%s). " % handoff_url
             msg += "Need destination (residue name or handoff destination address)"
             raise webob.exc.HTTPBadRequest(explanation=msg)
+
+        if parsed_handoff_url.scheme == "http" or\
+                parsed_handoff_url.scheme == "https":
+            if dest_token == None:
+                msg = "Need auth-token for the handoff destination"
+                raise webob.exc.HTTPBadRequest(explanation=msg)
+
         LOG.debug(_("cloudlet handoff %r (handoff_url:%s)"),
                   id, handoff_url)
         instance = self._get_instance(context, id, want_objects=True)
         residue_id = self.cloudlet_api.cloudlet_handoff(context,
                                                         instance,
-                                                        handoff_url)
+                                                        handoff_url,
+                                                        dest_token=dest_token)
         if residue_id:
             return {'handoff': "%s" % residue_id}
         else:
