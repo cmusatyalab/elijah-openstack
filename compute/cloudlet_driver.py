@@ -21,6 +21,7 @@ import os
 import uuid
 import hashlib
 import subprocess
+import shutil
 from urlparse import urlsplit
 from tempfile import mkdtemp    # replace it with util.tempdir
 
@@ -124,13 +125,13 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         (image_service, image_id) = glance.get_remote_image_service(
             context, instance['image_ref'])
 
-        disk_metadata = self._get_snapshot_metadata(virt_dom, context, 
+        disk_metadata = self._get_snapshot_metadata(virt_dom, context,
                 instance, disk_meta_id)
-        mem_metadata = self._get_snapshot_metadata(virt_dom, context, 
+        mem_metadata = self._get_snapshot_metadata(virt_dom, context,
                 instance, memory_meta_id)
-        diskhash_metadata = self._get_snapshot_metadata(virt_dom, context, 
+        diskhash_metadata = self._get_snapshot_metadata(virt_dom, context,
                 instance, diskhash_meta_id)
-        memhash_metadata = self._get_snapshot_metadata(virt_dom, context, 
+        memhash_metadata = self._get_snapshot_metadata(virt_dom, context,
                 instance, memoryhash_meta_id)
 
         disk_path = libvirt_utils.find_disk(virt_dom)
@@ -289,7 +290,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD,
                           expected_state=None)
         try:
-            residue_filepath = self._handoff(base_vm_paths, base_sha256_uuid,
+            residue_filepath = self._handoff_send(base_vm_paths, base_sha256_uuid,
                                             synthesized_vm, handoff_url)
         except subprocess.CalledProcessError as e:
             msg = "failed to perform VM handoff:\n"
@@ -314,7 +315,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         if residue_filepath and os.path.exists(residue_filepath):
             os.remove(residue_filepath)
 
-    def _handoff(self, base_vm_paths, base_hashvalue, synthesized_vm, handoff_url):
+    def _handoff_send(self, base_vm_paths, base_hashvalue, synthesized_vm, handoff_url):
         """
         """
         # preload basevm hash dictionary for creating residue
@@ -330,7 +331,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
         # Set up temp file path for data structure and residue
         residue_tmp_dir = mkdtemp(prefix="cloudlet-residue-")
-        handoff_datafile = os.path.join(residue_tmp_dir, "handoff_data")
+        handoff_send_datafile = os.path.join(residue_tmp_dir, "handoff_data")
 
         residue_zipfile = None
         dest_handoff_url = handoff_url
@@ -342,10 +343,10 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         # handoff mode --> fix it to be serializable
         handoff_mode = None # use default
 
-        # final data structure for handoff
-        handoff_ds = handoff.HandoffData()
-        LOG.debug("save handoff data to %s" % handoff_datafile)
-        handoff_ds.save_data(
+        # data structure for handoff sending
+        handoff_ds_send = handoff.HandoffData()
+        LOG.debug("save handoff data to %s" % handoff_send_datafile)
+        handoff_ds_send.save_data(
             base_vm_paths, base_hashvalue,
             preload_thread.basedisk_hashdict,
             preload_thread.basemem_hashdict,
@@ -354,10 +355,10 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             synthesized_vm.qmp_channel, synthesized_vm.machine.ID(),
             synthesized_vm.fuse.modified_disk_chunks, self.uri(),
         )
-        handoff_ds.to_file(handoff_datafile)
+        handoff_ds_send.to_file(handoff_send_datafile)
         LOG.debug("start handoff")
         output = subprocess.check_output([
-            "/usr/local/bin/handoff-proc", "%s" % handoff_datafile
+            "/usr/local/bin/handoff-proc", "%s" % handoff_send_datafile
         ])
         LOG.debug("finish handoff")
         return residue_zipfile
@@ -467,7 +468,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             if "overlay_url" in instance_meta.keys():
                 overlay_url = instance_meta.get("overlay_url")
             elif "handoff_info" in instance_meta.keys():
-                handoff_info = isntance_meta.get("handoff_info")
+                handoff_info = instance_meta.get("handoff_info")
 
         # original openstack logic
         disk_info = blockinfo.get_disk_info(libvirt_driver.CONF.libvirt.virt_type,
@@ -509,7 +510,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             # append metadata to the instance
             self._create_network_only(xml, instance, network_info,
                                       block_device_info)
-            synthesized_vm = self.create_new_using_synthesis(context, instance,
+            synthesized_vm = self._spawn_using_synthesis(context, instance,
                                                              xml, image_meta,
                                                              overlay_url)
             instance_uuid = str(instance.get('uuid', ''))
@@ -519,8 +520,9 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             LOG.debug(_('cloudlet, Handoff start'))
             self._create_network_only(xml, instance, network_info,
                                       block_device_info)
-            synthesized_vm = self.create_new_handoff(context, instance, xml,
-                                                     image_meta, handoff_info)
+            synthesized_vm = self._spawn_using_handoff(context, instance,
+                                                           xml, image_meta,
+                                                           handoff_info)
             instance_uuid = str(instance.get('uuid', ''))
             self.synthesized_vm_dics[instance_uuid] = synthesized_vm
             pass
@@ -609,7 +611,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         self.resumed_vm_dict[instance['uuid']] = vm_overlay
         synthesis.rettach_nic(virt_dom, vm_overlay.old_xml_str, xml)
 
-    def create_new_using_synthesis(self, context, instance, xml, 
+    def _spawn_using_synthesis(self, context, instance, xml, 
             image_meta, overlay_url):
 
         # download vm overlay
@@ -657,7 +659,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         synthesized_vm = synthesis.SynthesizedVM(
             launch_disk, launch_mem, fuse,
             disk_only=False,
-            qemu_args=None,
+            qemu_args=False,
             nova_xml=xml,
             nova_conn=self._conn,
             nova_util=libvirt_utils
@@ -672,14 +674,112 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
         synthesized_vm.resume()
 
-        # rettach nic card
+        # rettach NIC
         synthesis.rettach_nic(synthesized_vm.machine,
                 synthesized_vm.old_xml_str, xml)
 
         return synthesized_vm
 
 
-    def create_new_handoff(self, context, instance, xml, 
-                           image_meta, handoff_info):
-        import pdb;pdb.set_trace()
-        pass
+    def _spawn_using_handoff(self, context, instance, xml, 
+                                 image_meta, handoff_info):
+        image_properties = image_meta.get("properties", None)
+        memory_snap_id = str(image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_MEM))
+        diskhash_snap_id = str(image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_DISK_HASH))
+        memhash_snap_id = str(image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_MEM_HASH))
+        basedisk_path = self._get_cache_image(context, instance, image_meta['id'])
+        basemem_path = self._get_cache_image(context, instance, memory_snap_id)
+        diskhash_path = self._get_cache_image(context, instance, diskhash_snap_id)
+        memhash_path = self._get_cache_image(context, instance, memhash_snap_id)
+        base_vm_paths = [basedisk_path, basemem_path, diskhash_path, memhash_path]
+        image_sha256 = image_properties.get(CloudletAPI.PROPERTY_KEY_BASE_UUID)
+
+        snapshot_directory = libvirt_driver.CONF.libvirt.snapshots_directory
+        fileutils.ensure_tree(snapshot_directory)
+        synthesized_vm = None
+        with utils.tempdir(dir=snapshot_directory) as tmpdir:
+            uuidhex = uuid.uuid4().hex
+            launch_diskpath = os.path.join(tmpdir, uuidhex+ "-launch-disk")
+            launch_memorypath = os.path.join(tmpdir, uuidhex+ "-launch-memory")
+            tmp_dir = mkdtemp(prefix="cloudlet-residue-")
+            handoff_recv_datafile = os.path.join(tmp_dir, "handoff-data")
+            # recv handoff data and synthesize disk img and memory snapshot
+            try:
+                ret_values = self._handoff_recv(base_vm_paths, image_sha256,
+                                                handoff_recv_datafile,
+                                                launch_diskpath,
+                                                launch_memorypath)
+                # start VM
+                launch_disk_size, launch_memory_size, \
+                    disk_overlay_map, memory_overlay_map = ret_values
+                synthesized_vm = self._handoff_launch_vm(
+                    xml, basedisk_path, basemem_path,
+                    launch_diskpath, launch_memorypath,
+                    int(launch_disk_size), int(launch_memory_size),
+                    disk_overlay_map, memory_overlay_map,
+                )
+
+                # rettach NIC
+                synthesis.rettach_nic(synthesized_vm.machine,
+                        synthesized_vm.old_xml_str, xml)
+            except subprocess.CalledProcessError as e:
+                msg = "failed to perform VM handoff:\n"
+                msg += str(e)
+                raise exception.ImageNotFound(msg)
+            finally:
+                if os.path.exists(tmp_dir):
+                    shutil.rmtree(tmp_dir)
+                if os.path.exists(launch_diskpath):
+                    os.remove(launch_diskpath)
+                if os.path.exists(launch_memorypath):
+                    os.remove(launch_memorypath)
+        return synthesized_vm
+
+    def _handoff_recv(self, base_vm_paths, base_hashvalue,
+                      handoff_recv_datafile, launch_diskpath,
+                      launch_memorypath):
+        # data structure for handoff receiving
+        handoff_ds_recv = handoff.HandoffDataRecv()
+        handoff_ds_recv.save_data(
+            base_vm_paths, base_hashvalue,
+            launch_diskpath, launch_memorypath
+        )
+        handoff_ds_recv.to_file(handoff_recv_datafile)
+        LOG.debug("start handoff recv process")
+        output = subprocess.check_output([
+            "/usr/local/bin/handoff-server-proc",
+            "-d", "%s" % handoff_recv_datafile
+        ])
+        LOG.debug("finish handoff recv process")
+        # parse output: this will be fixed at cloudlet deamon
+        keyword, disksize, memorysize, disk_overlay_map, memory_overlay_map =\
+            output.split("\n")[-1].split("\t")
+        if keyword.lower() != "openstack":
+            raise subprocess.CalledProcessError("Failed to parse returned data")
+        return disksize, memorysize, disk_overlay_map, memory_overlay_map
+
+
+    def _handoff_launch_vm(self, libvirt_xml, base_diskpath, base_mempath,
+                           launch_disk, launch_memory,
+                           launch_disk_size, launch_memory_size,
+                           disk_overlay_map, memory_overlay_map):
+        # We told to FUSE that we have everything ready, so we need to wait
+        # until delta_proc fininshes. we cannot start VM before delta_proc
+        # finishes, because we don't know what will be modified in the future
+        fuse = synthesis.run_fuse(
+            Cloudlet_Const.CLOUDLETFS_PATH, Cloudlet_Const.CHUNK_SIZE,
+            base_diskpath, launch_disk_size, base_mempath, launch_memory_size,
+            resumed_disk=launch_disk,  disk_overlay_map=disk_overlay_map,
+            resumed_memory=launch_memory, memory_overlay_map=memory_overlay_map
+        )
+        synthesized_vm = synthesis.SynthesizedVM(
+            launch_disk, launch_memory, fuse,
+            disk_only=False, qemu_args=None,
+            nova_xml=libvirt_xml,
+            nova_conn=self._conn,
+            nova_util=libvirt_utils
+        )
+        synthesized_vm.start()
+        synthesized_vm.join()
+
+        return synthesized_vm

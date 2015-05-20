@@ -83,6 +83,15 @@ class CloudletController(wsgi.Controller):
             msg = _("Server not found")
             raise exc.HTTPNotFound(explanation=msg)
 
+    def _append_port_forwarding(self, body, resp_obj):
+        LOG.debug("return handoff information")
+        server_url = resp_obj.obj['server']['links'][0]['href']
+        server_ipaddr = urlsplit(server_url).netloc.split(":")[0]
+        resp_obj.obj['handoff'] = {
+            "server_ip":str(server_ipaddr),
+            "server_port":8082
+        }
+
     @wsgi.extends
     def create(self, req, body):
         context = req.environ['nova.context']
@@ -93,9 +102,8 @@ class CloudletController(wsgi.Controller):
                 pass
             elif 'handoff_info' in metadata:
                 # create VM using VM handoff
-                pass
-            resp_obj = (yield)
-            #self._show(req, resp_obj)
+                resp_obj = (yield)
+                self._append_port_forwarding(body, resp_obj)
 
     @wsgi.action('cloudlet-base')
     def cloudlet_base_creation(self, req, id, body):
