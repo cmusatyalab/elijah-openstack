@@ -657,7 +657,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         synthesized_vm = synthesis.SynthesizedVM(
             launch_disk, launch_mem, fuse,
             disk_only=False,
-            qemu_args=False,
+            qemu_args=None,
             nova_xml=xml,
             nova_conn=self._conn,
             nova_util=libvirt_utils
