@@ -89,7 +89,7 @@ class CloudletController(wsgi.Controller):
         server_ipaddr = urlsplit(server_url).netloc.split(":")[0]
         resp_obj.obj['handoff'] = {
             "server_ip":str(server_ipaddr),
-            "server_port":8082
+            "server_port":8022
         }
 
     @wsgi.extends
@@ -99,7 +99,7 @@ class CloudletController(wsgi.Controller):
             metadata = body['server']['metadata']
             if 'overlay_url' in metadata:
                 # create VM using synthesis
-                pass
+                resp_obj = (yield)
             elif 'handoff_info' in metadata:
                 # create VM using VM handoff
                 resp_obj = (yield)

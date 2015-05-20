@@ -242,18 +242,25 @@ class CloudletAPI(nova_rpc.ComputeAPI):
                     CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE : CloudletAPI.IMAGE_TYPE_OVERLAY,
                     }
             residue_meta_properties.update(extra_properties or {})
-            recv_residue_meta = self._cloudlet_create_image(context, instance,
-                                                            dest_vm_name, 'snapshot',
-                                                            extra_properties=residue_meta_properties)
+            recv_residue_meta = self._cloudlet_create_image(
+                context, instance, dest_vm_name, 'snapshot',
+                extra_properties=residue_meta_properties
+            )
             instance.task_state = task_states.IMAGE_SNAPSHOT
             instance.save(expected_task_state=[None])
             residue_glance_id = recv_residue_meta['id']
         elif parsed_handoff_url.scheme == "http":
             # handoff to other OpenStack
             # Send message to the destination
-            instance_uuid = instance['uuid']
-            image_ref = instance.image_ref
-            self._prepare_handoff_dest(urlparse(handoff_url), dest_token, instance)
+            ret_value = self._prepare_handoff_dest(urlparse(handoff_url), dest_token, instance)
+            # parse handoff URL from the return
+            handoff_dest_addr = ret_value.get("handoff", None)
+            if handoff_dest_addr == None:
+                msg = "Cannot get handoff URL from the destination message"
+                raise HandoffError(msg)
+            handoff_url = "tcp://%s:%s" % (handoff_dest_addr['server_ip'],
+                                           handoff_dest_addr['server_port'])
+            #handoff_url = "tcp://128.2.210.197:8022"
 
         # api request
         if self.client.can_send_version('3.17'):
@@ -272,7 +279,7 @@ class CloudletAPI(nova_rpc.ComputeAPI):
 
     def _prepare_handoff_dest(self, end_point, dest_token, instance):
         # information of current VM at source
-        instance_name = instance['display_name']
+        instance_name = instance['display_name'] + "-handoff"
         flavor_memory = instance['memory_mb']
         flavor_cpu = instance['vcpus']
         requested_basevm_id = instance['system_metadata']['image_base_sha256_uuid']
@@ -313,7 +320,6 @@ class CloudletAPI(nova_rpc.ComputeAPI):
                 (flavor_cpu, flavor_memory, end_point.netloc)
             raise HandoffError(msg)
 
-        import pdb;pdb.set_trace()
         # generate request
         meta_data = {"handoff_info": instance_name}
         s = {
@@ -334,6 +340,7 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         data = response.read()
         dd = jsonutils.loads(data)
         conn.close()
+
         return dd
 
     def _get_server_info(self, end_point, token, request_list):

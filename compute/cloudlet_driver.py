@@ -290,8 +290,9 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD,
                           expected_state=None)
         try:
-            residue_filepath = self._handoff_send(base_vm_paths, base_sha256_uuid,
-                                            synthesized_vm, handoff_url)
+            residue_filepath = self._handoff_send(
+                base_vm_paths, base_sha256_uuid, synthesized_vm, handoff_url
+            )
         except subprocess.CalledProcessError as e:
             msg = "failed to perform VM handoff:\n"
             msg += str(e)
@@ -344,7 +345,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         handoff_mode = None # use default
 
         # data structure for handoff sending
-        handoff_ds_send = handoff.HandoffData()
+        handoff_ds_send = handoff.HandoffDataSend()
         LOG.debug("save handoff data to %s" % handoff_send_datafile)
         handoff_ds_send.save_data(
             base_vm_paths, base_hashvalue,
@@ -355,14 +356,22 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             synthesized_vm.qmp_channel, synthesized_vm.machine.ID(),
             synthesized_vm.fuse.modified_disk_chunks, self.uri(),
         )
-        handoff_ds_send.to_file(handoff_send_datafile)
-        LOG.debug("start handoff")
-        output = subprocess.check_output([
-            "/usr/local/bin/handoff-proc", "%s" % handoff_send_datafile
-        ])
-        LOG.debug("finish handoff")
-        return residue_zipfile
 
+        LOG.debug("start handoff send process")
+        handoff_ds_send.to_file(handoff_send_datafile)
+        cmd = ["/usr/local/bin/handoff-proc", "%s" % handoff_send_datafile]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, close_fds=True)
+        def _wait_for_handoff_send():
+            """Called at an interval until VM synthesis finishes."""
+            returncode = proc.poll()
+            LOG.debug("waiting for finishing handoff send")
+            if returncode is not None:
+                LOG.info("Handoff send finishes")
+                raise loopingcall.LoopingCallDone()
+        timer = loopingcall.FixedIntervalLoopingCall(_wait_for_handoff_send)
+        timer.start(interval=0.5).wait()
+        output = proc.stdout.read()
+        return residue_zipfile
 
     def _get_cache_image(self, context, instance, snapshot_id, suffix=''):
         def basepath(fname='', suffix=suffix):
@@ -745,19 +754,28 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             launch_diskpath, launch_memorypath
         )
         handoff_ds_recv.to_file(handoff_recv_datafile)
+
         LOG.debug("start handoff recv process")
-        output = subprocess.check_output([
-            "/usr/local/bin/handoff-server-proc",
-            "-d", "%s" % handoff_recv_datafile
-        ])
-        LOG.debug("finish handoff recv process")
+        cmd = ["/usr/local/bin/handoff-server-proc", "-d", "%s" % handoff_recv_datafile]
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, close_fds=True)
+
+        def _wait_for_handoff_recv():
+            """Called at an interval until VM synthesis finishes."""
+            returncode = proc.poll()
+            LOG.debug("waiting for handoff recv")
+            if returncode is not None:
+                LOG.info("Handoff recv finishes")
+                raise loopingcall.LoopingCallDone()
+        timer = loopingcall.FixedIntervalLoopingCall(_wait_for_handoff_recv)
+        timer.start(interval=0.5).wait()
+        output = proc.stdout.read()
+
         # parse output: this will be fixed at cloudlet deamon
         keyword, disksize, memorysize, disk_overlay_map, memory_overlay_map =\
             output.split("\n")[-1].split("\t")
         if keyword.lower() != "openstack":
             raise subprocess.CalledProcessError("Failed to parse returned data")
         return disksize, memorysize, disk_overlay_map, memory_overlay_map
-
 
     def _handoff_launch_vm(self, libvirt_xml, base_diskpath, base_mempath,
                            launch_disk, launch_memory,
