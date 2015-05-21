@@ -92,6 +92,31 @@ class CloudletController(wsgi.Controller):
             "server_port":8022
         }
 
+    def _port_forwarding(self, context, resp_obj):
+        if 'server' not in resp_obj.obj:
+            return
+        instance_id = resp_obj.obj['server'].get('id', None)
+        instance = self.compute_api.get(context, instance_id)
+        instance_hostname = instance.get('node', None)
+        host_ip = None
+        compute_nodes = self.host_api.compute_node_get_all(context)
+        for node in compute_nodes:
+            node_name = node.get('hypervisor_hostname', None)
+            if node_name == instance_hostname:
+                host_ip = node.get('host_ip', None)
+
+        # set port forwarding
+        if host_ip:
+            LOG.debug("return port forwarding information")
+            server_url = resp_obj.obj['server']['links'][0]['href']
+            server_ipaddr = urlsplit(server_url).netloc.split(":")[0]
+            resp_obj.obj['overlay'] = {
+                "server_ip":str(server_ipaddr),
+                "server_port":8022,
+                "compute_host_ip": str(host_ip),
+            }
+
+
     @wsgi.extends
     def create(self, req, body):
         context = req.environ['nova.context']
@@ -100,6 +125,7 @@ class CloudletController(wsgi.Controller):
             if 'overlay_url' in metadata:
                 # create VM using synthesis
                 resp_obj = (yield)
+                self._port_forwarding(context, resp_obj)
             elif 'handoff_info' in metadata:
                 # create VM using VM handoff
                 resp_obj = (yield)
