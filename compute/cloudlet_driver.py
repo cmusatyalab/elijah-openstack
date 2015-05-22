@@ -565,12 +565,12 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             state = self.get_info(instance)['state']
 
             if state == power_state.RUNNING:
-                LOG.info(_("Instance spawned successfully."),
-                         instance=instance)
                 raise loopingcall.LoopingCallDone()
 
         timer = loopingcall.FixedIntervalLoopingCall(_wait_for_boot)
         timer.start(interval=0.5).wait()
+        LOG.info(_("Instance spawned successfully."),
+                    instance=instance)
 
     def _destroy(self, instance):
         """overwrite original libvirt_driver's _destroy method
@@ -677,7 +677,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         # testing non-thread resume
         delta_proc.start()
         fuse_proc.start()
-        #delta_proc.join()
+        delta_proc.join()
         fuse_proc.join()
         LOG.info(_("Finish VM synthesis"), instance=instance)
 

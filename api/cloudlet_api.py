@@ -16,6 +16,8 @@
 #   limitations under the License.
 #
 
+import eventlet
+import threading
 from urlparse import urlparse
 from urlparse import urlsplit
 import httplib
@@ -384,4 +386,50 @@ class CloudletAPI(nova_rpc.ComputeAPI):
             return stats
         except ImportError as e:
             return {"Cloudlet Discovery is not available"}
+
+
+    def handoff_port_forwarding(self, dest_ip, dest_port):
+        o = PortForwarding(dest_ip, int(dest_port))
+        o.start()   # port forwarding server will finish automatically whne a client disconnects
+        return o.source_port
+
+
+class PortForwarding(threading.Thread):
+    """Forward VM handoff packet to the compute node"""
+
+    def __init__(self, dest_ip, dest_port, source_port=None):
+        self.dest_ip = dest_ip
+        self.dest_port = dest_port
+        if source_port == None:
+            import socket
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.bind(('0.0.0.0', 0))   # get free TCP port
+            local_port = int(sock.getsockname()[1])
+            self.source_port = local_port
+        else:
+            self.source_port = source_port
+        threading.Thread.__init__(self, target=self.port_forwarding)
+
+    def port_forwarding(self):
+        local_addr = ('0.0.0.0', self.source_port)
+        remote_addr = (self.dest_ip, self.dest_port)
+        LOG.info("Port forwarding starts from %s to %s" % (str(local_addr),
+                                                           str(remote_addr)))
+        listener = eventlet.listen(local_addr)
+        client, addr = listener.accept()
+        server = eventlet.connect(remote_addr)
+        eventlet.spawn_n(self.forward, client, server, self.closed_callback)
+        eventlet.spawn_n(self.forward, server, client)
+
+    def closed_callback(self):
+        LOG.info("Port forwadring finishes")
+
+    def forward(self, source, dest, cb=lambda: None):
+        while True:
+            d = source.recv(32384)
+            if d == '':
+                cb()
+                break
+            dest.sendall(d)
+
 

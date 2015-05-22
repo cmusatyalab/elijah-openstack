@@ -83,37 +83,58 @@ class CloudletController(wsgi.Controller):
             msg = _("Server not found")
             raise exc.HTTPNotFound(explanation=msg)
 
-    def _append_port_forwarding(self, body, resp_obj):
-        LOG.debug("return handoff information")
-        server_url = resp_obj.obj['server']['links'][0]['href']
-        server_ipaddr = urlsplit(server_url).netloc.split(":")[0]
-        resp_obj.obj['handoff'] = {
-            "server_ip":str(server_ipaddr),
-            "server_port":8022
+    def _append_synthesis_info(self, context, body, resp_obj):
+        LOG.debug("return synthesis information")
+        resp_obj.obj['synthesis'] = {
+            "return": "success"
         }
 
-    def _port_forwarding(self, context, resp_obj):
+    def _append_port_forwarding(self, context, body, resp_obj):
+        LOG.debug("return handoff information")
         if 'server' not in resp_obj.obj:
             return
-        instance_id = resp_obj.obj['server'].get('id', None)
-        instance = self.compute_api.get(context, instance_id)
-        instance_hostname = instance.get('node', None)
-        host_ip = None
         compute_nodes = self.host_api.compute_node_get_all(context)
+        instance_id = resp_obj.obj['server'].get('id', None)
+
+        # wait until the VM instance is scheduled to the compute node
+        # Need fix: seperate one API into two; one for assigning VM to compute
+        # node, the other for setting up port forwarding
+        repeat_count = 0; MAX_COUNT = 30
+        while repeat_count < MAX_COUNT:
+            instance = self.compute_api.get(context, instance_id)
+            instance_hostname = instance.get('node', None)
+            if instance_hostname == None:
+                import time
+                time.sleep(0.1)
+                msg = "waiting for VM scheduling %d/%d..."\
+                    % (repeat_count, MAX_COUNT)
+                LOG.debug(msg)
+                repeat_count += 1
+            else:
+                break
+
+        dest_ip = None
         for node in compute_nodes:
             node_name = node.get('hypervisor_hostname', None)
-            if node_name == instance_hostname:
-                host_ip = node.get('host_ip', None)
+            if str(node_name) == str(instance_hostname):
+                dest_ip = node.get('host_ip', None)
 
         # set port forwarding
-        if host_ip:
+        if dest_ip:
             LOG.debug("return port forwarding information")
+            dest_port = 8022
+            source_port = self.cloudlet_api.handoff_port_forwarding(
+                dest_ip, dest_port
+            )
             server_url = resp_obj.obj['server']['links'][0]['href']
             server_ipaddr = urlsplit(server_url).netloc.split(":")[0]
-            resp_obj.obj['overlay'] = {
+            resp_obj.obj['handoff'] = {
                 "server_ip":str(server_ipaddr),
-                "server_port":8022,
-                "compute_host_ip": str(host_ip),
+                "server_port":int(source_port),
+            }
+        else:
+            resp_obj.obj['handoff'] = {
+                "error":"cannot setup port forwarding"
             }
 
 
@@ -125,11 +146,11 @@ class CloudletController(wsgi.Controller):
             if 'overlay_url' in metadata:
                 # create VM using synthesis
                 resp_obj = (yield)
-                self._port_forwarding(context, resp_obj)
+                self._append_synthesis_info(context, body, resp_obj)
             elif 'handoff_info' in metadata:
                 # create VM using VM handoff
                 resp_obj = (yield)
-                self._append_port_forwarding(body, resp_obj)
+                self._append_port_forwarding(context, body, resp_obj)
 
     @wsgi.action('cloudlet-base')
     def cloudlet_base_creation(self, req, id, body):
