@@ -21,7 +21,9 @@ import os
 import uuid
 import hashlib
 import subprocess
+import select
 import shutil
+import StringIO
 from urlparse import urlsplit
 from tempfile import mkdtemp    # replace it with util.tempdir
 
@@ -293,7 +295,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             residue_filepath = self._handoff_send(
                 base_vm_paths, base_sha256_uuid, synthesized_vm, handoff_url
             )
-        except subprocess.CalledProcessError as e:
+        except handoff.HandoffError as e:
             msg = "failed to perform VM handoff:\n"
             msg += str(e)
             raise exception.ImageNotFound(msg)
@@ -360,17 +362,27 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         LOG.debug("start handoff send process")
         handoff_ds_send.to_file(handoff_send_datafile)
         cmd = ["/usr/local/bin/handoff-proc", "%s" % handoff_send_datafile]
+        LOG.debug("subprocess: %s" % cmd)
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, close_fds=True)
-        def _wait_for_handoff_send():
+        def _wait_for_handoff_send(print_log=False):
             """Called at an interval until VM synthesis finishes."""
             returncode = proc.poll()
-            LOG.debug("waiting for finishing handoff send")
-            if returncode is not None:
-                LOG.info("Handoff send finishes")
+            if returncode is None:
+                # keep record stdout
+                LOG.debug("waiting for finishing handoff send")
+                in_ready, _, _ = select.select([proc.stdout], [], [])
+                try:
+                    buf = os.read(proc.stdout.fileno(), 1024*100)
+                    if print_log:
+                        LOG.debug(buf)
+                except OSError as e:
+                    if e.errno == errno.EAGAIN or e.errno == errno.EWOULDBLOCK:
+                        return
+            else:
                 raise loopingcall.LoopingCallDone()
-        timer = loopingcall.FixedIntervalLoopingCall(_wait_for_handoff_send)
+        timer = loopingcall.FixedIntervalLoopingCall(_wait_for_handoff_send, print_log=True)
         timer.start(interval=0.5).wait()
-        output = proc.stdout.read()
+        LOG.info("Handoff send finishes")
         return residue_zipfile
 
     def _get_cache_image(self, context, instance, snapshot_id, suffix=''):
@@ -559,14 +571,12 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
                                             block_device_info)
 
         LOG.debug(_("Instance is running"), instance=instance)
-
         def _wait_for_boot():
             """Called at an interval until the VM is running."""
             state = self.get_info(instance)['state']
 
             if state == power_state.RUNNING:
                 raise loopingcall.LoopingCallDone()
-
         timer = loopingcall.FixedIntervalLoopingCall(_wait_for_boot)
         timer.start(interval=0.5).wait()
         LOG.info(_("Instance spawned successfully."),
@@ -731,7 +741,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
                 # rettach NIC
                 synthesis.rettach_nic(synthesized_vm.machine,
                         synthesized_vm.old_xml_str, xml)
-            except subprocess.CalledProcessError as e:
+            except handoff.HandoffError as e:
                 msg = "failed to perform VM handoff:\n"
                 msg += str(e)
                 raise exception.ImageNotFound(msg)
@@ -757,24 +767,43 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
         LOG.debug("start handoff recv process")
         cmd = ["/usr/local/bin/handoff-server-proc", "-d", "%s" % handoff_recv_datafile]
+        LOG.debug("subprocess: %s" % cmd)
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, close_fds=True)
-
-        def _wait_for_handoff_recv():
+        stdout_buf = StringIO.StringIO()
+        def _wait_for_handoff_recv(print_log=True):
             """Called at an interval until VM synthesis finishes."""
             returncode = proc.poll()
-            LOG.debug("waiting for handoff recv")
-            if returncode is not None:
-                LOG.info("Handoff recv finishes")
+            if returncode is None:
+                # keep record stdout
+                LOG.debug("waiting for finishing handoff recv")
+                in_ready, _, _ = select.select([proc.stdout], [], [])
+                try:
+                    buf = os.read(proc.stdout.fileno(), 1024*100)
+                    if print_log:
+                        LOG.debug(buf)
+                    stdout_buf.write(buf)
+                except OSError as e:
+                    if e.errno == errno.EAGAIN or e.errno == errno.EWOULDBLOCK:
+                        return
+            else:
+                # handoff finishes. Read reamining stdout
+                in_ready, _, _ = select.select([proc.stdout], [], [], 0.1)
+                buf = proc.stdout.read()
+                stdout_buf.write(buf)
                 raise loopingcall.LoopingCallDone()
         timer = loopingcall.FixedIntervalLoopingCall(_wait_for_handoff_recv)
         timer.start(interval=0.5).wait()
-        output = proc.stdout.read()
+        LOG.info("Handoff recv finishes")
+        returncode = proc.poll()
+        if returncode is not 0:
+            msg = "Failed to receive handoff data"
+            raise handoff.HandoffError(msg)
 
         # parse output: this will be fixed at cloudlet deamon
         keyword, disksize, memorysize, disk_overlay_map, memory_overlay_map =\
-            output.split("\n")[-1].split("\t")
+            stdout_buf.getvalue().split("\n")[-1].split("\t")
         if keyword.lower() != "openstack":
-            raise subprocess.CalledProcessError("Failed to parse returned data")
+            raise handoff.HandoffError("Failed to parse returned data")
         return disksize, memorysize, disk_overlay_map, memory_overlay_map
 
     def _handoff_launch_vm(self, libvirt_xml, base_diskpath, base_mempath,

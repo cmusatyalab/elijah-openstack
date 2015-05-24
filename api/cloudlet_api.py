@@ -262,7 +262,6 @@ class CloudletAPI(nova_rpc.ComputeAPI):
                 raise HandoffError(msg)
             handoff_url = "tcp://%s:%s" % (handoff_dest_addr['server_ip'],
                                            handoff_dest_addr['server_port'])
-            #handoff_url = "tcp://128.2.210.197:8022"
 
         # api request
         if self.client.can_send_version('3.17'):
