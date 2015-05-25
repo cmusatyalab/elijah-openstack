@@ -55,7 +55,8 @@ def get_cloudlet_type(instance):
 
         # now it's either resumed base instance or synthesized instance
         # synthesized instance has meta that for overlay URL
-        if metadata.get('overlay_url') != None:
+        if (metadata.get('overlay_url') is not None) or\
+                (metadata.get('handoff_info') is not None):
             return CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY
         else:
             return CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK

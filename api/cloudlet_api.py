@@ -284,6 +284,7 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         flavor_memory = instance['memory_mb']
         flavor_cpu = instance['vcpus']
         requested_basevm_id = instance['system_metadata']['image_base_sha256_uuid']
+        original_overlay_url = instance.get("metadata", dict()).get("overlay_url", None)
 
         # find matching base VM
         image_list = self._get_server_info(end_point, dest_token, "images")
@@ -322,10 +323,13 @@ class CloudletAPI(nova_rpc.ComputeAPI):
             raise HandoffError(msg)
 
         # generate request
-        meta_data = {"handoff_info": instance_name}
+        meta_data = {
+            "handoff_info": instance_name,
+            "overlay_url": original_overlay_url
+        }
+
         s = {
-            "server":
-            {
+            "server": {
                 "name": instance_name, "imageRef": str(basevm_uuid),
                 "flavorRef": flavor_id, "metadata": meta_data,
                 "min_count":"1", "max_count":"1",

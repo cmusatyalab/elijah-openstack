@@ -488,7 +488,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         if instance_meta is not None:
             if "overlay_url" in instance_meta.keys():
                 overlay_url = instance_meta.get("overlay_url")
-            elif "handoff_info" in instance_meta.keys():
+            if "handoff_info" in instance_meta.keys():
                 handoff_info = instance_meta.get("handoff_info")
 
         # original openstack logic
@@ -511,7 +511,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         original_metadata = instance.get('metadata')
         libvirt_driver.CONF.libvirt.inject_password = None
         libvirt_driver.CONF.libvirt.inject_key = None
-        instance['metadata'].clear()
+        instance['metadata'] = {}
 
         self._create_image(context, instance,
                            disk_info['mapping'],
@@ -525,7 +525,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         libvirt_driver.CONF.libvirt.inject_key = original_inject_key
         instance['metadata'] = original_metadata
 
-        if overlay_url is not None:
+        if (overlay_url != None) and (handoff_info == None):
             # spawn instance using VM synthesis
             LOG.debug(_('cloudlet, synthesis start'))
             # append metadata to the instance

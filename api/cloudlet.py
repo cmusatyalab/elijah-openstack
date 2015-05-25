@@ -143,7 +143,7 @@ class CloudletController(wsgi.Controller):
         context = req.environ['nova.context']
         if 'server' in body and 'metadata' in body['server']:
             metadata = body['server']['metadata']
-            if 'overlay_url' in metadata:
+            if ('overlay_url' in metadata) and ('handoff_info' not in metadata):
                 # create VM using synthesis
                 resp_obj = (yield)
                 self._append_synthesis_info(context, body, resp_obj)
@@ -205,7 +205,7 @@ class CloudletController(wsgi.Controller):
 
     @wsgi.action('cloudlet-handoff')
     def cloudlet_handoff(self, req, id, body):
-        """Perform VM migration acorss OpenStack
+        """Perform VM migration across OpenStack
         """
         context = req.environ['nova.context']
         payload = body['cloudlet-handoff']
