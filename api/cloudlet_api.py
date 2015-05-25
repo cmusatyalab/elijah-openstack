@@ -21,18 +21,25 @@ import threading
 from urlparse import urlparse
 from urlparse import urlsplit
 import httplib
+from nova import image as image
 from nova.compute import api as nova_api
 from nova.compute import rpcapi as nova_rpc
 from nova.compute import vm_states
 from nova.compute import utils as compute_utils
 from nova import exception
 from nova.compute import task_states
-from nova.openstack.common import log as logging
 from oslo.config import cfg
 from oslo import messaging
 
-#import nova.openstack.common.rpc.proxy
-from nova.openstack.common import jsonutils
+try:
+    # icehouse
+    from nova.openstack.common import log as logging
+    from nova.openstack.common import jsonutils
+except ImportError as e:
+    # kilo
+    from oslo_log import log as logging
+    from oslo_serialization import jsonutils
+
 from hashlib import sha256
 
 LOG = logging.getLogger(__name__)
@@ -48,8 +55,6 @@ class CloudletAPI(nova_rpc.ComputeAPI):
     """ At the time we implement Cloudlet API in grizzly,
     API has 3.34 BASE_RPC_API_VERSION.
     """
-    BASE_RPC_API_VERSION = '3.34'
-
     PROPERTY_KEY_CLOUDLET       = "is_cloudlet"
     PROPERTY_KEY_CLOUDLET_TYPE  = "cloudlet_type"
     PROPERTY_KEY_NETWORK_INFO   = "network"
@@ -70,8 +75,8 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         #        topic=CONF.compute_topic,
         #        default_version=CloudletAPI.BASE_RPC_API_VERSION)
         super(CloudletAPI, self).__init__()
-        target = messaging.Target(topic=CONF.compute_topic, version=CloudletAPI.BASE_RPC_API_VERSION)
         self.nova_api = nova_api.API()
+        self.image_api = image.API()
 
     def _cloudlet_create_image(self, context, instance, name, image_type,
                       extra_properties=None):
@@ -89,23 +94,28 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         if extra_properties is None:
             extra_properties = {}
         instance_uuid = instance['uuid']
-
         properties = {
             'instance_uuid': instance_uuid,
             'user_id': str(context.user_id),
             'image_type': image_type,
         }
         image_ref = instance.image_ref
-        sent_meta = compute_utils.get_image_metadata(
-            context, self.nova_api.image_service, image_ref, instance)
 
+        if hasattr(self.nova_api, "image_service"):
+            # icehouse
+            image_api = self.nova_api.image_service
+        else:
+            # kilo
+            image_api = self.image_api
+
+        sent_meta = compute_utils.get_image_metadata(
+            context, self.image_api, image_ref, instance)
         sent_meta['name'] = name
         sent_meta['is_public'] = False
-
         # The properties set up above and in extra_properties have precedence
         properties.update(extra_properties or {})
         sent_meta['properties'].update(properties)
-        return self.nova_api.image_service.create(context, sent_meta)
+        return self.image_api.create(context, sent_meta)
 
     @nova_api.wrap_check_policy
     @nova_api.check_instance_state(vm_state=[vm_states.ACTIVE])
@@ -175,13 +185,10 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         instance.save(expected_task_state=[None])
 
         # api request
-        if self.client.can_send_version('3.17'):
-            version = '3.17'
-        else:
-            version = self._get_compat_version('3.0', '2.25')
-            instance = jsonutils.to_primitive(instance)
-        cctxt = self.client.prepare(server=nova_rpc._compute_host(None, instance),
-                version=version)
+        version = self.client.target.version
+        cctxt = self.client.prepare(
+            server=nova_rpc._compute_host(None, instance), version=version
+        )
         cctxt.call(context, 'cloudlet_create_base',
                    instance=instance,
                    vm_name=base_name,
@@ -217,13 +224,10 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         instance.save(expected_task_state=[None])
 
         # api request
-        if self.client.can_send_version('3.17'):
-            version = '3.17'
-        else:
-            version = self._get_compat_version('3.0', '2.25')
-            instance = jsonutils.to_primitive(instance)
-        cctxt = self.client.prepare(server=nova_rpc._compute_host(None, instance),
-                version=version)
+        version = self.client.target.version
+        cctxt = self.client.prepare(
+            server=nova_rpc._compute_host(None, instance), version=version
+        )
         cctxt.cast(context, 'cloudlet_overlay_finish',
                    instance=instance,
                    overlay_name=overlay_name,
@@ -264,13 +268,10 @@ class CloudletAPI(nova_rpc.ComputeAPI):
                                            handoff_dest_addr['server_port'])
 
         # api request
-        if self.client.can_send_version('3.17'):
-            version = '3.17'
-        else:
-            version = self._get_compat_version('3.0', '2.25')
-            instance = jsonutils.to_primitive(instance)
-        cctxt = self.client.prepare(server=nova_rpc._compute_host(None, instance),
-                                    version=version)
+        version = self.client.target.version
+        cctxt = self.client.prepare(
+            server=nova_rpc._compute_host(None, instance), version=version
+        )
         cctxt.cast(context, 'cloudlet_handoff',
                    instance=instance,
                    handoff_url=handoff_url,
@@ -392,7 +393,7 @@ class CloudletAPI(nova_rpc.ComputeAPI):
 
 
     def handoff_port_forwarding(self, dest_ip, dest_port):
-        o = PortForwarding(dest_ip, int(dest_port))
+        o = PortForwarding(str(dest_ip), int(dest_port))    # type(dest_ip) = netaddr.ip.IPAddress at kilo
         o.start()   # port forwarding server will finish automatically whne a client disconnects
         return o.source_port
 

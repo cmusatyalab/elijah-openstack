@@ -153,7 +153,7 @@ def request_synthesis(server_address, token, end_point, key_name=None,\
 
     # todo: assign small flavor
     flavor_list = get_list(server_address, token, end_point, "flavors")
-    flavor_id = flavor_list[1]['links'][0]['href']
+    flavor_id = flavor_list[2]['links'][0]['href']
 
     # generate request
     meta_data = {"overlay_url": overlay_url}
@@ -570,6 +570,10 @@ def basevm_import(server_address, uname, password, tenant_name, import_filepath,
         flavor_ref, flavor_id = create_flavor(server_address, token, urlparse(endpoint), \
                 cpu_count, memory_size_mb, flavor_name)
         sys.stdout.write("Create new flavor for the base VM\n")
+    # delete temp dir
+    if os.path.exists(temp_dir):
+        shutil.rmtree(temp_dir)
+
     return glance_disk
 
 
@@ -767,12 +771,12 @@ def main(argv=None):
         sys.exit(1)
     if args[0] == CMD_CREATE_BASE:
         instance_name = raw_input("Name of a running instance that you like to make as a base VM : ")
-        snapshot_name = raw_input("Set name of Base VM : ")
+        snapshot_name = raw_input("Name of Base VM : ")
         request_cloudlet_base(settings.server_address, token, \
-                urlparse(endpoint), instance_name, snapshot_name) 
+                urlparse(endpoint), instance_name, snapshot_name)
     elif args[0] == CMD_CREATE_OVERLAY:
         instance_uuid = raw_input("UUID of a running instance that you like to create VM overlay : ")
-        snapshot_name = raw_input("Set name of VM overlay : ")
+        snapshot_name = raw_input("Name of VM overlay : ")
         request_create_overlay(settings.server_address, token, urlparse(endpoint), \
                 instance_uuid, snapshot_name)
     elif args[0] == CMD_DOWNLOAD:
@@ -791,8 +795,7 @@ def main(argv=None):
         basevm_download(settings.server_address, token, \
                 urlparse(endpoint), basedisk_uuid, output_path)
     elif args[0] == CMD_IMPORT_BASE:
-        import_filepath = raw_input("Path to zipped base VM package:")
-        #import_filepath = "./precise-hotplug.zip"
+        import_filepath = raw_input("Absolute path to base VM package:")
         import_filepath = os.path.abspath(import_filepath)
         if os.access(import_filepath, os.R_OK) == False:
             sys.stderr("Cannot access the file at %s" % import_filepath)

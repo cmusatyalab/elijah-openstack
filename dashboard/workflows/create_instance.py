@@ -106,7 +106,6 @@ class SetResumeDetailAction(workflows.Action):
 
     def clean(self):
         cleaned_data = super(SetResumeDetailAction, self).clean()
-
         return cleaned_data
 
     def _get_available_images(self, request, context):
@@ -115,8 +114,13 @@ class SetResumeDetailAction(workflows.Action):
             public = {"is_public": True,
                       "status": "active"}
             try:
-                public_images, _more =\
-                    glance.image_list_detailed(request, filters=public)
+                image_detail = api.glance.image_list_detailed(
+                    request, filters=public
+                )
+                if len(image_detail) == 2:  # icehouse
+                    public_images, _more = image_detail
+                elif len(image_detail) == 3: # kilo
+                    public_images, _more , has_prev_data = image_detail
             except:
                 public_images = []
                 exceptions.handle(request,
@@ -131,8 +135,13 @@ class SetResumeDetailAction(workflows.Action):
             owner = {"property-owner_id": project_id,
                      "status": "active"}
             try:
-                owned_images, _more =\
-                    glance.image_list_detailed(request, filters=owner)
+                image_detail = api.glance.image_list_detailed(
+                    request, filters=owner
+                )
+                if len(image_detail) == 2:  # icehouse
+                    owned_images, _more = image_detail
+                elif len(image_detail) == 3: # kilo
+                    owned_images, _more , has_prev_data = image_detail
             except:
                 owned_images = []
                 exceptions.handle(request,
@@ -182,7 +191,7 @@ class SetResumeDetailAction(workflows.Action):
         except:
             exceptions.handle(self.request,
                               _("Unable to retrieve quota information."))
-        return super(SetSynthesizeDetailsAction, self).get_help_text(extra)
+        return super(SetResumeDetailAction, self).get_help_text(extra)
 
     def populate_keypair_id_choices(self, request, context):
         try:
@@ -225,8 +234,7 @@ class SetResumeDetailAction(workflows.Action):
 
 
 class SetSynthesizeDetailsAction(workflows.Action):
-
-    overlay_url = forms.CharField(max_length=200, required=True, 
+    overlay_url = forms.CharField(max_length=200, required=True,
             label=_("URL for VM overlay"), initial="")
     name = forms.CharField(max_length=80, label=_("Instance Name"), initial="synthesized_vm")
     security_group_ids = forms.MultipleChoiceField(label=_("Security Groups"),

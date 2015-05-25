@@ -19,15 +19,22 @@
 import functools
 
 from nova.compute import task_states
-from nova.openstack.common import log as logging
+try:
+    # icehouse
+    from nova.openstack.common import log as logging
+    from nova.openstack.common.gettextutils import _
+    from nova.openstack.common import excutils
+except ImportError as e:
+    # kilo
+    from oslo_log import log as logging
+    from nova.i18n import _
+    from oslo_utils import excutils
 from nova.objects import block_device as block_device_obj
 from nova.objects import quotas as quotas_obj
 from nova.compute import manager as compute_manager
 from nova.virt import driver
 from nova import rpc
-from nova.openstack.common.gettextutils import _
 from nova import exception
-from nova.openstack.common import excutils
 from nova import utils
 
 

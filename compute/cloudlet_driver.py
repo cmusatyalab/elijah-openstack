@@ -36,12 +36,18 @@ from nova.virt.libvirt import utils as libvirt_utils
 from nova.image import glance
 from nova.compute import task_states
 from nova.openstack.common import fileutils
-from nova.openstack.common import log as openstack_logging
+try:
+    # icehouse
+    from nova.openstack.common import log as openstack_logging
+    from nova.openstack.common.gettextutils import _
+except ImportError as e:
+    # kilo
+    from oslo_log import log as openstack_logging
+    from nova.i18n import _
 from nova.openstack.common import loopingcall
 
 from nova.virt.libvirt import driver as libvirt_driver
 from nova.compute.cloudlet_api import CloudletAPI
-from nova.openstack.common.gettextutils import _
 
 from xml.etree import ElementTree
 from elijah.provisioning import synthesis
@@ -117,7 +123,12 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         """create base vm and save it to glance
         """
         try:
-            virt_dom = self._lookup_by_name(instance['name'])
+            if hasattr(self, "_lookup_by_name"):
+                # icehouse
+                virt_dom = self._lookup_by_name(instance['name'])
+            else:
+                # kilo
+                virt_dom = self._host.get_domain(instance)
         except exception.InstanceNotFound:
             raise exception.InstanceNotRunning(instance_id=instance['uuid'])
 
@@ -222,7 +233,12 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
     def create_overlay_vm(self, context, instance, 
             overlay_name, overlay_id, update_task_state):
         try:
-            virt_dom = self._lookup_by_name(instance['name'])
+            if hasattr(self, "_lookup_by_name"):
+                # icehouse
+                virt_dom = self._lookup_by_name(instance['name'])
+            else:
+                # kilo
+                virt_dom = self._host.get_domain(instance)
         except exception.InstanceNotFound:
             raise exception.InstanceNotRunning(instance_id=instance['uuid'])
 
@@ -270,7 +286,12 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
     def perform_vmhandoff(self, context, instance, handoff_url,
                           update_task_state, residue_glance_id=None):
         try:
-            virt_dom = self._lookup_by_name(instance['name'])
+            if hasattr(self, "_lookup_by_name"):
+                # icehouse
+                virt_dom = self._lookup_by_name(instance['name'])
+            else:
+                # kilo
+                virt_dom = self._host.get_domain(instance)
         except exception.InstanceNotFound:
             raise exception.InstanceNotRunning(instance_id=instance['uuid'])
         synthesized_vm = self.synthesized_vm_dics.get(instance['uuid'], None)
@@ -349,6 +370,12 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         # data structure for handoff sending
         handoff_ds_send = handoff.HandoffDataSend()
         LOG.debug("save handoff data to %s" % handoff_send_datafile)
+        if hasattr(self, "uri"):
+            # icehouse
+            libvirt_uri = self.uri()
+        else:
+            # kilo
+            libvirt_uri = self._uri()
         handoff_ds_send.save_data(
             base_vm_paths, base_hashvalue,
             preload_thread.basedisk_hashdict,
@@ -356,7 +383,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             options, dest_handoff_url, handoff_mode,
             synthesized_vm.fuse.mountpoint, synthesized_vm.qemu_logfile,
             synthesized_vm.qmp_channel, synthesized_vm.machine.ID(),
-            synthesized_vm.fuse.modified_disk_chunks, self.uri(),
+            synthesized_vm.fuse.modified_disk_chunks, libvirt_uri,
         )
 
         LOG.debug("start handoff send process")
@@ -496,10 +523,17 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
                                             instance,
                                             block_device_info,
                                             image_meta)
-        xml = self.to_xml(context, instance, network_info,
-                          disk_info, image_meta,
-                          block_device_info=block_device_info,
-                          write_to_disk=True)
+
+        if hasattr(self, 'to_xml'): # icehouse
+            xml = self.to_xml(context, instance, network_info,
+                            disk_info, image_meta,
+                            block_device_info=block_device_info,
+                            write_to_disk=True)
+        elif hasattr(self, '_get_guest_xml'): # kilo
+            xml = self._get_guest_xml(context, instance, network_info,
+                            disk_info, image_meta,
+                            block_device_info=block_device_info,
+                            write_to_disk=True)
 
         # handle xml configuration to make a portable VM
         xml_obj = ElementTree.fromstring(xml)
@@ -573,7 +607,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         LOG.debug(_("Instance is running"), instance=instance)
         def _wait_for_boot():
             """Called at an interval until the VM is running."""
-            state = self.get_info(instance)['state']
+            state = self.get_info(instance).state
 
             if state == power_state.RUNNING:
                 raise loopingcall.LoopingCallDone()
