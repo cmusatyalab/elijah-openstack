@@ -27,12 +27,18 @@ from nova.compute import vm_states
 from nova.compute import utils as compute_utils
 from nova import exception
 from nova.compute import task_states
-from nova.openstack.common import log as logging
 from oslo.config import cfg
 from oslo import messaging
 
-#import nova.openstack.common.rpc.proxy
-from nova.openstack.common import jsonutils
+try:
+    # icehouse
+    from nova.openstack.common import log as logging
+    from nova.openstack.common import jsonutils
+except ImportError as e:
+    # kilo
+    from oslo_log import log as logging
+    from oslo_serialization import jsonutils
+
 from hashlib import sha256
 
 LOG = logging.getLogger(__name__)
