@@ -36,12 +36,18 @@ from nova.virt.libvirt import utils as libvirt_utils
 from nova.image import glance
 from nova.compute import task_states
 from nova.openstack.common import fileutils
-from nova.openstack.common import log as openstack_logging
+try:
+    # icehouse
+    from nova.openstack.common import log as openstack_logging
+    from nova.openstack.common.gettextutils import _
+except ImportError as e:
+    # kilo
+    from oslo_log import log as openstack_logging
+    from nova.i18n import _
 from nova.openstack.common import loopingcall
 
 from nova.virt.libvirt import driver as libvirt_driver
 from nova.compute.cloudlet_api import CloudletAPI
-from nova.openstack.common.gettextutils import _
 
 from xml.etree import ElementTree
 from elijah.provisioning import synthesis
@@ -496,10 +502,17 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
                                             instance,
                                             block_device_info,
                                             image_meta)
-        xml = self.to_xml(context, instance, network_info,
-                          disk_info, image_meta,
-                          block_device_info=block_device_info,
-                          write_to_disk=True)
+
+        if hasattr(self, 'to_xml'): # icehouse
+            xml = self.to_xml(context, instance, network_info,
+                            disk_info, image_meta,
+                            block_device_info=block_device_info,
+                            write_to_disk=True)
+        elif hasattr(self, '_get_guest_xml'): # kilo
+            xml = self._get_guest_xml(context, instance, network_info,
+                            disk_info, image_meta,
+                            block_device_info=block_device_info,
+                            write_to_disk=True)
 
         # handle xml configuration to make a portable VM
         xml_obj = ElementTree.fromstring(xml)
@@ -573,7 +586,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         LOG.debug(_("Instance is running"), instance=instance)
         def _wait_for_boot():
             """Called at an interval until the VM is running."""
-            state = self.get_info(instance)['state']
+            state = self.get_info(instance).state
 
             if state == power_state.RUNNING:
                 raise loopingcall.LoopingCallDone()

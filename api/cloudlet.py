@@ -22,8 +22,14 @@ from nova.compute.cloudlet_api import CloudletAPI as CloudletAPI
 from nova import exception
 from nova.api.openstack import extensions
 from nova.api.openstack import wsgi
-from nova.openstack.common import log as logging
-from nova.openstack.common.gettextutils import _
+try:
+    # icehouse
+    from nova.openstack.common import log as logging
+    from nova.openstack.common.gettextutils import _
+except ImportError as e:
+    # kilo
+    from oslo_log import log as logging
+    from nova.i18n import _
 
 
 
