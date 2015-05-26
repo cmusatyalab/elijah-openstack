@@ -46,11 +46,14 @@ def deploy_cloudlet_api():
     sudo("service nova-api restart", shell=False)
 
 
-def _replace_compute_manager(filepath, option_key, option_value, insert_at=1):
+def _replace_configuration(filepath, option_key, option_value, insert_at=1):
     """ replace or insert new compute manager configuration
     Cannot use append method since compute_manager option does not effective
     at last line (probably nova configuration bug).
     """
+    original_mode = oct(os.stat(filepath).st_mode)[-3:]
+    original_uid = os.stat(filepath).st_uid
+    original_gid = os.stat(filepath).st_gid
     conf_content = sudo("cat %s" % filepath)
     new_config = list()
 
@@ -71,14 +74,16 @@ def _replace_compute_manager(filepath, option_key, option_value, insert_at=1):
         if insert_at == 1:
             new_config.insert(1, "%s=%s" % (option_key, option_value))
         else:
-            new_config.insert(-1, "%s=%s" % (option_key, option_value))
-
+            new_config.append("%s=%s" % (option_key, option_value))
 
     temp_file_name = NamedTemporaryFile(prefix=os.path.basename(filepath)
             + "-cloudlet-tmp").name
     open(temp_file_name, "w+").write('\n'.join(new_config))
-    files.upload_template(temp_file_name, filepath, use_sudo=True)
+    files.upload_template(
+        temp_file_name, filepath, use_sudo=True, mode=original_mode
+    )
     os.remove(temp_file_name)
+    sudo("chown %s:%s %s" % (original_uid, original_gid, filepath))
 
 
 def deploy_compute_manager():
@@ -101,19 +106,19 @@ def deploy_compute_manager():
         abort("Cannot find nova-compute conf file at %s\n" % NOVA_CONF_PATH)
 
     # use custom compute manager inherited from nova-compute manager
-    _replace_compute_manager(NOVA_CONF_PATH, "compute_manager",\
+    _replace_configuration(NOVA_CONF_PATH, "compute_manager",\
             "nova.compute.cloudlet_manager.CloudletComputeManager")
 
     # use custom driver inherited from libvitDriver
-    _replace_compute_manager(NOVA_CONF_PATH, "compute_driver",\
+    _replace_configuration(NOVA_CONF_PATH, "compute_driver",\
             "nova.virt.libvirt.cloudlet_driver.CloudletDriver")
-    _replace_compute_manager(NOVA_COMPUTE_CONF_PATH, "compute_driver",\
+    _replace_configuration(NOVA_COMPUTE_CONF_PATH, "compute_driver",\
             "nova.virt.libvirt.cloudlet_driver.CloudletDriver")
 
     # use specific CPU-mode
-    _replace_compute_manager(NOVA_CONF_PATH, "libvirt_cpu_mode",\
+    _replace_configuration(NOVA_CONF_PATH, "libvirt_cpu_mode",\
             "custom", insert_at=-1)
-    _replace_compute_manager(NOVA_CONF_PATH, "libvirt_cpu_model",\
+    _replace_configuration(NOVA_CONF_PATH, "libvirt_cpu_model",\
             "core2due", insert_at=-1)
 
     # copy files
@@ -140,7 +145,7 @@ def deploy_scheduler():
         abort("Cannot find nova-conf file at %s\n" % NOVA_CONF_PATH)
     option_key = "scheduler_manager"
     option_value = "nova.scheduler.cloudlet_scheduler_manager.CloudletSchedulerManager"
-    _replace_compute_manager(NOVA_CONF_PATH, option_key, option_value)
+    _replace_configuration(NOVA_CONF_PATH, option_key, option_value)
 
 
     # copy files
@@ -222,14 +227,14 @@ def deploy_dashboard():
 
     # deploy files
     src_dir = os.path.abspath("./dashboard/*")
-    dest_dir = os.path.join(DASHBOARD_PROJECT_PATH, "cloudlets")
+    dest_dir = os.path.join(DASHBOARD_PROJECT_PATH, "cloudlet")
     if files.exists(dest_dir, use_sudo=True) == False:
         sudo("mkdir -p %s" % dest_dir)
     if put(src_dir, dest_dir, use_sudo=True).failed:
         abort("Cannot copy from %s to %s" % (src_dir, link_dir))
 
-    if sudo("cat %s | grep cloudlets" % DASHBOARD_SETTING_FILE).failed:
-        cmd = "sed -i '/instances/ s/$/ \"cloudlets\",/' %s" % DASHBOARD_SETTING_FILE
+    if sudo("grep cloudlet" % DASHBOARD_SETTING_FILE).failed:
+        cmd = "sed -i '/instances/ s/$/ \"cloudlet\",/' %s" % DASHBOARD_SETTING_FILE
         if sudo(cmd).failed:
             msg = "Cannot update cloudlet panel at dashboard"
             msg += "check file at %s" % DASHBOARD_SETTING_FILE
@@ -254,6 +259,21 @@ def deploy_svirt():
     # disable aa-complain /usr/lib/libvirt/virt-aa-helper
     if sudo("aa-complain /usr/lib/libvirt/virt-aa-helper").failed:
         abort("Cannot exclude virt-aa-helper from apparmor")
+
+
+def qemu_security_mode():
+    """Turn off qemu security mode to allow custom QEMU
+    """
+    qemu_conf_file = os.path.join("/", "etc", "libvirt", "qemu.conf")
+    if files.exists(qemu_conf_file, use_sudo=True) == False:
+        msg = "The system doesn't have QEMU confi file at %s" % qemu_conf_file
+        abort(msg)
+    # replace "security_driver" to none
+    _replace_configuration(
+        qemu_conf_file, "security_driver", "\"none\"", insert_at=-1
+    )
+    # restart libvirtd to reflect changes
+    sudo("/etc/init.d/libvirt-bin restart")
 
 
 @task
@@ -284,8 +304,8 @@ def provisioning_control():
         check_system_requirement()
         deploy_cloudlet_api()
         deploy_compute_manager()
-        #deploy_svirt()
-        #deploy_dashboard()
+        qemu_security_mode()
+        deploy_dashboard()
     sys.stdout.write("[SUCCESS] Finished installation\n")
 
 
@@ -296,7 +316,7 @@ def provisioning_compute():
         check_system_requirement()
         deploy_cloudlet_api()
         deploy_compute_manager()
-        deploy_svirt()
+        qemu_security_mode()
     sys.stdout.write("[SUCCESS] Finished installation\n")
 
 
