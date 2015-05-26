@@ -767,12 +767,12 @@ def main(argv=None):
         sys.exit(1)
     if args[0] == CMD_CREATE_BASE:
         instance_name = raw_input("Name of a running instance that you like to make as a base VM : ")
-        snapshot_name = raw_input("Set name of Base VM : ")
+        snapshot_name = raw_input("Name of Base VM : ")
         request_cloudlet_base(settings.server_address, token, \
-                urlparse(endpoint), instance_name, snapshot_name) 
+                urlparse(endpoint), instance_name, snapshot_name)
     elif args[0] == CMD_CREATE_OVERLAY:
         instance_uuid = raw_input("UUID of a running instance that you like to create VM overlay : ")
-        snapshot_name = raw_input("Set name of VM overlay : ")
+        snapshot_name = raw_input("Name of VM overlay : ")
         request_create_overlay(settings.server_address, token, urlparse(endpoint), \
                 instance_uuid, snapshot_name)
     elif args[0] == CMD_DOWNLOAD:

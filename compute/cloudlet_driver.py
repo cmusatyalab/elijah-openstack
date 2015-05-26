@@ -123,7 +123,12 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         """create base vm and save it to glance
         """
         try:
-            virt_dom = self._lookup_by_name(instance['name'])
+            if hasattr(self, "_lookup_by_name"):
+                # icehouse
+                virt_dom = self._lookup_by_name(instance['name'])
+            else:
+                # kilo
+                virt_dom = self._host.get_domain(instance)
         except exception.InstanceNotFound:
             raise exception.InstanceNotRunning(instance_id=instance['uuid'])
 
@@ -228,7 +233,12 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
     def create_overlay_vm(self, context, instance, 
             overlay_name, overlay_id, update_task_state):
         try:
-            virt_dom = self._lookup_by_name(instance['name'])
+            if hasattr(self, "_lookup_by_name"):
+                # icehouse
+                virt_dom = self._lookup_by_name(instance['name'])
+            else:
+                # kilo
+                virt_dom = self._host.get_domain(instance)
         except exception.InstanceNotFound:
             raise exception.InstanceNotRunning(instance_id=instance['uuid'])
 
@@ -276,7 +286,12 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
     def perform_vmhandoff(self, context, instance, handoff_url,
                           update_task_state, residue_glance_id=None):
         try:
-            virt_dom = self._lookup_by_name(instance['name'])
+            if hasattr(self, "_lookup_by_name"):
+                # icehouse
+                virt_dom = self._lookup_by_name(instance['name'])
+            else:
+                # kilo
+                virt_dom = self._host.get_domain(instance)
         except exception.InstanceNotFound:
             raise exception.InstanceNotRunning(instance_id=instance['uuid'])
         synthesized_vm = self.synthesized_vm_dics.get(instance['uuid'], None)

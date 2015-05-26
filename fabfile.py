@@ -222,14 +222,14 @@ def deploy_dashboard():
 
     # deploy files
     src_dir = os.path.abspath("./dashboard/*")
-    dest_dir = os.path.join(DASHBOARD_PROJECT_PATH, "cloudlet")
+    dest_dir = os.path.join(DASHBOARD_PROJECT_PATH, "cloudlets")
     if files.exists(dest_dir, use_sudo=True) == False:
         sudo("mkdir -p %s" % dest_dir)
     if put(src_dir, dest_dir, use_sudo=True).failed:
         abort("Cannot copy from %s to %s" % (src_dir, link_dir))
 
-    if sudo("cat %s | grep cloudlet" % DASHBOARD_SETTING_FILE).failed:
-        cmd = "sed -i '/instances/ s/$/ \"cloudlet\",/' %s" % DASHBOARD_SETTING_FILE
+    if sudo("cat %s | grep cloudlets" % DASHBOARD_SETTING_FILE).failed:
+        cmd = "sed -i '/instances/ s/$/ \"cloudlets\",/' %s" % DASHBOARD_SETTING_FILE
         if sudo(cmd).failed:
             msg = "Cannot update cloudlet panel at dashboard"
             msg += "check file at %s" % DASHBOARD_SETTING_FILE
