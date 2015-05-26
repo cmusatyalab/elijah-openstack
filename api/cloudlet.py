@@ -143,19 +143,17 @@ class CloudletController(wsgi.Controller):
                 "error":"cannot setup port forwarding"
             }
 
-
     @wsgi.extends
     def create(self, req, body):
         context = req.environ['nova.context']
+        resp_obj = (yield)
         if 'server' in body and 'metadata' in body['server']:
             metadata = body['server']['metadata']
             if ('overlay_url' in metadata) and ('handoff_info' not in metadata):
                 # create VM using synthesis
-                resp_obj = (yield)
                 self._append_synthesis_info(context, body, resp_obj)
             elif 'handoff_info' in metadata:
                 # create VM using VM handoff
-                resp_obj = (yield)
                 self._append_port_forwarding(context, body, resp_obj)
 
     @wsgi.action('cloudlet-base')
