@@ -370,6 +370,12 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         # data structure for handoff sending
         handoff_ds_send = handoff.HandoffDataSend()
         LOG.debug("save handoff data to %s" % handoff_send_datafile)
+        if hasattr(self, "uri"):
+            # icehouse
+            libvirt_uri = self.uri()
+        else:
+            # kilo
+            libvirt_uri = self._uri()
         handoff_ds_send.save_data(
             base_vm_paths, base_hashvalue,
             preload_thread.basedisk_hashdict,
@@ -377,7 +383,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             options, dest_handoff_url, handoff_mode,
             synthesized_vm.fuse.mountpoint, synthesized_vm.qemu_logfile,
             synthesized_vm.qmp_channel, synthesized_vm.machine.ID(),
-            synthesized_vm.fuse.modified_disk_chunks, self.uri(),
+            synthesized_vm.fuse.modified_disk_chunks, libvirt_uri,
         )
 
         LOG.debug("start handoff send process")

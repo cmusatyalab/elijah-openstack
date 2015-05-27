@@ -153,7 +153,7 @@ def request_synthesis(server_address, token, end_point, key_name=None,\
 
     # todo: assign small flavor
     flavor_list = get_list(server_address, token, end_point, "flavors")
-    flavor_id = flavor_list[1]['links'][0]['href']
+    flavor_id = flavor_list[2]['links'][0]['href']
 
     # generate request
     meta_data = {"overlay_url": overlay_url}
@@ -570,6 +570,10 @@ def basevm_import(server_address, uname, password, tenant_name, import_filepath,
         flavor_ref, flavor_id = create_flavor(server_address, token, urlparse(endpoint), \
                 cpu_count, memory_size_mb, flavor_name)
         sys.stdout.write("Create new flavor for the base VM\n")
+    # delete temp dir
+    if os.path.exists(temp_dir):
+        shutil.rmtree(temp_dir)
+
     return glance_disk
 
 
@@ -791,8 +795,7 @@ def main(argv=None):
         basevm_download(settings.server_address, token, \
                 urlparse(endpoint), basedisk_uuid, output_path)
     elif args[0] == CMD_IMPORT_BASE:
-        import_filepath = raw_input("Path to zipped base VM package:")
-        #import_filepath = "./precise-hotplug.zip"
+        import_filepath = raw_input("Absolute path to base VM package:")
         import_filepath = os.path.abspath(import_filepath)
         if os.access(import_filepath, os.R_OK) == False:
             sys.stderr("Cannot access the file at %s" % import_filepath)

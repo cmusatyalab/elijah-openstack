@@ -233,7 +233,7 @@ def deploy_dashboard():
     if put(src_dir, dest_dir, use_sudo=True).failed:
         abort("Cannot copy from %s to %s" % (src_dir, link_dir))
 
-    if sudo("grep cloudlet" % DASHBOARD_SETTING_FILE).failed:
+    if sudo("grep cloudlet %s" % DASHBOARD_SETTING_FILE).failed:
         cmd = "sed -i '/instances/ s/$/ \"cloudlet\",/' %s" % DASHBOARD_SETTING_FILE
         if sudo(cmd).failed:
             msg = "Cannot update cloudlet panel at dashboard"
