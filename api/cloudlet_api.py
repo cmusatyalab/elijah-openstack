@@ -393,7 +393,7 @@ class CloudletAPI(nova_rpc.ComputeAPI):
 
 
     def handoff_port_forwarding(self, dest_ip, dest_port):
-        o = PortForwarding(dest_ip, int(dest_port))
+        o = PortForwarding(str(dest_ip), int(dest_port))    # type(dest_ip) = netaddr.ip.IPAddress at kilo
         o.start()   # port forwarding server will finish automatically whne a client disconnects
         return o.source_port
 
