@@ -562,14 +562,14 @@ def basevm_import(server_address, uname, password, tenant_name, import_filepath,
     glance_disk = gclient.images.create(**disk_param)
 
     # create new flavor if nothing matches
-    cpu_count, memory_size_mb = get_resource_size(libvirt_xml_str)
-    flavor_list = get_list(server_address, token, urlparse(endpoint), "flavors")
-    flavor_ref, flavor_id = find_matching_flavor(flavor_list, cpu_count, memory_size_mb)
-    if flavor_id == None:
-        flavor_name = "cloudlet-%s" % basevm_name
-        flavor_ref, flavor_id = create_flavor(server_address, token, urlparse(endpoint), \
-                cpu_count, memory_size_mb, flavor_name)
-        sys.stdout.write("Create new flavor for the base VM\n")
+    #cpu_count, memory_size_mb = get_resource_size(libvirt_xml_str)
+    #flavor_list = get_list(server_address, token, urlparse(endpoint), "flavors")
+    #flavor_ref, flavor_id = find_matching_flavor(flavor_list, cpu_count, memory_size_mb)
+    #if flavor_id == None:
+    #    flavor_name = "cloudlet-%s" % basevm_name
+    #    flavor_ref, flavor_id = create_flavor(server_address, token, urlparse(endpoint), \
+    #            cpu_count, memory_size_mb, flavor_name)
+    #    sys.stdout.write("Create new flavor for the base VM\n")
     # delete temp dir
     if os.path.exists(temp_dir):
         shutil.rmtree(temp_dir)
