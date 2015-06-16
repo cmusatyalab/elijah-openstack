@@ -36,6 +36,7 @@ from nova.virt import driver
 from nova import rpc
 from nova import exception
 from nova import utils
+import oslo_messaging as messaging
 
 
 LOG = logging.getLogger(__name__)
@@ -44,8 +45,8 @@ get_notifier = functools.partial(rpc.get_notifier, service='compute')
 
 
 class CloudletComputeManager(compute_manager.ComputeManager):
-    """Manages the running instances from creation to destruction."""
-    RPC_API_VERSION = '3.34'
+
+    target = messaging.Target(version='4.0')
 
     def __init__(self, compute_driver=None, *args, **kwargs):
         super(CloudletComputeManager, self).__init__(*args, **kwargs)
