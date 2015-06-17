@@ -860,7 +860,6 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             nova_conn=self._conn,
             nova_util=libvirt_utils
         )
-        synthesized_vm.start()
-        synthesized_vm.join()
 
+        synthesized_vm.resume()
         return synthesized_vm
