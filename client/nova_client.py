@@ -901,10 +901,10 @@ def main(argv=None):
         filter_name = None
         if len(args) == 2:
             filter_name = args[1]
-            ext_info = get_extension(settings.server_address,
-                                     token,
-                                     urlparse(endpoint),
-                                     filter_name)
+        ext_info = get_extension(settings.server_address,
+                                    token,
+                                    urlparse(endpoint),
+                                    filter_name)
         print json.dumps(ext_info, indent=2)
     elif args[0] == CMD_IMAGE_LIST:
         images = get_list(settings.server_address, token,
