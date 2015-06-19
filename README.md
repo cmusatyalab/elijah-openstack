@@ -166,7 +166,7 @@ table. You need to input URL of the VM overlay you just downloaded.
 
 
 Alternatively, you can use command line client program at at
-./client/nova_client.py 
+./client/cloudlet_client.py 
 
 
 
