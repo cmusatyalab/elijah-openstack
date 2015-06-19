@@ -290,21 +290,6 @@ def request_cloudlet_base(server_address, token, end_point, server_name, cloudle
     return data
 
 
-def send_discovery_query(token, endpoint):
-    #params = json.dumps({"cloudlet-status":{"overlay-name": overlay_name}})
-    params = urllib.urlencode({})
-    headers = { "X-Auth-Token":token, "Content-type":"application/json" }
-
-    conn = httplib.HTTPConnection(endpoint[1])
-    command = "%s/discovery/status" % (endpoint[2])
-    conn.request("GET", command, params, headers)
-    response = conn.getresponse()
-    data = response.read()
-    conn.close()
-    print json.loads(data)
-    return data
-
-
 def request_cloudlet_overlay_start(server_address, token, end_point, image_name, key_name):
     #get right iamge
     image_list = get_list(server_address, token, end_point, "images")
@@ -744,7 +729,6 @@ def main(argv=None):
     CMD_IMAGE_LIST      = "image-list"
     CMD_EXPORT_BASE     = "export-base"
     CMD_IMPORT_BASE     = "import-base"
-    CMD_DISCOVER        = "discovery"
     commands = {
         CMD_CREATE_BASE: "create base vm from the running instance",
         CMD_CREATE_OVERLAY: "create VM overlay from the customizaed VM",
@@ -756,7 +740,6 @@ def main(argv=None):
         CMD_IMAGE_LIST: "List images",
         CMD_EXPORT_BASE: "Export Base VM",
         CMD_IMPORT_BASE: "Import Base VM",
-        CMD_DISCOVER : "Send discovery query",
     }
 
     settings, args = process_command_line(sys.argv[1:], commands)
@@ -784,8 +767,6 @@ def main(argv=None):
         VM_overlay_meta = raw_input("Name of VM overlay file: ")
         overlay_download(settings.server_address, token, urlparse(glance_endpoint),\
                 VM_overlay_meta, VM_overlay_meta)
-    elif args[0] == CMD_DISCOVER:
-        send_discovery_query(token, urlparse(endpoint))
     elif args[0] == CMD_EXPORT_BASE:
         basedisk_uuid = raw_input("UUID of a base disk : ")
         output_path = os.path.join(os.curdir, "base-%s.zip" % basedisk_uuid)

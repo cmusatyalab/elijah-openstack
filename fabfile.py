@@ -15,7 +15,6 @@ compute_node_list = ['krha@cloudlet.krha.kr']
 
 # constant
 CLOUDLET_PROVISIONING_REPO = "https://github.com/cmusatyalab/elijah-provisioning.git"
-CLOUDLET_DISCOVERY_REPO = "https://github.com/cmusatyalab/elijah-discovery.git"
 PYTHON_LIBRARY_ROOT = "/usr/lib/python2.7/dist-packages"
 NOVA_CONF_PATH = "/etc/nova/nova.conf"
 NOVA_COMPUTE_CONF_PATH = "/etc/nova/nova-compute.conf"
@@ -37,7 +36,6 @@ def deploy_cloudlet_api():
             ]
 
     # deploy files
-    # TODO: use python package installer.
     for (src_file, target_dir) in deploy_files:
         dest_filepath = os.path.join(target_dir, os.path.basename(src_file))
         if put(src_file, dest_filepath, use_sudo=True, mode=0644).failed:
@@ -130,33 +128,6 @@ def deploy_compute_manager():
     sudo("service nova-compute restart", shell=False)
 
 
-def deploy_scheduler():
-    global NOVA_CONF_PATH
-
-    scheduler_file = os.path.abspath("./compute/cloudlet_manager.py")
-    scheduler_lib_dir = os.path.join(PYTHON_LIBRARY_ROOT, "nova/scheduler/")
-
-    deploy_files = [
-            (scheduler_file, scheduler_lib_dir),
-            ]
-
-    # use custom scheduler manager inherited from nova-scheduler manager
-    if files.exists(NOVA_CONF_PATH, use_sudo=True) == False:
-        abort("Cannot find nova-conf file at %s\n" % NOVA_CONF_PATH)
-    option_key = "scheduler_manager"
-    option_value = "nova.scheduler.cloudlet_scheduler_manager.CloudletSchedulerManager"
-    _replace_configuration(NOVA_CONF_PATH, option_key, option_value)
-
-
-    # copy files
-    for (src_file, target_dir) in deploy_files:
-        dest_filepath = os.path.join(target_dir, os.path.basename(src_file))
-        if put(src_file, dest_filepath, use_sudo=True, mode=0644).failed:
-            abort("Cannot copy %s to %s" % (src_file, lib_dir))
-
-    sudo("service nova-scheduler restart", shell=False)
-
-
 def check_system_requirement():
     msg = "Tested only Ubuntu 12.04/14.04 LTS\n"
     msg += "But the current distribution isn't"
@@ -195,27 +166,6 @@ def check_VM_synthesis_package():
             abort("Cannot find cloudlet-provisioning package.\nInstall from %s" % CLOUDLET_PROVISIONING_REPO)
     else:
         msg = "Cloudlet library exists. Skip installing cloudlet library"
-        sys.stdout.write(msg)
-        return
-
-
-def check_discovery_package():
-    if run("cloudlet-discovery --version").failed:
-        # install cloudlet library
-        temp_repo = '/tmp/cloudlet_discovery_repo_temp'
-        sudo("rm -rf %s" % temp_repo)
-        run("git clone %s %s" % (CLOUDLET_DISCOVERY_REPO, temp_repo))
-        with cd(temp_repo):
-            if run("fab localhost install").failed:
-                msg = "Cannot install cloudlet-discovery package.\n"
-                msg += "Manually install it downloading from %s" % CLOUDLET_DISCOVERY_REPO
-                abort(msg)
-
-        # double check installation
-        if run("cloudlet --version").failed:
-            abort("Cannot find cloudlet-discovery package.\nInstall from %s" % CLOUDLET_DISCOVERY_REPO)
-    else:
-        msg = "Cloudlet discovery library exists. Skip installing cloudlet discovery library"
         sys.stdout.write(msg)
         return
 
@@ -288,13 +238,6 @@ def remote():
     env.run = run
     env.warn_only = True
     env.hosts = compute_node_list
-
-
-@task
-def discovery_control():
-    check_discovery_package()
-    with hide('stdout'):
-        deploy_scheduler()
 
 
 @task

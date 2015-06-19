@@ -370,28 +370,6 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         conn.close()
         return dd[request_list]
 
-    def cloudlet_get_static_status(self, context, app_request):
-        try:
-            from elijah.discovery.monitor.resource import ResourceMonitor
-            statistics = self.nova_api.db.compute_node_statistics(context)
-            resource_monitor = ResourceMonitor(openstack_stats=statistics)
-            stats = resource_monitor.get_static_resource()
-            return stats
-        except ImportError as e:
-            return {"Cloudlet Discovery is not available"}
-
-    def cloudlet_get_status(self, context, app_request):
-        try:
-            from elijah.discovery.monitor.resource import ResourceMonitor
-            statistics = self.nova_api.db.compute_node_statistics(context)
-            resource_monitor = ResourceMonitor(openstack_stats=statistics)
-            stats = resource_monitor.get_static_resource()
-            stats.update(resource_monitor.get_dynamic_resource())
-            return stats
-        except ImportError as e:
-            return {"Cloudlet Discovery is not available"}
-
-
     def handoff_port_forwarding(self, dest_ip, dest_port):
         o = PortForwarding(str(dest_ip), int(dest_port))    # type(dest_ip) = netaddr.ip.IPAddress at kilo
         o.start()   # port forwarding server will finish automatically whne a client disconnects

@@ -50,28 +50,6 @@ class Cloudlet(extensions.ExtensionDescriptor):
                 self, 'servers', CloudletController())
         return [servers_extension]
 
-    def get_resources(self):
-        resources = [extensions.ResourceExtension('os-cloudlet',
-                CloudletDiscoveryController(),
-                collection_actions={'status': 'GET'},
-                member_actions={})]
-        return resources
-
-
-class CloudletDiscoveryController(object):
-    """The Cloudlet Discovery API controller for the OpenStack API."""
-    def __init__(self):
-        self.host_api = HostAPI()
-        self.cloudlet_api = CloudletAPI()
-        super(CloudletDiscoveryController, self).__init__()
-
-    def status(self, req):
-        context = req.environ['nova.context']
-        authorize(context)
-        app_request=None
-        stats = self.cloudlet_api.cloudlet_get_status(context, app_request)
-        return {'cloudlet-status':stats}
-
 
 class CloudletController(wsgi.Controller):
 
