@@ -58,9 +58,9 @@ except ImportError as e:
     import msgpack
 from elijah.provisioning import compression
 from elijah.provisioning.package import VMOverlayPackage
-from elijah.provisioning.Configuration import Const as Cloudlet_Const
-from elijah.provisioning.Configuration import Options
-from elijah.provisioning.Configuration import VMOverlayCreationMode
+from elijah.provisioning.configuration import Const as Cloudlet_Const
+from elijah.provisioning.configuration import Options
+from elijah.provisioning.configuration import VMOverlayCreationMode
 
 
 LOG = openstack_logging.getLogger(__name__)

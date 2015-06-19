@@ -44,7 +44,7 @@ try:
     from elijah.provisioning import msgpack
 except ImportError as e:
     import msgpack
-from elijah.provisioning.Configuration import Const as Cloudlet_Const
+from elijah.provisioning.configuration import Const as Cloudlet_Const
 
 
 LOG = logging.getLogger(__name__)
