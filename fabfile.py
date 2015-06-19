@@ -6,6 +6,7 @@ from fabric.operations import *
 from fabric.contrib import *
 from fabric.context_managers import cd
 from tempfile import NamedTemporaryFile
+from distutils.version import LooseVersion
 
 
 # your configuration
@@ -151,23 +152,22 @@ def check_system_requirement():
 
 def check_VM_synthesis_package():
     if run("cloudlet --version").failed:
-        # install cloudlet library
-        temp_repo = '/tmp/cloudlet_repo_temp'
-        sudo("rm -rf %s" % temp_repo)
-        run("git clone %s %s" % (CLOUDLET_PROVISIONING_REPO, temp_repo))
-        with cd(temp_repo):
-            if run("fab localhost install").failed:
-                msg = "Cannot install cloudlet package.\n"
-                msg += "Manually install it downloading from %s" % CLOUDLET_PROVISIONING_REPO
-                abort(msg)
+        msg = "Cannot find cloudlet-provisioning module.\n"
+        msg += "Install it from %s" % CLOUDLET_PROVISIONING_REPO
+        abort(msg)
 
-        # double check installation
-        if run("cloudlet --version").failed:
-            abort("Cannot find cloudlet-provisioning package.\nInstall from %s" % CLOUDLET_PROVISIONING_REPO)
+    # version checking
+    cmd = "cloudlet --version | awk '{{print $3}}'"
+    cloudlet_version = run(cmd)
+    MIN_CLOUDLET_VERSION = "0.9.3"
+    if LooseVersion(cloudlet_version) < LooseVersion(MIN_CLOUDLET_VERSION):
+        msg = "Upgrade cloudlet module at %s (supporting since %s)." % (
+            CLOUDLET_PROVISIONING_REPO, MIN_CLOUDLET_VERSION)
+        abort(msg)
+
     else:
         msg = "Cloudlet library exists. Skip installing cloudlet library"
         sys.stdout.write(msg)
-        return
 
 
 def deploy_dashboard():
