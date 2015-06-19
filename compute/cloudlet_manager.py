@@ -59,9 +59,9 @@ class CloudletComputeManager(compute_manager.ComputeManager):
     @compute_manager.wrap_exception()
     @compute_manager.reverts_task_state
     @compute_manager.wrap_instance_fault
-    def cloudlet_create_base(self, context, instance, vm_name, 
-            disk_meta_id, memory_meta_id, 
-            diskhash_meta_id, memoryhash_meta_id):
+    def cloudlet_create_base(self, context, instance, vm_name,
+                             disk_meta_id, memory_meta_id,
+                             diskhash_meta_id, memoryhash_meta_id):
         """Cloudlet base creation
         and terminate the instance
         """
@@ -70,54 +70,70 @@ class CloudletComputeManager(compute_manager.ComputeManager):
 
         self._notify_about_instance_usage(context, instance, "snapshot.start")
 
-        def callback_update_task_state(task_state, expected_state=task_states.IMAGE_SNAPSHOT):
+        def callback_update_task_state(
+                task_state,
+                expected_state=task_states.IMAGE_SNAPSHOT):
             instance.task_state = task_state
             instance.save(expected_task_state=expected_state)
             return instance
 
-        self.driver.cloudlet_base(context, instance, vm_name,
-                disk_meta_id, memory_meta_id,
-                diskhash_meta_id, memoryhash_meta_id, callback_update_task_state)
-        instance = self._instance_update(context, instance['uuid'],
-                task_state=None,
-                expected_task_state=task_states.IMAGE_UPLOADING)
+        self.driver.cloudlet_base(
+            context,
+            instance,
+            vm_name,
+            disk_meta_id,
+            memory_meta_id,
+            diskhash_meta_id,
+            memoryhash_meta_id,
+            callback_update_task_state)
+        instance = self._instance_update(
+            context,
+            instance['uuid'],
+            task_state=None,
+            expected_task_state=task_states.IMAGE_UPLOADING)
 
         # notify will raise exception since instance is already deleted
-        self._notify_about_instance_usage( context, instance, "snapshot.end")
+        self._notify_about_instance_usage(context, instance, "snapshot.end")
         self.cloudlet_terminate_instance(context, instance)
 
     @compute_manager.object_compat
     @compute_manager.wrap_exception()
     @compute_manager.reverts_task_state
     @compute_manager.wrap_instance_fault
-    def cloudlet_overlay_finish(self, context, instance, overlay_name, overlay_id):
+    def cloudlet_overlay_finish(self, context, instance,
+                                overlay_name, overlay_id):
         """
         Generate VM overlay with given instance, and save it as a snapshot
         """
         context = context.elevated()
         LOG.info(_("Generating VM overlay"), instance=instance)
 
-        def callback_update_task_state(task_state, expected_state=task_states.IMAGE_SNAPSHOT):
+        def callback_update_task_state(
+                task_state,
+                expected_state=task_states.IMAGE_SNAPSHOT):
             instance.task_state = task_state
             instance.save(expected_task_state=expected_state)
             return instance
 
         self.driver.create_overlay_vm(context, instance, overlay_name,
-                overlay_id, callback_update_task_state)
+                                      overlay_id, callback_update_task_state)
         self.cloudlet_terminate_instance(context, instance)
 
     @compute_manager.object_compat
     @compute_manager.wrap_exception()
     @compute_manager.reverts_task_state
     @compute_manager.wrap_instance_fault
-    def cloudlet_handoff(self, context, instance, handoff_url, residue_glance_id=None):
+    def cloudlet_handoff(self, context, instance, handoff_url,
+                         residue_glance_id=None):
         """
         Perform VM handoff
         """
         context = context.elevated()
         LOG.info(_("VM handoff to %s" % handoff_url), instance=instance)
 
-        def callback_update_task_state(task_state, expected_state=task_states.IMAGE_SNAPSHOT):
+        def callback_update_task_state(
+                task_state,
+                expected_state=task_states.IMAGE_SNAPSHOT):
             instance.task_state = task_state
             instance.save(expected_task_state=expected_state)
             return instance
@@ -127,20 +143,21 @@ class CloudletComputeManager(compute_manager.ComputeManager):
                                       residue_glance_id)
         self.cloudlet_terminate_instance(context, instance)
 
-    # Direct calling of terminate_instance at the manager.py will cause "InstanceActionNotFound_Remote" 
-    # exception at wrap_instance_event decorator since the VM is already terminated.
-    # Instead, we copy-pasted terminate_instance method
+    # Direct call to terminate_instance at the manager.py will cause
+    # "InstanceActionNotFound_Remote" exception at wrap_instance_event decorator
+    # since the VM is already terminated.
+    # Therefore, instead, we copied code of terminate_instance method at here
     @compute_manager.wrap_exception()
     @compute_manager.reverts_task_state
     @compute_manager.wrap_instance_fault
     def cloudlet_terminate_instance(self, context, instance):
         bdms = block_device_obj.BlockDeviceMappingList.get_by_instance_uuid(
-                context, instance['uuid'])
+            context, instance['uuid'])
 
         # copy & paste from terminate_instance at manager.py
         quotas = quotas_obj.Quotas.from_reservations(context,
-                                                  None,
-                                                  instance=instance)
+                                                     None,
+                                                     instance=instance)
 
         @utils.synchronized(instance['uuid'])
         def do_terminate_instance(instance, bdms):

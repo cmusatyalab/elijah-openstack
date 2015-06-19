@@ -32,12 +32,12 @@ except ImportError as e:
     from nova.i18n import _
 
 
-
 LOG = logging.getLogger(__name__)
 authorize = extensions.extension_authorizer('compute', 'cloudlet')
 
 
 class Cloudlet(extensions.ExtensionDescriptor):
+
     """Cloudlet compute API support"""
 
     name = "Cloudlets"
@@ -47,7 +47,7 @@ class Cloudlet(extensions.ExtensionDescriptor):
 
     def get_controller_extensions(self):
         servers_extension = extensions.ControllerExtension(
-                self, 'servers', CloudletController())
+            self, 'servers', CloudletController())
         return [servers_extension]
 
 
@@ -65,7 +65,7 @@ class CloudletController(wsgi.Controller):
                                         want_objects=want_objects)
         except exception.InstanceNotFound:
             msg = _("Server not found")
-            raise exc.HTTPNotFound(explanation=msg)
+            raise webob.exc.HTTPNotFound(explanation=msg)
 
     def _append_synthesis_info(self, context, body, resp_obj):
         LOG.debug("return synthesis information")
@@ -83,11 +83,12 @@ class CloudletController(wsgi.Controller):
         # wait until the VM instance is scheduled to the compute node
         # Need fix: seperate one API into two; one for assigning VM to compute
         # node, the other for setting up port forwarding
-        repeat_count = 0; MAX_COUNT = 30
+        repeat_count = 0
+        MAX_COUNT = 30
         while repeat_count < MAX_COUNT:
             instance = self.compute_api.get(context, instance_id)
             instance_hostname = instance.get('node', None)
-            if instance_hostname == None:
+            if instance_hostname is None:
                 import time
                 time.sleep(0.1)
                 msg = "waiting for VM scheduling %d/%d..."\
@@ -113,12 +114,12 @@ class CloudletController(wsgi.Controller):
             server_url = resp_obj.obj['server']['links'][0]['href']
             server_ipaddr = urlsplit(server_url).netloc.split(":")[0]
             resp_obj.obj['handoff'] = {
-                "server_ip":str(server_ipaddr),
-                "server_port":int(source_port),
+                "server_ip": str(server_ipaddr),
+                "server_port": int(source_port),
             }
         else:
             resp_obj.obj['handoff'] = {
-                "error":"cannot setup port forwarding"
+                "error": "cannot setup port forwarding"
             }
 
     @wsgi.extends
@@ -149,21 +150,9 @@ class CloudletController(wsgi.Controller):
 
         LOG.debug(_("cloudlet Generate Base VM %r"), id)
         instance = self._get_instance(context, id, want_objects=True)
-        disk_meta, memory_meta = self.cloudlet_api.cloudlet_create_base(context,
-                                                                        instance,
-                                                                        baseVM_name)
-        return {'base-disk': disk_meta, 'base-memory':memory_meta}
-
-    @wsgi.action('cloudlet-overlay-start')
-    def cloudlet_overlay_start(self, req, id, body):
-        """Resume Base VM to start customization
-        overlay_start will follow regular instance creationg process.
-        If the image has memory reference, then it automatically resume the base VM
-        """
-        # currently we're using a openstack mechanism of starting new VM to
-        # resume the Base VM. However, We might need this api for guarantee
-        # matching VM configuration between base VM and requested instance
-        pass
+        disk_meta, memory_meta = self.cloudlet_api.cloudlet_create_base(
+            context, instance, baseVM_name)
+        return {'base-disk': disk_meta, 'base-memory': memory_meta}
 
     @wsgi.action('cloudlet-overlay-finish')
     def cloudlet_overlay_finish(self, req, id, body):
@@ -173,16 +162,17 @@ class CloudletController(wsgi.Controller):
 
         overlay_name = ''
         if 'overlay-name' in body['cloudlet-overlay-finish']:
-            overlay_name= body['cloudlet-overlay-finish']['overlay-name']
+            overlay_name = body['cloudlet-overlay-finish']['overlay-name']
         else:
             msg = _("Need overlay Name")
             raise webob.exc.HTTPNotFound(explanation=msg)
 
         LOG.debug(_("cloudlet Generate overlay VM finish %r"), id)
         instance = self._get_instance(context, id, want_objects=True)
-        overlay_id = self.cloudlet_api.cloudlet_create_overlay_finish(context,
-                                                                      instance,
-                                                                      overlay_name)
+        overlay_id = self.cloudlet_api.cloudlet_create_overlay_finish(
+            context,
+            instance,
+            overlay_name)
         return {'overlay-id': overlay_id}
 
     @wsgi.action('cloudlet-handoff')
@@ -193,7 +183,7 @@ class CloudletController(wsgi.Controller):
         payload = body['cloudlet-handoff']
         handoff_url = payload.get("handoff_url", None)
         dest_token = payload.get("dest_token", None)
-        if handoff_url == None:
+        if handoff_url is None:
             msg = _("Need Handoff URL")
             raise webob.exc.HTTPBadRequest(explanation=msg)
         parsed_handoff_url = urlsplit(handoff_url)
@@ -205,12 +195,12 @@ class CloudletController(wsgi.Controller):
             raise webob.exc.HTTPBadRequest(explanation=msg)
         if len(parsed_handoff_url.netloc) == 0:
             msg = "Invalid handoff_url (%s). " % handoff_url
-            msg += "Need destination (residue name or handoff destination address)"
+            msg += "Need destination (e.g. handoff destination address)"
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         if parsed_handoff_url.scheme == "http" or\
                 parsed_handoff_url.scheme == "https":
-            if dest_token == None:
+            if dest_token is None:
                 msg = "Need auth-token for the handoff destination"
                 raise webob.exc.HTTPBadRequest(explanation=msg)
 

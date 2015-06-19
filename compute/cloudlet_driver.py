@@ -25,7 +25,7 @@ import select
 import shutil
 import StringIO
 from urlparse import urlsplit
-from tempfile import mkdtemp    # replace it with util.tempdir
+from tempfile import mkdtemp    # replace it to util.tempdir
 
 from nova.virt.libvirt import blockinfo
 from nova.compute import power_state
@@ -60,7 +60,6 @@ from elijah.provisioning import compression
 from elijah.provisioning.package import VMOverlayPackage
 from elijah.provisioning.configuration import Const as Cloudlet_Const
 from elijah.provisioning.configuration import Options
-from elijah.provisioning.configuration import VMOverlayCreationMode
 
 
 LOG = openstack_logging.getLogger(__name__)
@@ -85,12 +84,12 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
                     'status': 'active',
                     'name': snapshot['name'],
                     'properties': {
-                                'kernel_id': instance['kernel_id'],
-                                'image_location': 'snapshot',
-                                'image_state': 'available',
-                                'owner_id': instance['project_id'],
-                                'ramdisk_id': instance['ramdisk_id'],
-                                }
+                        'kernel_id': instance['kernel_id'],
+                        'image_location': 'snapshot',
+                        'image_state': 'available',
+                        'owner_id': instance['project_id'],
+                        'ramdisk_id': instance['ramdisk_id'],
+                        }
                     }
 
         (image_service, image_id) = glance.get_remote_image_service(
@@ -108,18 +107,18 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         metadata['container_format'] = base.get('container_format', 'bare')
         return metadata
 
-    def _update_to_glance(self, context, image_service, filepath, 
-            meta_id, metadata):
+    def _update_to_glance(self, context, image_service, filepath,
+                          meta_id, metadata):
         with libvirt_utils.file_open(filepath) as image_file:
             image_service.update(context,
-                                meta_id,
-                                metadata,
-                                image_file)
+                                 meta_id,
+                                 metadata,
+                                 image_file)
 
     @exception.wrap_exception()
     def cloudlet_base(self, context, instance, vm_name,
-            disk_meta_id, memory_meta_id, 
-            diskhash_meta_id, memoryhash_meta_id, update_task_state):
+                      disk_meta_id, memory_meta_id,
+                      diskhash_meta_id, memoryhash_meta_id, update_task_state):
         """create base vm and save it to glance
         """
         try:
@@ -139,13 +138,13 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             context, instance['image_ref'])
 
         disk_metadata = self._get_snapshot_metadata(virt_dom, context,
-                instance, disk_meta_id)
+                                                    instance, disk_meta_id)
         mem_metadata = self._get_snapshot_metadata(virt_dom, context,
-                instance, memory_meta_id)
-        diskhash_metadata = self._get_snapshot_metadata(virt_dom, context,
-                instance, diskhash_meta_id)
-        memhash_metadata = self._get_snapshot_metadata(virt_dom, context,
-                instance, memoryhash_meta_id)
+                                                   instance, memory_meta_id)
+        diskhash_metadata = self._get_snapshot_metadata(
+            virt_dom, context, instance, diskhash_meta_id)
+        memhash_metadata = self._get_snapshot_metadata(
+            virt_dom, context, instance, memoryhash_meta_id)
 
         disk_path = libvirt_utils.find_disk(virt_dom)
         source_format = libvirt_utils.get_disk_type(disk_path)
@@ -154,13 +153,14 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         state = libvirt_driver.LIBVIRT_POWER_STATE[state]
 
         # creating base vm requires cold snapshotting
-        snapshot_backend = self.image_backend.snapshot(disk_path,
-                image_type=source_format)
+        snapshot_backend = self.image_backend.snapshot(
+            disk_path,
+            image_type=source_format)
 
         LOG.info(_("Beginning cold snapshot process"),
-                    instance=instance)
+                 instance=instance)
         # not available at icehouse
-        #snapshot_backend.snapshot_create()
+        # snapshot_backend.snapshot_create()
 
         update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD,
                           expected_state=None)
@@ -172,9 +172,10 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
                 # At this point, base vm should be "raw" format
                 snapshot_backend.snapshot_extract(out_path, "raw")
             finally:
-                # snapshotting logic is changed in icehouse. No snapshot_create and snapshot_delete.
+                # snapshotting logic is changed since icehouse.
+                #  : cannot find snapshot_create and snapshot_delete.
                 # snapshot_extract is replacing these two operations.
-                #snapshot_backend.snapshot_delete()
+                # snapshot_backend.snapshot_delete()
                 LOG.info(_("Snapshot extracted, beginning image upload"),
                          instance=instance)
 
@@ -184,30 +185,33 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             memhash_path = os.path.join(tmpdir, snapshot_name+"-mem_hash")
 
             update_task_state(task_state=task_states.IMAGE_UPLOADING,
-                     expected_state=task_states.IMAGE_PENDING_UPLOAD)
-            synthesis._create_baseVM(self._conn, virt_dom, out_path, basemem_path,
-                    diskhash_path, memhash_path, nova_util=libvirt_utils)
+                              expected_state=task_states.IMAGE_PENDING_UPLOAD)
+            synthesis._create_baseVM(self._conn,
+                                     virt_dom,
+                                     out_path,
+                                     basemem_path,
+                                     diskhash_path,
+                                     memhash_path,
+                                     nova_util=libvirt_utils)
 
             self._update_to_glance(context, image_service, out_path,
-                    disk_meta_id, disk_metadata)
+                                   disk_meta_id, disk_metadata)
             LOG.info(_("Base disk upload complete"), instance=instance)
             self._update_to_glance(context, image_service, basemem_path,
-                    memory_meta_id, mem_metadata)
+                                   memory_meta_id, mem_metadata)
             LOG.info(_("Base memory image upload complete"), instance=instance)
             self._update_to_glance(context, image_service, diskhash_path,
-                    diskhash_meta_id, diskhash_metadata)
+                                   diskhash_meta_id, diskhash_metadata)
             LOG.info(_("Base disk upload complete"), instance=instance)
-            self._update_to_glance(context, image_service, memhash_path, \
-                    memoryhash_meta_id, memhash_metadata)
+            self._update_to_glance(context, image_service, memhash_path,
+                                   memoryhash_meta_id, memhash_metadata)
             LOG.info(_("Base memory image upload complete"), instance=instance)
-            # restore vm to gracefully terminate using openstack logic
-            #self._conn.restore(basemem_path)
 
-
-    # sperate creating domain and creating network
     def _create_network_only(self, xml, instance, network_info,
-                                   block_device_info=None):
-        """Do required network setup and skip create domain part."""
+                             block_device_info=None):
+        """Only perform network setup but skip set-up for domain (vm instance)
+        because cloudlet code takes care of domain
+        """
         block_device_mapping = driver.block_device_info_get_mapping(
             block_device_info)
 
@@ -230,8 +234,8 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         self.firewall_driver.prepare_instance_filter(instance, network_info)
         self.firewall_driver.apply_instance_filter(instance, network_info)
 
-    def create_overlay_vm(self, context, instance, 
-            overlay_name, overlay_id, update_task_state):
+    def create_overlay_vm(self, context, instance,
+                          overlay_name, overlay_id, update_task_state):
         try:
             if hasattr(self, "_lookup_by_name"):
                 # icehouse
@@ -247,7 +251,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             context, instance['image_ref'])
         image_meta = image_service.show(context, image_id)
         base_sha256_uuid, memory_snap_id, diskhash_snap_id, memhash_snap_id = \
-                self._get_basevm_meta_info(image_meta)
+            self._get_basevm_meta_info(image_meta)
         self._get_cache_image(context, instance, image_meta['id'])
         self._get_cache_image(context, instance, memory_snap_id)
         self._get_cache_image(context, instance, diskhash_snap_id)
@@ -259,13 +263,13 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         # create VM overlay
         (image_service, image_id) = glance.get_remote_image_service(
             context, instance['image_ref'])
-        meta_metadata = self._get_snapshot_metadata(virt_dom, context, \
-                instance, overlay_id)
+        meta_metadata = self._get_snapshot_metadata(virt_dom, context,
+                                                    instance, overlay_id)
         update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD,
                           expected_state=None)
 
         vm_overlay = self.resumed_vm_dict.get(instance['uuid'], None)
-        if vm_overlay == None:
+        if vm_overlay is None:
             raise exception.InstanceNotRunning(instance_id=instance['uuid'])
         del self.resumed_vm_dict[instance['uuid']]
         vm_overlay.create_overlay()
@@ -273,11 +277,11 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         LOG.info("overlay : %s" % str(overlay_zip))
 
         update_task_state(task_state=task_states.IMAGE_UPLOADING,
-                    expected_state=task_states.IMAGE_PENDING_UPLOAD)
+                          expected_state=task_states.IMAGE_PENDING_UPLOAD)
 
         # export to glance
-        self._update_to_glance(context, image_service, overlay_zip, \
-                overlay_id, meta_metadata)
+        self._update_to_glance(context, image_service, overlay_zip,
+                               overlay_id, meta_metadata)
         LOG.info(_("overlay_vm upload complete"), instance=instance)
 
         if os.path.exists(overlay_zip):
@@ -295,7 +299,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         except exception.InstanceNotFound:
             raise exception.InstanceNotRunning(instance_id=instance['uuid'])
         synthesized_vm = self.synthesized_vm_dics.get(instance['uuid'], None)
-        if synthesized_vm == None:
+        if synthesized_vm is None:
             raise exception.InstanceNotRunning(instance_id=instance['uuid'])
 
         # get the file path for Base VM and VM overlay
@@ -303,12 +307,16 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             context, instance['image_ref'])
         image_meta = image_service.show(context, image_id)
         base_sha256_uuid, memory_snap_id, diskhash_snap_id, memhash_snap_id = \
-                self._get_basevm_meta_info(image_meta)
-        basedisk_path =self._get_cache_image(context, instance, image_meta['id'])
+            self._get_basevm_meta_info(image_meta)
+        basedisk_path = self._get_cache_image(
+            context, instance, image_meta['id'])
         basemem_path = self._get_cache_image(context, instance, memory_snap_id)
-        diskhash_path =self._get_cache_image(context, instance, diskhash_snap_id)
-        memhash_path = self._get_cache_image(context, instance, memhash_snap_id)
-        base_vm_paths = [basedisk_path, basemem_path, diskhash_path, memhash_path]
+        diskhash_path = self._get_cache_image(
+            context, instance, diskhash_snap_id)
+        memhash_path = self._get_cache_image(
+            context, instance, memhash_snap_id)
+        base_vm_paths = [basedisk_path, basemem_path,
+                         diskhash_path, memhash_path]
 
         update_task_state(task_state=task_states.IMAGE_PENDING_UPLOAD,
                           expected_state=None)
@@ -328,22 +336,27 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             # export to glance
             (image_service, image_id) = glance.get_remote_image_service(
                 context, instance['image_ref'])
-            meta_metadata = self._get_snapshot_metadata(virt_dom, context, \
-                    instance, residue_glance_id)
+            meta_metadata = self._get_snapshot_metadata(
+                virt_dom,
+                context,
+                instance,
+                residue_glance_id)
             update_task_state(task_state=task_states.IMAGE_UPLOADING,
-                        expected_state=task_states.IMAGE_PENDING_UPLOAD)
+                              expected_state=task_states.IMAGE_PENDING_UPLOAD)
             self._update_to_glance(context, image_service, residue_filepath,
-                                    residue_glance_id, meta_metadata)
+                                   residue_glance_id, meta_metadata)
         # clean up
         LOG.info(_("VM residue upload complete"), instance=instance)
         if residue_filepath and os.path.exists(residue_filepath):
             os.remove(residue_filepath)
 
-    def _handoff_send(self, base_vm_paths, base_hashvalue, synthesized_vm, handoff_url):
+    def _handoff_send(self, base_vm_paths, base_hashvalue,
+                      synthesized_vm, handoff_url):
         """
         """
         # preload basevm hash dictionary for creating residue
-        (basedisk_path, basemem_path, diskhash_path, memhash_path) = base_vm_paths
+        (basedisk_path, basemem_path,
+         diskhash_path, memhash_path) = base_vm_paths
         preload_thread = handoff.PreloadResidueData(diskhash_path, memhash_path)
         preload_thread.start()
         preload_thread.join()
@@ -361,11 +374,12 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         dest_handoff_url = handoff_url
         parsed_handoff_url = urlsplit(handoff_url)
         if parsed_handoff_url.scheme == "file":
-            residue_zipfile = os.path.join(residue_tmp_dir, Cloudlet_Const.OVERLAY_ZIP)
+            residue_zipfile = os.path.join(
+                residue_tmp_dir, Cloudlet_Const.OVERLAY_ZIP)
             dest_handoff_url = "file://%s" % os.path.abspath(residue_zipfile)
 
         # handoff mode --> fix it to be serializable
-        handoff_mode = None # use default
+        handoff_mode = None  # use default
 
         # data structure for handoff sending
         handoff_ds_send = handoff.HandoffDataSend()
@@ -391,6 +405,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         cmd = ["/usr/local/bin/handoff-proc", "%s" % handoff_send_datafile]
         LOG.debug("subprocess: %s" % cmd)
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, close_fds=True)
+
         def _wait_for_handoff_send(print_log=False):
             """Called at an interval until VM synthesis finishes."""
             returncode = proc.poll()
@@ -407,7 +422,9 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
                         return
             else:
                 raise loopingcall.LoopingCallDone()
-        timer = loopingcall.FixedIntervalLoopingCall(_wait_for_handoff_send, print_log=True)
+        timer = loopingcall.FixedIntervalLoopingCall(
+            _wait_for_handoff_send,
+            print_log=True)
         timer.start(interval=0.5).wait()
         LOG.info("Handoff send finishes")
         return residue_zipfile
@@ -416,6 +433,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         def basepath(fname='', suffix=suffix):
             return os.path.join(libvirt_utils.get_instance_path(instance),
                                 fname + suffix)
+
         def raw(fname, image_type='raw'):
             return self.image_backend.image(instance, fname, image_type)
 
@@ -428,22 +446,24 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             size = None
 
         raw('disk').cache(fetch_func=libvirt_utils.fetch_image,
-                            context=context,
-                            filename=fname,
-                            size=size,
-                            image_id=snapshot_id,
-                            user_id=instance['user_id'],
-                            project_id=instance['project_id'])
+                          context=context,
+                          filename=fname,
+                          size=size,
+                          image_id=snapshot_id,
+                          user_id=instance['user_id'],
+                          project_id=instance['project_id'])
 
-        # from cache method at virt/libvirt/imagebackend.py 
-        abspath = os.path.join(libvirt_driver.CONF.instances_path,
-                libvirt_driver.CONF.image_cache_subdirectory_name, fname)
+        # from cache method at virt/libvirt/imagebackend.py
+        abspath = os.path.join(
+            libvirt_driver.CONF.instances_path,
+            libvirt_driver.CONF.image_cache_subdirectory_name,
+            fname)
         return abspath
 
     def _polish_VM_configuration(self, xml):
         # remove cpu element
         cpu_element = xml.find("cpu")
-        if cpu_element != None:
+        if cpu_element is not None:
             xml.remove(cpu_element)
 
         # TODO: Handle console/serial element properly
@@ -461,7 +481,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             disk_type = disk_element.attrib['device']
             if disk_type == 'disk':
                 hdd_driver = disk_element.find("driver")
-                if hdd_driver != None and hdd_driver.get("cache", None) != None:
+                if hdd_driver is not None and hdd_driver.get("cache", None) is not None:
                     del hdd_driver.attrib['cache']
 
         xml_str = ElementTree.tostring(xml)
@@ -476,21 +496,29 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
         meta_data = image_meta.get('properties', None)
         if meta_data and meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_MEM):
-            base_sha256_uuid = str(meta_data.get(CloudletAPI.PROPERTY_KEY_BASE_UUID))
-            memory_snap_id = str(meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_MEM))
-            diskhash_snap_id = str(meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_DISK_HASH))
-            memhash_snap_id = str(meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_MEM_HASH))
-            LOG.debug(_("cloudlet, get base sha256 uuid: %s" % str(base_sha256_uuid)))
-            LOG.debug(_("cloudlet, get memory_snapshot_id: %s" % str(memory_snap_id)))
-            LOG.debug(_("cloudlet, get disk_hash_snapshot_id: %s" % str(diskhash_snap_id)))
-            LOG.debug(_("cloudlet, get memory_hash_snapshot_id: %s" % str(memhash_snap_id)))
+            base_sha256_uuid = str(
+                meta_data.get(CloudletAPI.PROPERTY_KEY_BASE_UUID))
+            memory_snap_id = str(
+                meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_MEM))
+            diskhash_snap_id = str(
+                meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_DISK_HASH))
+            memhash_snap_id = str(
+                meta_data.get(CloudletAPI.IMAGE_TYPE_BASE_MEM_HASH))
+            LOG.debug(
+                _("cloudlet, get base sha256 uuid: %s" % str(base_sha256_uuid)))
+            LOG.debug(
+                _("cloudlet, get memory_snapshot_id: %s" % str(memory_snap_id)))
+            LOG.debug(
+                _("cloudlet, get disk_hash_id: %s" % str(diskhash_snap_id)))
+            LOG.debug(
+                _("cloudlet, get memory_hash_id: %s" % str(memhash_snap_id)))
         return base_sha256_uuid, memory_snap_id, diskhash_snap_id, memhash_snap_id
 
     def _get_VM_overlay_url(self, instance):
         # get overlay from instance metadata for synthesis case
         overlay_url = None
         instance_meta = instance.get('metadata', None)
-        if instance_meta != None:
+        if instance_meta is not None:
             for (key, value) in instance_meta.iteritems():
                 if key == "overlay_url":
                     overlay_url = value
@@ -508,7 +536,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
         # get meta info related to VM synthesis
         base_sha256_uuid, memory_snap_id, diskhash_snap_id, memhash_snap_id = \
-                self._get_basevm_meta_info(image_meta)
+            self._get_basevm_meta_info(image_meta)
         overlay_url = None
         handoff_info = None
         instance_meta = instance.get('metadata', None)
@@ -519,27 +547,28 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
                 handoff_info = instance_meta.get("handoff_info")
 
         # original openstack logic
-        disk_info = blockinfo.get_disk_info(libvirt_driver.CONF.libvirt.virt_type,
-                                            instance,
-                                            block_device_info,
-                                            image_meta)
+        disk_info = blockinfo.get_disk_info(
+            libvirt_driver.CONF.libvirt.virt_type,
+            instance,
+            block_device_info,
+            image_meta)
 
-        if hasattr(self, 'to_xml'): # icehouse
+        if hasattr(self, 'to_xml'):  # icehouse
             xml = self.to_xml(context, instance, network_info,
-                            disk_info, image_meta,
-                            block_device_info=block_device_info,
-                            write_to_disk=True)
-        elif hasattr(self, '_get_guest_xml'): # kilo
+                              disk_info, image_meta,
+                              block_device_info=block_device_info,
+                              write_to_disk=True)
+        elif hasattr(self, '_get_guest_xml'):  # kilo
             xml = self._get_guest_xml(context, instance, network_info,
-                            disk_info, image_meta,
-                            block_device_info=block_device_info,
-                            write_to_disk=True)
+                                      disk_info, image_meta,
+                                      block_device_info=block_device_info,
+                                      write_to_disk=True)
 
         # handle xml configuration to make a portable VM
         xml_obj = ElementTree.fromstring(xml)
         xml = self._polish_VM_configuration(xml_obj)
 
-        # avoid injecting key, password, and metadata since we're resuming the VM
+        # avoid injecting key, password, and metadata since we're resuming VM
         original_inject_password = libvirt_driver.CONF.libvirt.inject_password
         original_inject_key = libvirt_driver.CONF.libvirt.inject_key
         original_metadata = instance.get('metadata')
@@ -559,15 +588,15 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         libvirt_driver.CONF.libvirt.inject_key = original_inject_key
         instance['metadata'] = original_metadata
 
-        if (overlay_url != None) and (handoff_info == None):
+        if (overlay_url is not None) and (handoff_info is None):
             # spawn instance using VM synthesis
             LOG.debug(_('cloudlet, synthesis start'))
             # append metadata to the instance
             self._create_network_only(xml, instance, network_info,
                                       block_device_info)
             synthesized_vm = self._spawn_using_synthesis(context, instance,
-                                                             xml, image_meta,
-                                                             overlay_url)
+                                                         xml, image_meta,
+                                                         overlay_url)
             instance_uuid = str(instance.get('uuid', ''))
             self.synthesized_vm_dics[instance_uuid] = synthesized_vm
         elif handoff_info is not None:
@@ -576,8 +605,8 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             self._create_network_only(xml, instance, network_info,
                                       block_device_info)
             synthesized_vm = self._spawn_using_handoff(context, instance,
-                                                           xml, image_meta,
-                                                           handoff_info)
+                                                       xml, image_meta,
+                                                       handoff_info)
             instance_uuid = str(instance.get('uuid', ''))
             self.synthesized_vm_dics[instance_uuid] = synthesized_vm
             pass
@@ -599,12 +628,16 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
                                       block_device_info)
             LOG.debug(_('cloudlet, resuming base vm'))
             self.resume_basevm(instance, xml, basedisk_path, basemem_path,
-                    diskhash_path, memhash_path, base_sha256_uuid)
+                               diskhash_path, memhash_path, base_sha256_uuid)
         else:
-            self._create_domain_and_network(context, xml, instance, network_info,
+            self._create_domain_and_network(context,
+                                            xml,
+                                            instance,
+                                            network_info,
                                             block_device_info)
 
         LOG.debug(_("Instance is running"), instance=instance)
+
         def _wait_for_boot():
             """Called at an interval until the VM is running."""
             state = self.get_info(instance).state
@@ -614,7 +647,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         timer = loopingcall.FixedIntervalLoopingCall(_wait_for_boot)
         timer.start(interval=0.5).wait()
         LOG.info(_("Instance spawned successfully."),
-                    instance=instance)
+                 instance=instance)
 
     def _destroy(self, instance):
         """overwrite original libvirt_driver's _destroy method
@@ -626,24 +659,24 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
         # check resumed base VM list
         vm_overlay = self.resumed_vm_dict.get(instance_uuid, None)
-        if vm_overlay != None:
+        if vm_overlay is not None:
             vm_overlay.terminate()
             del self.resumed_vm_dict[instance['uuid']]
 
         # check synthesized VM list
         synthesized_VM = self.synthesized_vm_dics.get(instance_uuid, None)
-        if synthesized_VM != None:
-            LOG.info(_("Deallocate all resources of synthesized VM"), \
-                    instance=instance)
-            if hasattr(synthesized_VM, 'machine') == True:
+        if synthesized_VM is not None:
+            LOG.info(_("Deallocate all resources of synthesized VM"),
+                     instance=instance)
+            if hasattr(synthesized_VM, 'machine'):
                 # intentionally avoid terminating VM at synthesis code
                 # since OpenStack will do that
                 synthesized_VM.machine = None
             synthesized_VM.terminate()
             del self.synthesized_vm_dics[instance_uuid]
 
-    def resume_basevm(self, instance, xml,
-            base_disk, base_memory, base_diskmeta, base_memmeta, base_hashvalue):
+    def resume_basevm(self, instance, xml, base_disk, base_memory,
+                      base_diskmeta, base_memmeta, base_hashvalue):
         """ resume base vm to create overlay vm
         """
         options = synthesis.Options()
@@ -664,16 +697,15 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         self.resumed_vm_dict[instance['uuid']] = vm_overlay
         synthesis.rettach_nic(virt_dom, vm_overlay.old_xml_str, xml)
 
-    def _spawn_using_synthesis(self, context, instance, xml, 
-            image_meta, overlay_url):
-
+    def _spawn_using_synthesis(self, context, instance, xml,
+                               image_meta, overlay_url):
         # download vm overlay
         overlay_package = VMOverlayPackage(overlay_url)
         meta_raw = overlay_package.read_meta()
         meta_info = msgpack.unpackb(meta_raw)
         basevm_sha256 = meta_info.get(Cloudlet_Const.META_BASE_VM_SHA256, None)
         image_properties = image_meta.get("properties", None)
-        if image_properties == None:
+        if image_properties is None:
             msg = "image does not have properties for cloudlet metadata"
             raise exception.ImageNotFound(msg)
         image_sha256 = image_properties.get(CloudletAPI.PROPERTY_KEY_BASE_UUID)
@@ -681,70 +713,75 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         # check basevm
         if basevm_sha256 != image_sha256:
             msg = "requested base vm is not compatible with openstack base disk %s != %s" \
-                    % (basevm_sha256, image_sha256)
+                % (basevm_sha256, image_sha256)
             raise exception.ImageNotFound(msg)
-        memory_snap_id = str(image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_MEM))
-        diskhash_snap_id = str(image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_DISK_HASH))
-        memhash_snap_id = str(image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_MEM_HASH))
-        basedisk_path = self._get_cache_image(context, instance, image_meta['id'])
+        memory_snap_id = str(
+            image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_MEM))
+        diskhash_snap_id = str(
+            image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_DISK_HASH))
+        memhash_snap_id = str(
+            image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_MEM_HASH))
+        basedisk_path = self._get_cache_image(context, instance,
+                                              image_meta['id'])
         basemem_path = self._get_cache_image(context, instance, memory_snap_id)
-        diskhash_path = self._get_cache_image(context, instance, diskhash_snap_id)
+        diskhash_path = self._get_cache_image(context, instance,
+                                              diskhash_snap_id)
         memhash_path = self._get_cache_image(context, instance, memhash_snap_id)
 
         # download blob
         fileutils.ensure_tree(libvirt_utils.get_instance_path(instance))
         decomp_overlay = os.path.join(libvirt_utils.get_instance_path(instance),
-                'decomp_overlay')
+            'decomp_overlay')
 
         meta_info = compression.decomp_overlayzip(overlay_url, decomp_overlay)
 
         # recover VM
         launch_disk, launch_mem, fuse, delta_proc, fuse_proc = \
-                synthesis.recover_launchVM(
-                    basedisk_path, meta_info,
-                    decomp_overlay,
-                    base_mem=basemem_path,
-                    base_diskmeta=diskhash_path,
-                    base_memmeta=memhash_path)
-
+            synthesis.recover_launchVM(basedisk_path, meta_info,
+                                       decomp_overlay,
+                                       base_mem=basemem_path,
+                                       base_diskmeta=diskhash_path,
+                                       base_memmeta=memhash_path)
         # resume VM
         LOG.info(_("Starting VM synthesis"), instance=instance)
-        synthesized_vm = synthesis.SynthesizedVM(
-            launch_disk, launch_mem, fuse,
-            disk_only=False,
-            qemu_args=False,
-            nova_xml=xml,
-            nova_conn=self._conn,
-            nova_util=libvirt_utils
-        )
-
+        synthesized_vm = synthesis.SynthesizedVM(launch_disk, launch_mem, fuse,
+                                                 disk_only=False,
+                                                 qemu_args=False,
+                                                 nova_xml=xml,
+                                                 nova_conn=self._conn,
+                                                 nova_util=libvirt_utils
+                                                 )
         # testing non-thread resume
         delta_proc.start()
         fuse_proc.start()
         delta_proc.join()
         fuse_proc.join()
         LOG.info(_("Finish VM synthesis"), instance=instance)
-
         synthesized_vm.resume()
-
         # rettach NIC
         synthesis.rettach_nic(synthesized_vm.machine,
-                synthesized_vm.old_xml_str, xml)
+                              synthesized_vm.old_xml_str, xml)
 
         return synthesized_vm
 
-
-    def _spawn_using_handoff(self, context, instance, xml, 
-                                 image_meta, handoff_info):
+    def _spawn_using_handoff(self, context, instance, xml,
+                             image_meta, handoff_info):
         image_properties = image_meta.get("properties", None)
-        memory_snap_id = str(image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_MEM))
-        diskhash_snap_id = str(image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_DISK_HASH))
-        memhash_snap_id = str(image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_MEM_HASH))
-        basedisk_path = self._get_cache_image(context, instance, image_meta['id'])
+        memory_snap_id = str(
+            image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_MEM))
+        diskhash_snap_id = str(
+            image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_DISK_HASH))
+        memhash_snap_id = str(
+            image_properties.get(CloudletAPI.IMAGE_TYPE_BASE_MEM_HASH))
+        basedisk_path = self._get_cache_image(context, instance,
+                                              image_meta['id'])
         basemem_path = self._get_cache_image(context, instance, memory_snap_id)
-        diskhash_path = self._get_cache_image(context, instance, diskhash_snap_id)
-        memhash_path = self._get_cache_image(context, instance, memhash_snap_id)
-        base_vm_paths = [basedisk_path, basemem_path, diskhash_path, memhash_path]
+        diskhash_path = self._get_cache_image(context, instance,
+                                              diskhash_snap_id)
+        memhash_path = self._get_cache_image(context, instance,
+                                             memhash_snap_id)
+        base_vm_paths = [basedisk_path, basemem_path,
+                         diskhash_path, memhash_path]
         image_sha256 = image_properties.get(CloudletAPI.PROPERTY_KEY_BASE_UUID)
 
         snapshot_directory = libvirt_driver.CONF.libvirt.snapshots_directory
@@ -752,8 +789,9 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         synthesized_vm = None
         with utils.tempdir(dir=snapshot_directory) as tmpdir:
             uuidhex = uuid.uuid4().hex
-            launch_diskpath = os.path.join(tmpdir, uuidhex+ "-launch-disk")
-            launch_memorypath = os.path.join(tmpdir, uuidhex+ "-launch-memory")
+            launch_diskpath = os.path.join(tmpdir, uuidhex + "-launch-disk")
+            launch_memorypath = os.path.join(
+                tmpdir, uuidhex + "-launch-memory")
             tmp_dir = mkdtemp(prefix="cloudlet-residue-")
             handoff_recv_datafile = os.path.join(tmp_dir, "handoff-data")
             # recv handoff data and synthesize disk img and memory snapshot
@@ -774,7 +812,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
                 # rettach NIC
                 synthesis.rettach_nic(synthesized_vm.machine,
-                        synthesized_vm.old_xml_str, xml)
+                                      synthesized_vm.old_xml_str, xml)
             except handoff.HandoffError as e:
                 msg = "failed to perform VM handoff:\n"
                 msg += str(e)
@@ -800,10 +838,12 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
         handoff_ds_recv.to_file(handoff_recv_datafile)
 
         LOG.debug("start handoff recv process")
-        cmd = ["/usr/local/bin/handoff-server-proc", "-d", "%s" % handoff_recv_datafile]
+        cmd = ["/usr/local/bin/handoff-server-proc", "-d",
+               "%s" % handoff_recv_datafile]
         LOG.debug("subprocess: %s" % cmd)
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, close_fds=True)
         stdout_buf = StringIO.StringIO()
+
         def _wait_for_handoff_recv(print_log=True):
             """Called at an interval until VM synthesis finishes."""
             returncode = proc.poll()
