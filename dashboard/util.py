@@ -55,7 +55,8 @@ def get_cloudlet_type(instance):
 
         # now it's either resumed base instance or synthesized instance
         # synthesized instance has meta that for overlay URL
-        if metadata.get('overlay_url') != None:
+        if (metadata.get('overlay_url') is not None) or\
+                (metadata.get('handoff_info') is not None):
             return CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY
         else:
             return CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK
@@ -67,7 +68,11 @@ def find_basevm_by_sha256(request, sha256_value):
     from openstack_dashboard.api import glance
 
     public = {"is_public": True, "status": "active"}
-    public_images, _more, _prev = glance.image_list_detailed(request, filters=public)
+    image_detail = glance.image_list_detailed(request, filters=public)
+    if len(image_detail) == 2:  # icehouse
+        public_images, _more_images = image_detail
+    elif len(image_detail) == 3: # kilo
+        public_images, _more_images, has_prev_data = image_detail
     for image in public_images:
         properties = getattr(image, "properties")
         if properties == None or len(properties) == 0:

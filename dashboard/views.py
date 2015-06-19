@@ -34,7 +34,7 @@ from horizon import tabs
 from openstack_dashboard import api
 from openstack_dashboard.api.base import is_service_enabled
 from django.utils.datastructures import SortedDict
-from .images.tables import BaseVMsTable 
+from .images.tables import BaseVMsTable
 from .images.tables import VMOverlaysTable
 from .instances.tables import InstancesTable
 from .volume_snapshots.tables import VolumeSnapshotsTable
@@ -67,9 +67,11 @@ class IndexView(tables.MultiTableView):
     def get_images_data(self):
         marker = self.request.GET.get(BaseVMsTable._meta.pagination_param, None)
         try:
-            (all_images,
-             self._more_images, self._prev_images) = api.glance.image_list_detailed(self.request,
-                                                                 marker=marker)
+            image_detail = api.glance.image_list_detailed(self.request)
+            if len(image_detail) == 2:  # icehouse
+                all_images, _more_images = image_detail
+            elif len(image_detail) == 3: # kilo
+                all_images, _more_images, has_prev_data = image_detail
             images = [im for im in all_images
                       if im.properties.get("cloudlet_type", None) == \
                               CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK]
@@ -82,9 +84,12 @@ class IndexView(tables.MultiTableView):
         req = self.request
         marker = req.GET.get(VMOverlaysTable._meta.pagination_param, None)
         try:
-            all_snaps, self._more_snapshots, self._prev_snaps = api.glance.image_list_detailed(
-                req, marker=marker)
-            snaps = [im for im in all_snaps
+            image_detail = api.glance.image_list_detailed(self.request)
+            if len(image_detail) == 2:  # icehouse
+                all_snaps, _more_images = image_detail
+            elif len(image_detail) == 3: # kilo
+                all_snaps, _more_images, has_prev_data = image_detail
+            snaps = [im for im in all_snaps\
                       if (im.properties.get("cloudlet_type", None) == CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY)
                               and (im.owner == req.user.tenant_id)]
         except:

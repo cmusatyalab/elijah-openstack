@@ -19,15 +19,24 @@
 import functools
 
 from nova.compute import task_states
-from nova.openstack.common import log as logging
-from nova import objects
+try:
+    # icehouse
+    from nova.openstack.common import log as logging
+    from nova.openstack.common.gettextutils import _
+    from nova.openstack.common import excutils
+except ImportError as e:
+    # kilo
+    from oslo_log import log as logging
+    from nova.i18n import _
+    from oslo_utils import excutils
+from nova.objects import block_device as block_device_obj
+from nova.objects import quotas as quotas_obj
 from nova.compute import manager as compute_manager
 from nova.virt import driver
 from nova import rpc
-from nova.i18n import _
 from nova import exception
-from nova.openstack.common import excutils
 from nova import utils
+import oslo_messaging as messaging
 
 
 LOG = logging.getLogger(__name__)
@@ -36,8 +45,8 @@ get_notifier = functools.partial(rpc.get_notifier, service='compute')
 
 
 class CloudletComputeManager(compute_manager.ComputeManager):
-    """Manages the running instances from creation to destruction."""
-    RPC_API_VERSION = '3.34'
+
+    target = messaging.Target(version='4.0')
 
     def __init__(self, compute_driver=None, *args, **kwargs):
         super(CloudletComputeManager, self).__init__(*args, **kwargs)
@@ -66,8 +75,8 @@ class CloudletComputeManager(compute_manager.ComputeManager):
             instance.save(expected_task_state=expected_state)
             return instance
 
-        self.driver.cloudlet_base(context, instance, vm_name, 
-                disk_meta_id, memory_meta_id, 
+        self.driver.cloudlet_base(context, instance, vm_name,
+                disk_meta_id, memory_meta_id,
                 diskhash_meta_id, memoryhash_meta_id, callback_update_task_state)
         instance = self._instance_update(context, instance['uuid'],
                 task_state=None,
@@ -82,8 +91,8 @@ class CloudletComputeManager(compute_manager.ComputeManager):
     @compute_manager.reverts_task_state
     @compute_manager.wrap_instance_fault
     def cloudlet_overlay_finish(self, context, instance, overlay_name, overlay_id):
-        """Generate VM overlay with given instance,
-        and save it as a snapshot
+        """
+        Generate VM overlay with given instance, and save it as a snapshot
         """
         context = context.elevated()
         LOG.info(_("Generating VM overlay"), instance=instance)
@@ -93,8 +102,29 @@ class CloudletComputeManager(compute_manager.ComputeManager):
             instance.save(expected_task_state=expected_state)
             return instance
 
-        self.driver.create_overlay_vm(context, instance, overlay_name, 
+        self.driver.create_overlay_vm(context, instance, overlay_name,
                 overlay_id, callback_update_task_state)
+        self.cloudlet_terminate_instance(context, instance)
+
+    @compute_manager.object_compat
+    @compute_manager.wrap_exception()
+    @compute_manager.reverts_task_state
+    @compute_manager.wrap_instance_fault
+    def cloudlet_handoff(self, context, instance, handoff_url, residue_glance_id=None):
+        """
+        Perform VM handoff
+        """
+        context = context.elevated()
+        LOG.info(_("VM handoff to %s" % handoff_url), instance=instance)
+
+        def callback_update_task_state(task_state, expected_state=task_states.IMAGE_SNAPSHOT):
+            instance.task_state = task_state
+            instance.save(expected_task_state=expected_state)
+            return instance
+
+        self.driver.perform_vmhandoff(context, instance, handoff_url,
+                                      callback_update_task_state,
+                                      residue_glance_id)
         self.cloudlet_terminate_instance(context, instance)
 
     # Direct calling of terminate_instance at the manager.py will cause "InstanceActionNotFound_Remote" 
@@ -104,11 +134,11 @@ class CloudletComputeManager(compute_manager.ComputeManager):
     @compute_manager.reverts_task_state
     @compute_manager.wrap_instance_fault
     def cloudlet_terminate_instance(self, context, instance):
-        bdms = objects.BlockDeviceMappingList.get_by_instance_uuid(
+        bdms = block_device_obj.BlockDeviceMappingList.get_by_instance_uuid(
                 context, instance['uuid'])
 
         # copy & paste from terminate_instance at manager.py
-        quotas = objects.Quotas.from_reservations(context,
+        quotas = quotas_obj.Quotas.from_reservations(context,
                                                   None,
                                                   instance=instance)
 

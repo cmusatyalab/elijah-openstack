@@ -23,10 +23,13 @@ import json
 import subprocess
 import urllib
 
+from pprint import pprint
 from optparse import OptionParser
 from urlparse import urlparse
+from urlparse import urlsplit
 from tempfile import mkdtemp
 from client_util import CLOUDLET_TYPE
+from client_util import CLOUDLET_COMMAND
 from client_util import find_matching_flavor
 from client_util import get_resource_size
 from client_util import create_flavor
@@ -132,20 +135,25 @@ def request_synthesis(server_address, token, end_point, key_name=None,\
     if basevm_uuid == None:
         raise CloudletClientError("Cannot find matching Base VM with (%s)" %\
                 str(requested_basevm_id))
-    if basevm_xml == None:
-        msg = "Cannot find resource information of base VM (%s)" %\
-                str(requested_basevm_id)
-        raise CloudletClientError(msg)
 
+    # NOT IMPLEMENTED YET
     # Find matching flavor. Otherwise create a new one.
-    cpu_count, memory_mb = get_resource_size(basevm_xml)
+    #if basevm_xml == None:
+    #    msg = "Cannot find resource information of base VM (%s)" %\
+    #            str(requested_basevm_id)
+    #    raise CloudletClientError(msg)
+    #cpu_count, memory_mb = get_resource_size(basevm_xml)
+    #flavor_list = get_list(server_address, token, end_point, "flavors")
+    #flavor_ref, flavor_id = find_matching_flavor(flavor_list, cpu_count, memory_mb)
+    #if flavor_ref == None or flavor_id == None:
+    #    sys.stdout.write("Cannot find matching flavor, create a new one\n")
+    #    flavor_name = "cloudlet-%s" % basevm_name
+    #    flavor_ref, flavor_id = create_flavor(server_address, token, \
+    #            urlparse(end_point), cpu_count, memory_mb, flavor_name)
+
+    # todo: assign small flavor
     flavor_list = get_list(server_address, token, end_point, "flavors")
-    flavor_ref, flavor_id = find_matching_flavor(flavor_list, cpu_count, memory_mb)
-    if flavor_ref == None or flavor_id == None:
-        sys.stdout.write("Cannot find matching flavor, create a new one\n")
-        flavor_name = "cloudlet-%s" % basevm_name
-        flavor_ref, flavor_id = create_flavor(server_address, token, \
-                urlparse(end_point), cpu_count, memory_mb, flavor_name)
+    flavor_id = flavor_list[2]['links'][0]['href']
 
     # generate request
     meta_data = {"overlay_url": overlay_url}
@@ -165,6 +173,72 @@ def request_synthesis(server_address, token, end_point, key_name=None,\
     data = response.read()
     dd = json.loads(data)
     conn.close()
+    pprint(dd)
+    return dd
+
+
+def _request_handoff_recv(server_address, token, end_point,
+                         server_name=None, overlay_url=None):
+    """Test method for handoff receving"""
+
+    # read meta data from vm overlay URL
+    from elijah.provisioning.package import VMOverlayPackage
+    try:
+        from elijah.provisioning import msgpack
+    except ImportError as e:
+        import msgpack
+
+    overlay_package = VMOverlayPackage(overlay_url)
+    meta_raw = overlay_package.read_meta()
+    meta_info = msgpack.unpackb(meta_raw)
+    requested_basevm_id = meta_info['base_vm_sha256']
+
+    # find matching base VM
+    image_list = get_list(server_address, token, end_point, "images")
+    basevm_uuid = None
+    basevm_xml = None
+    basevm_name = None
+    for image in image_list:
+        properties = image.get("metadata", None)
+        if properties == None or len(properties) == 0:
+            continue
+        if properties.get(CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET_TYPE) != \
+                CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
+            continue
+        base_sha256_uuid = properties.get(CLOUDLET_TYPE.PROPERTY_KEY_BASE_UUID)
+        if base_sha256_uuid == requested_basevm_id:
+            basevm_uuid = image['id']
+            basevm_name = image['name']
+            basevm_xml = properties.get(CLOUDLET_TYPE.PROPERTY_KEY_BASE_RESOURCE, None)
+            break
+    if basevm_uuid == None:
+        raise CloudletClientError(
+            "Cannot find matching Base VM with (%s)" % str(requested_basevm_id))
+
+    # todo: assign small flavor
+    flavor_list = get_list(server_address, token, end_point, "flavors")
+    flavor_id = flavor_list[1]['links'][0]['href']
+
+    # generate request
+    meta_data = {"handoff_info": overlay_url}
+    s = {"server":
+         {
+             "name": server_name, "imageRef": str(basevm_uuid), \
+             "flavorRef": flavor_id, "metadata": meta_data, \
+             "min_count":"1", "max_count":"1",
+             "key_name": None,
+         }
+    }
+    params = json.dumps(s)
+    headers = { "X-Auth-Token":token, "Content-type":"application/json" }
+    conn = httplib.HTTPConnection(end_point[1])
+    conn.request("POST", "%s/servers" % end_point[2], params, headers)
+    sys.stdout.write("request new server: %s/servers\n" % (end_point[2]))
+    response = conn.getresponse()
+    data = response.read()
+    dd = json.loads(data)
+    conn.close()
+    pprint(dd)
     return dd
 
 
@@ -215,19 +289,21 @@ def request_cloudlet_base(server_address, token, end_point, server_name, cloudle
     print json.dumps(data, indent=2)
     return data
 
+
 def send_discovery_query(token, endpoint):
     #params = json.dumps({"cloudlet-status":{"overlay-name": overlay_name}})
     params = urllib.urlencode({})
     headers = { "X-Auth-Token":token, "Content-type":"application/json" }
 
     conn = httplib.HTTPConnection(endpoint[1])
-    command = "%s/os-cloudlet/status" % (endpoint[2])
+    command = "%s/discovery/status" % (endpoint[2])
     conn.request("GET", command, params, headers)
     response = conn.getresponse()
     data = response.read()
     conn.close()
     print json.loads(data)
     return data
+
 
 def request_cloudlet_overlay_start(server_address, token, end_point, image_name, key_name):
     #get right iamge
@@ -288,7 +364,34 @@ def request_create_overlay(server_address, token, end_point, \
     data = response.read()
     conn.close()
     print data
-   
+
+
+def request_handoff(server_address, token, end_point,
+                    instance_uuid, handoff_url, dest_token=None):
+    server_list = get_list(server_address, token, end_point, "servers")
+    server_id = ''
+    for server in server_list:
+        if server['id'] == instance_uuid:
+            server_id = server['id']
+    if not server_id:
+        raise CloudletClientError("cannot find matching server name")
+
+    params = json.dumps({
+        "cloudlet-handoff": {
+            CLOUDLET_COMMAND.PROPERTY_KEY_HANDOFF_URL: handoff_url,
+            CLOUDLET_COMMAND.PROPERTY_KEY_HANDOFF_DEST: dest_token,
+        }
+    })
+    headers = { "X-Auth-Token":token, "Content-type":"application/json" }
+
+    conn = httplib.HTTPConnection(end_point[1])
+    command = "%s/servers/%s/action" % (end_point[2], server_id)
+    conn.request("POST", command, params, headers)
+    response = conn.getresponse()
+    data = response.read()
+    conn.close()
+    print data
+
 
 def request_cloudlet_ipaddress(server_address, token, end_point, server_uuid):
     params = urllib.urlencode({})
@@ -367,7 +470,6 @@ def overlay_download(server_address, token, glance_endpoint, overlay_name, outpu
     cmd = "glance image-download %s" % (overlay_name)
     proc = subprocess.Popen(cmd.split(" "), stdout=fout, stderr=_PIPE)
     out, err = proc.communicate()
-    
     if err:
         print err
 
@@ -382,7 +484,7 @@ def basevm_import(server_address, uname, password, tenant_name, import_filepath,
                 CLOUDLET_TYPE.PROPERTY_KEY_BASE_UUID:base_hashvalue,
             }
         param = {
-                "name": "%s" % image_name, 
+                "name": "%s" % image_name,
                 "data": open(filepath, "rb"),
                 "size": os.path.getsize(filepath),
                 "is_public":True,
@@ -422,27 +524,19 @@ def basevm_import(server_address, uname, password, tenant_name, import_filepath,
     diskhash_path = os.path.join(temp_dir, diskhash_name)
     memoryhash_path = os.path.join(temp_dir, memoryhash_name)
 
-    ## tmp
-    #temp_dir = "/tmp/cloudlet-base-F9gars"
-    #disk_path = os.path.join(temp_dir, memoryhash_name)
-    #memory_path = os.path.join(temp_dir, memory_name)
-    #diskhash_path = os.path.join(temp_dir, memoryhash_name)
-    #memoryhash_path = os.path.join(temp_dir, memoryhash_name)
-    ## tmp
-
     # get resource information of the Base VM
     memory_header = elijah_memory_util._QemuMemoryHeader(open(memory_path))
     libvirt_xml_str = memory_header.xml
 
     # upload base disk
-    disk_param = _create_param(disk_path, basevm_name + "-disk", 
-            CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK) 
-    memory_param = _create_param(memory_path, basevm_name + "-memory", 
-            CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM) 
-    diskhash_param = _create_param(diskhash_path, basevm_name + "-diskhash", 
-            CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK_HASH) 
-    memoryhash_param = _create_param(memoryhash_path, basevm_name + "-memhash", 
-            CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM_HASH) 
+    disk_param = _create_param(disk_path, basevm_name + "-disk",
+            CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK)
+    memory_param = _create_param(memory_path, basevm_name + "-memory",
+            CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM)
+    diskhash_param = _create_param(diskhash_path, basevm_name + "-diskhash",
+            CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK_HASH)
+    memoryhash_param = _create_param(memoryhash_path, basevm_name + "-memhash",
+            CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM_HASH)
 
     o = urlparse(glance_endpoint)
     url = "://".join((o.scheme, o.netloc))
@@ -468,14 +562,19 @@ def basevm_import(server_address, uname, password, tenant_name, import_filepath,
     glance_disk = gclient.images.create(**disk_param)
 
     # create new flavor if nothing matches
-    cpu_count, memory_size_mb = get_resource_size(libvirt_xml_str)
-    flavor_list = get_list(server_address, token, urlparse(endpoint), "flavors")
-    flavor_ref, flavor_id = find_matching_flavor(flavor_list, cpu_count, memory_size_mb)
-    if flavor_id == None:
-        flavor_name = "cloudlet-%s" % basevm_name
-        flavor_ref, flavor_id = create_flavor(server_address, token, urlparse(endpoint), \
-                cpu_count, memory_size_mb, flavor_name)
-        sys.stdout.write("Create new flavor for the base VM\n")
+    #cpu_count, memory_size_mb = get_resource_size(libvirt_xml_str)
+    #flavor_list = get_list(server_address, token, urlparse(endpoint), "flavors")
+    #flavor_ref, flavor_id = find_matching_flavor(flavor_list, cpu_count, memory_size_mb)
+    #if flavor_id == None:
+    #    flavor_name = "cloudlet-%s" % basevm_name
+    #    flavor_ref, flavor_id = create_flavor(server_address, token, urlparse(endpoint), \
+    #            cpu_count, memory_size_mb, flavor_name)
+    #    sys.stdout.write("Create new flavor for the base VM\n")
+
+    # delete temp dir
+    if os.path.exists(temp_dir):
+        shutil.rmtree(temp_dir)
+
     return glance_disk
 
 
@@ -529,13 +628,19 @@ def basevm_download(server_address, token, end_point, basedisk_uuid, output_file
         shutil.rmtree(temp_dir)
 
 
+def _load_credential(filepath):
+    with open(filepath) as fd:
+        dd = json.loads(fd.read())
+        return dd['server_addr'], dd['account'], dd['password'], dd['tenant']
+
+
 def print_usage(commands):
     usage = "\n%prog command [option]\n"
     usage += "Command list:\n"
     MAX_SPACE = 20
     for (comm, desc) in commands.iteritems():
         space = ""
-        if len(comm) < MAX_SPACE: 
+        if len(comm) < MAX_SPACE:
             space = " " * (20-len(comm))
         usage += "  %s%s : %s\n" % (comm, space, desc)
     return usage
@@ -569,7 +674,7 @@ def process_command_line(argv, commands):
         msg = "Need tenant name for OpenStack API\n"
         msg += "Check the information using 'keystone tenant-list'"
         parser.error(msg)
-    
+
     if not len(args) != 0:
         parser.error("Need command, Choose among :\n  %s" % " | ".join(commands))
     mode = str(args[0]).lower()
@@ -602,7 +707,7 @@ def get_ref_id(server_address, token, end_point, ref_string, name):
     conn = httplib.HTTPConnection(end_point[1])
     conn.request("GET", "%s/%s" % (end_point[2], ref_string), params, headers)
     print "requesting %s/%s" % (end_point[2], ref_string)
-    
+
     # HTTP response
     response = conn.getresponse()
     data = response.read()
@@ -633,41 +738,46 @@ def main(argv=None):
     CMD_CREATE_OVERLAY  = "create-overlay"
     CMD_DOWNLOAD        = "download"
     CMD_SYNTHESIS       = "synthesis"
+    CMD_HANDOFF         = "handoff"
+    CMD_HANDOFF_RECV    = "handoff-recv"
     CMD_EXT_LIST        = "ext-list"
     CMD_IMAGE_LIST      = "image-list"
     CMD_EXPORT_BASE     = "export-base"
     CMD_IMPORT_BASE     = "import-base"
     CMD_DISCOVER        = "discovery"
     commands = {
-            CMD_CREATE_BASE: "create base vm from the running instance",
-            CMD_CREATE_OVERLAY: "create VM overlay from the customizaed VM",
-            CMD_DOWNLOAD: "Download VM overlay",
-            CMD_SYNTHESIS: "VM Synthesis (Need downloadable URLs for VM overlay",
-            CMD_EXT_LIST: "List available extensions",
-            CMD_IMAGE_LIST: "List images",
-            CMD_EXPORT_BASE: "Export Base VM",
-            CMD_IMPORT_BASE: "Import Base VM",
-            CMD_DISCOVER : "Send discovery query",
-            }
+        CMD_CREATE_BASE: "create base vm from the running instance",
+        CMD_CREATE_OVERLAY: "create VM overlay from the customizaed VM",
+        CMD_DOWNLOAD: "Download VM overlay",
+        CMD_SYNTHESIS: "VM Synthesis (Need downloadable URLs for VM overlay)",
+        CMD_HANDOFF: "Perform VM handoff to destination URL",
+        CMD_HANDOFF_RECV: "Send handoff recv message to the dest OpenStack",
+        CMD_EXT_LIST: "List available extensions",
+        CMD_IMAGE_LIST: "List images",
+        CMD_EXPORT_BASE: "Export Base VM",
+        CMD_IMPORT_BASE: "Import Base VM",
+        CMD_DISCOVER : "Send discovery query",
+    }
 
     settings, args = process_command_line(sys.argv[1:], commands)
     print "Connecting to %s for tenant %s" % \
             (settings.server_address, settings.tenant_name)
     token, endpoint, glance_endpoint = \
-            get_token(settings.server_address, settings.user_name, 
+            get_token(settings.server_address, settings.user_name,
                     settings.password, settings.tenant_name)
+    print "successfully recved auth-token"
 
     if len(args) < 1:
         print "need command"
         sys.exit(1)
     if args[0] == CMD_CREATE_BASE:
         instance_name = raw_input("Name of a running instance that you like to make as a base VM : ")
-        snapshot_name = raw_input("Set name of Base VM : ")
+        snapshot_name = raw_input("Name of Base VM : ")
         request_cloudlet_base(settings.server_address, token, \
-                urlparse(endpoint), instance_name, snapshot_name) 
+                urlparse(endpoint), instance_name, snapshot_name)
     elif args[0] == CMD_CREATE_OVERLAY:
         instance_uuid = raw_input("UUID of a running instance that you like to create VM overlay : ")
-        snapshot_name = raw_input("Set name of VM overlay : ")
+        snapshot_name = raw_input("Name of VM overlay : ")
         request_create_overlay(settings.server_address, token, urlparse(endpoint), \
                 instance_uuid, snapshot_name)
     elif args[0] == CMD_DOWNLOAD:
@@ -686,8 +796,7 @@ def main(argv=None):
         basevm_download(settings.server_address, token, \
                 urlparse(endpoint), basedisk_uuid, output_path)
     elif args[0] == CMD_IMPORT_BASE:
-        import_filepath = raw_input("Path to zipped base VM package:")
-        #import_filepath = "./precise-hotplug.zip"
+        import_filepath = raw_input("Absolute path to base VM package:")
         import_filepath = os.path.abspath(import_filepath)
         if os.access(import_filepath, os.R_OK) == False:
             sys.stderr("Cannot access the file at %s" % import_filepath)
@@ -702,12 +811,69 @@ def main(argv=None):
         except CloudletClientError as e:
             sys.stderr.write("Error: %s\n" % str(e))
     elif args[0] == CMD_SYNTHESIS:
-        overlay_url = raw_input("URL for VM overlay metafile : ")
-        new_instance_name = raw_input("Set VM's name : ")
+        if len(args) == 3:
+            overlay_url = str(args[1])
+            new_instance_name = str(args[2])
+        else:
+            overlay_url = raw_input("URL for VM overlay metafile : ")
+            new_instance_name = raw_input("Set VM's name : ")
         try:
-            request_synthesis(settings.server_address, token, urlparse(endpoint), \
-                    key_name=None, server_name=new_instance_name, \
-                    overlay_url=overlay_url)
+            request_synthesis(settings.server_address, token,
+                              urlparse(endpoint), key_name=None,
+                              server_name=new_instance_name,
+                              overlay_url=overlay_url)
+        except CloudletClientError as e:
+            sys.stderr.write("Error: %s\n" % str(e))
+    elif args[0] == CMD_HANDOFF:
+        if len(args) == 4:
+            instance_uuid = str(args[1])
+            handoff_type = str(args[2])
+        else:
+            instance_uuid = raw_input("UUID of a running instance that you like to create VM overlay: ")
+            handoff_type = raw_input("URL of handoff destination: ")
+
+        handoff_url = ""
+        dest_token = None
+        if handoff_type == "file":
+            # create residue
+            handoff_url == "file:///"
+        elif handoff_type == "network":
+            # handoff to other openstack
+            if len(args) == 4:
+                handoff_dest_credential_file = str(args[3])
+            else:
+                handoff_dest_credential_file = raw_input("Credential file for the handoff destination: ")
+            # get token for the handoff destination
+            dest_addr, dest_account, dest_passwd, dest_tenant = \
+                _load_credential(handoff_dest_credential_file)
+            dest_token, dest_endpoint, dest_glance_endpoint = \
+                    get_token(dest_addr, dest_account, dest_passwd,
+                            dest_tenant)
+            handoff_url = dest_endpoint
+        else:
+            msg = "invalid handoff_url (%s). Only support file and network scheme" % handoff_url
+            raise CloudletClientError(msg)
+
+        try:
+            request_handoff(settings.server_address,
+                            token, urlparse(endpoint),
+                            instance_uuid,
+                            handoff_url,
+                            dest_token)
+        except CloudletClientError as e:
+            sys.stderr.write("Error: %s\n" % str(e))
+    elif args[0] == CMD_HANDOFF_RECV:
+        if not len(args) == 3:
+            msg = "Need overlay_url and name of the instance"
+            raise CloudletClientError(msg)
+
+        overlay_url = str(args[1])
+        new_instance_name = str(args[2])
+        try:
+            _request_handoff_recv(settings.server_address, token,
+                                  urlparse(endpoint),
+                                  server_name=new_instance_name,
+                                  overlay_url=overlay_url)
         except CloudletClientError as e:
             sys.stderr.write("Error: %s\n" % str(e))
     elif args[0] == CMD_EXT_LIST:
