@@ -39,6 +39,7 @@ from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
 
 import cloudlet_api
+from xml.etree import ElementTree
 import urllib2
 try:
     from elijah.provisioning import msgpack
@@ -48,6 +49,41 @@ from elijah.provisioning.configuration import Const as Cloudlet_Const
 
 
 LOG = logging.getLogger(__name__)
+
+
+class Util(object):
+    @staticmethod
+    def _find_matching_flavor(flavor_list, cpu_count, memory_mb, disk_gb):
+        ret = set()
+        for flavor in flavor_list:
+            vcpu = int(flavor.vcpus)
+            ram_mb = int(flavor.ram)
+            block_gb = int(flavor.disk)
+            flavor_name = flavor.name
+            if vcpu == cpu_count and ram_mb == memory_mb and disk_gb == block_gb:
+                flavor_ref = flavor.links[0]['href']
+                flavor_id = flavor.id
+                ret.add((flavor_id, "%s" % flavor_name))
+        return ret
+
+    @staticmethod
+    def _get_resource_size(libvirt_xml_str):
+        libvirt_xml = ElementTree.fromstring(libvirt_xml_str)
+        memory_element = libvirt_xml.find("memory")
+        cpu_element = libvirt_xml.find("vcpu")
+        if memory_element == None or cpu_element == None:
+            msg = "Cannot find memory size or CPU number of Base VM"
+            raise CloudletUtilError(msg)
+        memory_size = int(memory_element.text)
+        memory_unit = memory_element.get("unit").lower()
+
+        if memory_unit != 'mib' and memory_unit != 'mb' and memory_unit != "m":
+            if memory_unit == 'kib' or memory_unit == 'kb' or memory_unit == 'k':
+                memory_size = memory_size / 1024
+            elif memory_unit == 'gib' or memory_unit == 'gg' or memory_unit == 'g':
+                memory_size = memory_size * 1024
+        cpu_count = cpu_element.text
+        return int(cpu_count), int(memory_size)
 
 
 class SelectProjectUserAction(workflows.Action):
@@ -90,7 +126,6 @@ class SetResumeDetailAction(workflows.Action):
                                        help_text=_("Launch instance in these "
                                                    "security groups."))
 
-    # TODO: automatic flavor selection according to the base VM resource usage
     flavor = forms.ChoiceField(label=_("Flavor"), required=True,
                               help_text=_("Size of image to launch."))
     #keypair_id = forms.DynamicChoiceField(label=_("Keypair"),
@@ -221,31 +256,49 @@ class SetResumeDetailAction(workflows.Action):
         return security_group_list
 
     def populate_flavor_choices(self, request, context):
+        # return all flavors of Base VM image 
         try:
+            matching_flavors = set()
             flavors = api.nova.flavor_list(request)
-            flavor_list = [(flavor.id, "%s" % flavor.name)
-                           for flavor in flavors]
-            self.fields['flavor'].initial = flavors[0]
+            basevm_images = self._get_available_images(request, context)
+            for basevm_image in basevm_images:
+                if basevm_image.properties is None or\
+                        len(basevm_image.properties) == 0:
+                    continue
+                libvirt_xml_str = basevm_image.properties.get(
+                    'base_resource_xml_str', None)
+                if libvirt_xml_str is None:
+                    continue
+                cpu_count, memory_mb = Util._get_resource_size(libvirt_xml_str)
+                disk_gb = basevm_image.min_disk
+                ret_flavors = Util._find_matching_flavor(flavors,
+                                                         cpu_count,
+                                                         memory_mb,
+                                                         disk_gb)
+                matching_flavors.update(ret_flavors)
+            self.fields['flavor'].initial = list(matching_flavors)[0]
         except:
-            flavor_list = []
+            matching_flavors= set()
             exceptions.handle(request,
                               _('Unable to retrieve instance flavors.'))
-        return sorted(flavor_list)
+        return sorted(list(matching_flavors))
 
 
 class SetSynthesizeDetailsAction(workflows.Action):
     overlay_url = forms.CharField(max_length=200, required=True,
-            label=_("URL for VM overlay"), initial="")
-    name = forms.CharField(max_length=80, label=_("Instance Name"), initial="synthesized_vm")
-    security_group_ids = forms.MultipleChoiceField(label=_("Security Groups"),
-                                       required=True,
-                                       initial=["default"],
-                                       widget=forms.CheckboxSelectMultiple(),
-                                       help_text=_("Launch instance in these "
-                                                   "security groups."))
-    # TODO: automatic flavor selection according to the base VM resource usage
+                                  label=_("URL for VM overlay"),
+                                  initial="http://")
+    name = forms.CharField(max_length=80, label=_("Instance Name"),
+                           initial="synthesized_vm")
+    security_group_ids = forms.MultipleChoiceField(
+        label=_("Security Groups"),
+        required=True,
+        initial=["default"],
+        widget=forms.CheckboxSelectMultiple(),
+        help_text=_("Launch instance in these "
+                    "security groups."))
     flavor = forms.ChoiceField(label=_("Flavor"), required=True,
-                              help_text=_("Size of image to launch."))
+                               help_text=_("Size of image to launch."))
     #keypair_id = forms.DynamicChoiceField(label=_("Keypair"),
     #                                   required=False,
     #                                   help_text=_("Which keypair to use for "
@@ -269,7 +322,7 @@ class SetSynthesizeDetailsAction(workflows.Action):
         try:
             val(overlay_url)
         except ValidationError, e:
-            raise forms.ValidationError(_("Malformed URL for overlay meta"))
+            raise forms.ValidationError(_("Malformed URL for VM overlay"))
 
         # check url accessibility
         try:
@@ -346,17 +399,90 @@ class SetSynthesizeDetailsAction(workflows.Action):
             security_group_list = []
         return security_group_list
 
-    def populate_flavor_choices(self, request, context):
+    def _get_available_images(self, request, context):
+        project_id = context.get('project_id', None)
+        public_images = []
+        owned_images = []
+        public = {"is_public": True,
+                    "status": "active"}
         try:
-            flavors = api.nova.flavor_list(request)
-            flavor_list = [(flavor.id, "%s" % flavor.name)
-                           for flavor in flavors]
-            self.fields['flavor'].initial = flavors[0]
+            image_detail = api.glance.image_list_detailed(
+                request, filters=public
+            )
+            if len(image_detail) == 2:  # icehouse
+                public_images, _more = image_detail
+            elif len(image_detail) == 3: # kilo
+                public_images, _more , has_prev_data = image_detail
         except:
-            flavor_list = []
+            public_images = []
+            pass
+
+        # Preempt if we don't have a project_id yet.
+        if project_id is None:
+            setattr(self, "_images_for_%s" % project_id, [])
+
+        if not hasattr(self, "_images_for_%s" % project_id):
+            owner = {"property-owner_id": project_id,
+                     "status": "active"}
+            try:
+                image_detail = api.glance.image_list_detailed(
+                    request, filters=owner
+                )
+                if len(image_detail) == 2:  # icehouse
+                    owned_images, _more = image_detail
+                elif len(image_detail) == 3: # kilo
+                    owned_images, _more , has_prev_data = image_detail
+            except:
+                owned_images = []
+                pass
+
+        images = owned_images + public_images
+        base_vms = list()
+        for image in images:
+            if hasattr(image, 'properties') == True:
+                properties = getattr(image, 'properties')
+                cloudlet_type = properties.get('cloudlet_type', None)
+                if cloudlet_type == CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
+                    base_vms.append(image)
+
+        # Remove duplicate images
+        image_ids = []
+        final_images = []
+        for image in base_vms:
+            if image.id not in image_ids:
+                image_ids.append(image.id)
+                final_images.append(image)
+        return [image for image in final_images
+                if image.container_format not in ('aki', 'ari')]
+
+
+    def populate_flavor_choices(self, request, context):
+        # return all flavors of Base VM image 
+        try:
+            matching_flavors = set()
+            flavors = api.nova.flavor_list(request)
+            basevm_images = self._get_available_images(request, context)
+            for basevm_image in basevm_images:
+                if basevm_image.properties is None or\
+                        len(basevm_image.properties) == 0:
+                    continue
+                libvirt_xml_str = basevm_image.properties.get(
+                    'base_resource_xml_str', None)
+                if libvirt_xml_str is None:
+                    continue
+                cpu_count, memory_mb = Util._get_resource_size(libvirt_xml_str)
+                disk_gb = basevm_image.min_disk
+                ret_flavors = Util._find_matching_flavor(flavors,
+                                                         cpu_count,
+                                                         memory_mb,
+                                                         disk_gb)
+                matching_flavors.update(ret_flavors)
+            self.fields['flavor'].initial = list(matching_flavors)[0]
+        except:
+            matching_flavors= set()
             exceptions.handle(request,
                               _('Unable to retrieve instance flavors.'))
-        return sorted(flavor_list)
+        return sorted(list(matching_flavors))
 
 
 class SetResumeAction(workflows.Step):
@@ -463,6 +589,7 @@ class ResumeInstance(workflows.Workflow):
             exceptions.handle(request)
             return False
 
+
 class SynthesisInstance(workflows.Workflow):
     slug = "cloudlet syntehsize VM"
     name = _("Cloudlet Synthesize VM")
@@ -487,7 +614,7 @@ class SynthesisInstance(workflows.Workflow):
     def handle(self, request, context):
         try:
             ret_json = cloudlet_api.request_synthesis(
-                    request, 
+                    request,
                     context['name'],
                     context['image_id'],
                     context['flavor'],
