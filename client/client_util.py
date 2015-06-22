@@ -115,24 +115,26 @@ def get_resource_size(libvirt_resource_xml):
     return int(cpu_count), int(memory_size)
 
 
-def find_matching_flavor(flavor_list, cpu_count, memory_mb):
+def find_matching_flavor(flavor_list, cpu_count, memory_mb, disk_gb):
     for flavor in flavor_list:
         vcpu = int(flavor['vcpus'])
         ram_mb = int(flavor['ram'])
-        if vcpu == cpu_count and ram_mb == memory_mb:
+        block_gb = int(flavor['disk'])
+        if vcpu == cpu_count and ram_mb == memory_mb and disk_gb == block_gb:
             flavor_ref = flavor['links'][0]['href']
             flavor_id = flavor['id']
             return flavor_ref, flavor_id
     return None, None
 
 
-def create_flavor(server_address, token, end_point, cpu_count, memory_size, flavor_name):
+def create_flavor(server_address, token, end_point, cpu_count,
+                  memory_mb, disk_gb, flavor_name):
     request = {
             "flavor": {
-                "name": flavor_name,\
-                "ram": memory_size,\
-                "disk": 0,\
-                "vcpus": cpu_count,\
+                "name": flavor_name,
+                "ram": memory_mb,
+                "disk": disk_gb,
+                "vcpus": cpu_count,
                 }
             }
     params = json.dumps(request)
