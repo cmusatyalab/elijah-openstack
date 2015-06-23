@@ -15,45 +15,39 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 #
+import os
+import math
+import zipfile
 import logging
 import shutil
+
+from openstack_dashboard import api
+from tempfile import mkdtemp
+from lxml import etree
+from .util import CLOUDLET_TYPE
+from .util import find_basevm_by_sha256
+from .util import find_matching_flavor
+from .util import get_resource_size
+
 from django.conf import settings
 from django.forms import ValidationError
 from django.forms.widgets import HiddenInput
 from django.utils.translation import ugettext_lazy as _
+from django.core.files.uploadedfile import TemporaryUploadedFile
 from horizon import exceptions
 from horizon import forms
 from horizon import messages
-
 from .workflows import cloudlet_api
 
-from elijah.provisioning.package import PackagingUtil 
+from elijah.provisioning.package import PackagingUtil
 from elijah.provisioning.package import BaseVMPackage
-import zipfile
-from openstack_dashboard import api
-from tempfile import mkdtemp
-from lxml import etree
-import os
-from util import CLOUDLET_TYPE
-from util import find_basevm_by_sha256
-
+import elijah.provisioning.memory_util as elijah_memory_util
 
 LOG = logging.getLogger(__name__)
 
 
 class ImportImageForm(forms.SelfHandlingForm):
     name = forms.CharField(max_length="255", label=_("Name"), required=True)
-    '''
-    copy_from = forms.CharField(max_length="1024",
-                                label=_("Image Location"),
-                                help_text=_("An external (HTTP) URL to load "
-                                            "the image from."),
-                                widget=forms.TextInput(attrs={
-                                    'placeholder': 
-                                    'http://example.com/download/ubuntu.img'
-                                    }),
-                                required=False)
-    '''
     image_file = forms.FileField(label=_("Image File"),
                                  help_text=("A local image to upload."),
                                  required=False)
@@ -67,7 +61,6 @@ class ImportImageForm(forms.SelfHandlingForm):
 
     def clean(self):
         data = super(ImportImageForm, self).clean()
-        
         # check validity of zip file
         zipbase = None
         try:
@@ -109,7 +102,6 @@ class ImportImageForm(forms.SelfHandlingForm):
         return data
 
     def handle(self, request, data):
-
         basevm_name = data['name']
         base_hashvalue = data['base_hashvalue']
         disk_path = data['base_disk_path']
@@ -118,34 +110,65 @@ class ImportImageForm(forms.SelfHandlingForm):
         memoryhash_path = data['base_memoryhash_path']
 
         # upload base disk
-        def _create_param(filepath, image_name, image_type):
+        def _create_param(filepath, image_name, image_type,
+                          disk_size, mem_size):
             properties = {
-                    "image_type": "snapshot",
-                    "image_location":"snapshot",
-                    CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET:"True",
-                    CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET_TYPE:image_type,
-                    CLOUDLET_TYPE.PROPERTY_KEY_BASE_UUID:base_hashvalue,
-                }
+                "image_type": "snapshot",
+                "image_location":"snapshot",
+                CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET:"True",
+                CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET_TYPE:image_type,
+                CLOUDLET_TYPE.PROPERTY_KEY_BASE_UUID:base_hashvalue,
+            }
             param = {
-                    "name": "%s" % image_name, 
-                    "data": open(filepath, "rb"),
-                    "size": os.path.getsize(filepath),
-                    "is_public":True,
-                    "disk_format":"raw",
-                    "container_format":"bare",
-                    "properties": properties,
-                    }
+                "name": "%s" % image_name,
+                "data": open(filepath, "rb"),
+                "size": os.path.getsize(filepath),
+                "is_public":True,
+                "disk_format":"raw",
+                "container_format":"bare",
+                "min_disk": disk_size,
+                "min_ram": mem_size,
+                "properties": properties,
+            }
             return param
 
         try:
-            disk_param = _create_param(disk_path, basevm_name + "-disk", 
-                    CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK) 
-            memory_param = _create_param(memory_path, basevm_name + "-memory", 
-                    CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM) 
-            diskhash_param = _create_param(diskhash_path, basevm_name + "-diskhash", 
-                    CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK_HASH) 
-            memoryhash_param = _create_param(memoryhash_path, basevm_name + "-memhash", 
-                    CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM_HASH) 
+            # create new flavor if nothing matches
+            memory_header = elijah_memory_util._QemuMemoryHeader(
+                open(memory_path))
+            libvirt_xml_str = memory_header.xml
+            cpu_count, memory_size_mb = get_resource_size(libvirt_xml_str)
+            disk_gb = int(math.ceil(os.path.getsize(disk_path)/1024/1024/1024))
+            flavors = api.nova.flavor_list(request)
+            ref_flavors = find_matching_flavor(flavors,
+                                               cpu_count,
+                                               memory_size_mb,
+                                               disk_gb)
+            if len(ref_flavors) == 0:
+                flavor_name = "cloudlet-flavor-%s" % basevm_name
+                flavor_ref = api.nova.flavor_create(self.request, flavor_name,
+                                                    memory_size_mb, cpu_count,
+                                                    disk_gb, is_public=True)
+                msg = "Create new flavor %s with (cpu:%d, memory:%d, disk:%d)" %\
+                    (flavor_name, cpu_count, memory_size_mb, disk_gb)
+                LOG.info(msg)
+            # upload Base VM
+            disk_param = _create_param(
+                disk_path, basevm_name + "-disk",
+                CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK,
+                disk_gb, memory_size_mb)
+            memory_param = _create_param(
+                memory_path, basevm_name + "-memory",
+                CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM,
+                disk_gb, memory_size_mb)
+            diskhash_param = _create_param(
+                diskhash_path, basevm_name + "-diskhash",
+                CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK_HASH,
+                disk_gb, memory_size_mb)
+            memoryhash_param = _create_param(
+                memoryhash_path, basevm_name + "-memhash",
+                CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM_HASH,
+                disk_gb, memory_size_mb)
 
             LOG.info("upload base memory to glance")
             glance_memory = api.glance.image_create(request, **memory_param)
@@ -155,10 +178,12 @@ class ImportImageForm(forms.SelfHandlingForm):
             glance_memoryhash = api.glance.image_create(request, **memoryhash_param)
 
             glance_ref = {
-                    CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM: glance_memory.id,
-                    CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK_HASH: glance_diskhash.id,
-                    CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM_HASH: glance_memoryhash.id,
-                    }
+                CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM: glance_memory.id,
+                CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK_HASH: glance_diskhash.id,
+                CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM_HASH: glance_memoryhash.id,
+                CLOUDLET_TYPE.PROPERTY_KEY_BASE_RESOURCE:\
+                libvirt_xml_str.replace("\n", "")  # API cannot send '\n'
+            }
             disk_param['properties'].update(glance_ref)
             LOG.info("upload base disk to glance")
             glance_memory = api.glance.image_create(request, **disk_param)
@@ -172,4 +197,5 @@ class ImportImageForm(forms.SelfHandlingForm):
         dirpath = os.path.dirname(disk_path)
         if os.path.exists(dirpath) == True:
             shutil.rmtree(dirpath)
+        return True
 

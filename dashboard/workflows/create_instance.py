@@ -33,6 +33,8 @@ from openstack_dashboard.usage import quotas
 
 from ..util import CLOUDLET_TYPE
 from ..util import find_basevm_by_sha256
+from ..util import find_matching_flavor
+from ..util import get_resource_size
 
 import requests
 from django.core.validators import URLValidator
@@ -50,40 +52,6 @@ from elijah.provisioning.configuration import Const as Cloudlet_Const
 
 LOG = logging.getLogger(__name__)
 
-
-class Util(object):
-    @staticmethod
-    def _find_matching_flavor(flavor_list, cpu_count, memory_mb, disk_gb):
-        ret = set()
-        for flavor in flavor_list:
-            vcpu = int(flavor.vcpus)
-            ram_mb = int(flavor.ram)
-            block_gb = int(flavor.disk)
-            flavor_name = flavor.name
-            if vcpu == cpu_count and ram_mb == memory_mb and disk_gb == block_gb:
-                flavor_ref = flavor.links[0]['href']
-                flavor_id = flavor.id
-                ret.add((flavor_id, "%s" % flavor_name))
-        return ret
-
-    @staticmethod
-    def _get_resource_size(libvirt_xml_str):
-        libvirt_xml = ElementTree.fromstring(libvirt_xml_str)
-        memory_element = libvirt_xml.find("memory")
-        cpu_element = libvirt_xml.find("vcpu")
-        if memory_element == None or cpu_element == None:
-            msg = "Cannot find memory size or CPU number of Base VM"
-            raise CloudletUtilError(msg)
-        memory_size = int(memory_element.text)
-        memory_unit = memory_element.get("unit").lower()
-
-        if memory_unit != 'mib' and memory_unit != 'mb' and memory_unit != "m":
-            if memory_unit == 'kib' or memory_unit == 'kb' or memory_unit == 'k':
-                memory_size = memory_size / 1024
-            elif memory_unit == 'gib' or memory_unit == 'gg' or memory_unit == 'g':
-                memory_size = memory_size * 1024
-        cpu_count = cpu_element.text
-        return int(cpu_count), int(memory_size)
 
 
 class SelectProjectUserAction(workflows.Action):
@@ -269,15 +237,18 @@ class SetResumeDetailAction(workflows.Action):
                     'base_resource_xml_str', None)
                 if libvirt_xml_str is None:
                     continue
-                cpu_count, memory_mb = Util._get_resource_size(libvirt_xml_str)
+                cpu_count, memory_mb = get_resource_size(libvirt_xml_str)
                 disk_gb = basevm_image.min_disk
-                ret_flavors = Util._find_matching_flavor(flavors,
-                                                         cpu_count,
-                                                         memory_mb,
-                                                         disk_gb)
+                ret_flavors = find_matching_flavor(flavors,
+                                                   cpu_count,
+                                                   memory_mb,
+                                                   disk_gb)
                 matching_flavors.update(ret_flavors)
-            self.fields['flavor'].initial = list(matching_flavors)[0]
-        except:
+            if len(matching_flavors) > 0:
+                self.fields['flavor'].initial = list(matching_flavors)[0]
+            else:
+                self.fields['flavor'].initial = (0, "No valid flavor")
+        except Exception as e:
             matching_flavors= set()
             exceptions.handle(request,
                               _('Unable to retrieve instance flavors.'))
@@ -470,12 +441,12 @@ class SetSynthesizeDetailsAction(workflows.Action):
                     'base_resource_xml_str', None)
                 if libvirt_xml_str is None:
                     continue
-                cpu_count, memory_mb = Util._get_resource_size(libvirt_xml_str)
+                cpu_count, memory_mb = get_resource_size(libvirt_xml_str)
                 disk_gb = basevm_image.min_disk
-                ret_flavors = Util._find_matching_flavor(flavors,
-                                                         cpu_count,
-                                                         memory_mb,
-                                                         disk_gb)
+                ret_flavors = find_matching_flavor(flavors,
+                                                   cpu_count,
+                                                   memory_mb,
+                                                   disk_gb)
                 matching_flavors.update(ret_flavors)
             self.fields['flavor'].initial = list(matching_flavors)[0]
         except:

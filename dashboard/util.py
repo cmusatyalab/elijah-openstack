@@ -20,8 +20,13 @@ Views for managing Images and Snapshots.
 """
 
 import logging
+from xml.etree import ElementTree
 
 LOG = logging.getLogger(__name__)
+
+
+class CloudletUtilError(Exception):
+    pass
 
 
 # original is defined at cloudlet_api.py
@@ -30,6 +35,7 @@ class CLOUDLET_TYPE(object):
     PROPERTY_KEY_CLOUDLET_TYPE  = "cloudlet_type"
     PROPERTY_KEY_NETWORK_INFO   = "network"
     PROPERTY_KEY_BASE_UUID      = "base_sha256_uuid"
+    PROPERTY_KEY_BASE_RESOURCE  = "base_resource_xml_str"
 
     IMAGE_TYPE_BASE_DISK        = "cloudlet_base_disk"
     IMAGE_TYPE_BASE_MEM         = "cloudlet_base_memory"
@@ -84,3 +90,37 @@ def find_basevm_by_sha256(request, sha256_value):
         if base_sha256_uuid == sha256_value:
             return image
     return None
+
+
+def find_matching_flavor(flavor_list, cpu_count, memory_mb, disk_gb):
+    ret = set()
+    for flavor in flavor_list:
+        vcpu = int(flavor.vcpus)
+        ram_mb = int(flavor.ram)
+        block_gb = int(flavor.disk)
+        flavor_name = flavor.name
+        if vcpu == cpu_count and ram_mb == memory_mb and disk_gb == block_gb:
+            flavor_ref = flavor.links[0]['href']
+            flavor_id = flavor.id
+            ret.add((flavor_id, "%s" % flavor_name))
+    return ret
+
+
+def get_resource_size(libvirt_xml_str):
+    libvirt_xml = ElementTree.fromstring(libvirt_xml_str)
+    memory_element = libvirt_xml.find("memory")
+    cpu_element = libvirt_xml.find("vcpu")
+    if memory_element == None or cpu_element == None:
+        msg = "Cannot find memory size or CPU number of Base VM"
+        raise CloudletUtilError(msg)
+    memory_size = int(memory_element.text)
+    memory_unit = memory_element.get("unit").lower()
+
+    if memory_unit != 'mib' and memory_unit != 'mb' and memory_unit != "m":
+        if memory_unit == 'kib' or memory_unit == 'kb' or memory_unit == 'k':
+            memory_size = memory_size / 1024
+        elif memory_unit == 'gib' or memory_unit == 'gg' or memory_unit == 'g':
+            memory_size = memory_size * 1024
+    cpu_count = cpu_element.text
+    return int(cpu_count), int(memory_size)
+

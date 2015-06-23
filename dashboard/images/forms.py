@@ -41,14 +41,10 @@ LOG = logging.getLogger(__name__)
 
 class CreateImageForm(forms.SelfHandlingForm):
     name = forms.CharField(max_length="255", label=_("Name"), required=True)
-    copy_from = forms.CharField(max_length="255",
-                                label=_("Image Location"),
-                                help_text=_("An external (HTTP) URL to load "
-                                            "the image from."),
-                                required=False)
-    image_file = forms.FileField(label=_("Image File"),
-                                 help_text=("A local image to upload."),
-                                 required=False)
+    image_url = forms.CharField(max_length=255, required=True,
+                                label=_("URL for Base VM"),
+                                help_text=("Import Base VM from the URL"),
+                                initial="https://storage.cmusatyalab.org/cloudlet-vm/precise-baseVM.zip")
     disk_format = forms.ChoiceField(label=_('Format'),
                                     required=True,
                                     choices=[('', ''),
@@ -89,17 +85,12 @@ class CreateImageForm(forms.SelfHandlingForm):
 
     def __init__(self, *args, **kwargs):
         super(CreateImageForm, self).__init__(*args, **kwargs)
-        if not settings.HORIZON_IMAGES_ALLOW_UPLOAD:
-            self.fields['image_file'].widget = HiddenInput()
 
     def clean(self):
         data = super(CreateImageForm, self).clean()
-        if not data['copy_from'] and not data['image_file']:
+        if not data['image_url']:
             raise ValidationError(
                 _("A image or external image location must be specified."))
-        elif data['copy_from'] and data['image_file']:
-            raise ValidationError(
-                _("Can not specify both image and external image location."))
         else:
             return data
 
@@ -121,10 +112,7 @@ class CreateImageForm(forms.SelfHandlingForm):
                 'min_ram': (data['minimum_ram'] or 0),
                 'name': data['name']}
 
-        if settings.HORIZON_IMAGES_ALLOW_UPLOAD and data['image_file']:
-            meta['data'] = self.files['image_file']
-        else:
-            meta['copy_from'] = data['copy_from']
+        meta['location'] = data['image_url']
 
         try:
             image = api.glance.image_create(request, **meta)
