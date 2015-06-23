@@ -5,7 +5,7 @@ mobile computing and cloud computing. It represents the middle tier of a
 3-tier hierarchy:  mobile device - cloudlet - cloud.   A cloudlet can be
 viewed as a "data center in a box" whose  goal is to "bring the cloud closer".
 
-Copyright (C) 2012-2014 Carnegie Mellon University This is a developing project
+Copyright (C) 2012-2015 Carnegie Mellon University This is a developing project
 and some features might not be stable yet.  Please visit our website at [Elijah
 page](http://elijah.cs.cmu.edu/).
 
@@ -23,12 +23,7 @@ cloudlet open source project are licensed under the [Apache License, Version
 Tested Platform
 -------------
 
-- We have tested at Ubuntu 14.04 LTS 64 bits with OpenStack Icehouse.
-
-- For those we have Ubuntu 12.04 LTS, we provide [Grizzly
-    version](https://github.com/cmusatyalab/elijah-openstack/tree/grizzly).
-    But we strongly recommend using Ubuntu 14.04 LTS and Icehouse.
-
+- We have tested at Ubuntu 14.04 LTS 64 bits with OpenStack Kilo.
 
 
 Installation (Using DevStack)
@@ -37,14 +32,16 @@ Installation (Using DevStack)
 This repo is OpenStack extension for cloudlet. Therefore, you need to install
 OpenStack and [cloudlet
 library](https://github.com/cmusatyalab/elijah-provisioning) before installing
-this extension. Since installing OpenStack is not trivial, we recommend
-[DevStack](http://devstack.org/), which provides a set of script to quickly
-install and test OpenStack. And for cloudlet library, we provide [fabric
-script](http://www.fabfile.org/en/latest/) to help you install. If you already
-installed cloudlet library, please start from 3. Or if you already have running
-OpenStack, please start with "Installation (on running OpenStack)".
+this extension. Since installing OpenStack is not trivial if you don't have
+experience, we recommend [DevStack](http://devstack.org/), which provides a set
+of script to quickly install and test OpenStack. And for cloudlet library, we
+provide [fabric script](http://www.fabfile.org/en/latest/) to help you install.
+If you already have installed cloudlet library, please start from 3.  The
+following installation steps are for [DevStack (all-in-one-single-machine)
+case](http://docs.openstack.org/developer/devstack/guides/single-machine.html).
 
-1. Prepare [Ubuntu 14.04 64bit](http://releases.ubuntu.com/14.04/ubuntu-14.04.1-desktop-amd64.iso)
+
+1. Prepare Ubuntu 14.04 64bit
 
 
 2. Install cloudlet library
@@ -53,8 +50,8 @@ OpenStack, please start with "Installation (on running OpenStack)".
     > $ sudo apt-get install git openssh-server fabric git  
     > $ git clone https://github.com/cmusatyalab/elijah-provisioning  
     > $ cd elijah-provisioning  
-    > $ fab localhost install  
-    > (Enter password of your account)  
+    > $ fab install
+    > (Require password for you Ubuntu account)  
 
     For more details and troubleshooting, please read [elijah-provisioning
     repo](https://github.com/cmusatyalab/elijah-provisioning).
@@ -64,19 +61,18 @@ OpenStack, please start with "Installation (on running OpenStack)".
 guidance](http://devstack.org/guides/single-machine.html)).
 
     > $ cd ~  
-    > $ adduser stack  
+    > $ sudo echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers  
     > $ git clone https://github.com/openstack-dev/devstack.git  
-    > $ sudo echo "stack ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers  
-
-    Log out current user, and login with stack account.
-
     > $ cd devstack  
     > $ cp samples/local.conf local.conf  
-    > (Modify configuration if you need. Details are at [here](http://devstack.org/guides/single-machine.html)).  
+    > (Modify configuration if you need. Details are at [here](http://docs.openstack.org/developer/devstack/guides/single-machine.html#run-devstack)).  
     > $ ./stack.sh  
 
-    Please make sure that all the functions of OpenStack is working by
-    connecting to OpenStack Web interface
+    Please make sure that all the OpenStack funtionality is working by
+    connecting to OpenStack Web interface (http://localhost/).
+
+    If the vanilla OpenStack does not work, please check apache2 and
+    keystone-all process and manually run them, if they are not running.
 
 
 4. Finally, install cloudlet OpenStack extension
@@ -85,11 +81,11 @@ guidance](http://devstack.org/guides/single-machine.html)).
     > $ git clone https://github.com/cmusatyalab/elijah-openstack  
     > $ cd elijah-openstack  
     > $ fab localhost devstack_single_machine  
-    > (Enter password of your account)  
+    > (Require password for you Ubuntu account)  
 
     After successful installation, please restart OpenStack to reflect changes.
 
-    > (Restart you devstack)  
+    > (Restart your devstack)  
     > $ ./unstack  
     > $ ./rejoin-stack.sh  
     > (Sometime, you need to manually restart apache2 and keystone-all)  
@@ -98,43 +94,8 @@ guidance](http://devstack.org/guides/single-machine.html)).
     installation, and just place relevant files at right directories.  It
     **does not change any existing OpenStack code**, but designed to be purely
     pluggable extension, so you can revert back to original state by reversing
-    the installation steps. We instantiate our feature by chaging nova
+    the installation steps. We instantiate cloudlet features by changing nova
     configuration file at /etc/nova/nova.conf
-
-
-
-Installation (on working OpenStack)
------------------------------------
-
-If you have already running OpenStack, please follow this instruction.
-
-1. At a control node
-
-  - Cloudlet provisioning (Rapid VM provisioning)
-
-        > $ sudo fab localhost provisioning_control  
-
-  - (Optional) Cloudlet discovery (under development. See at
-      [elijah-discovery](https://github.com/cmusatyalab/elijah-discovery-basic))
-
-        > $ sudo fab localhost discovery_control  
-
-
-2. At compute nodes: 
-
-  For Cloudlet provisioning, you need to install Cloudlet library at every compute node.
-  Change IP addresses of your OpenStack machine at the **fabric.py** file. 
-
-    > (At fabric.py file)  
-    > compute_nodes = [  
-    >     # ('ssh-account@domain name of compute node')  
-    >     ('krha@sleet.elijah.cs.cmu.edu')  
-    >     ..  
-    >     ]  
-
-  Then, run the script.
-
-    > $ fab remote provisioning_compute  
 
 
 
@@ -142,16 +103,16 @@ How to use
 -----------
 
 If the installation is successful, you will see a new panel at project tab as
-below.  
-![OpenStack cloudlet extension dashboard](https://github.com/cmusatyalab/elijah-openstack/blob/icehouse/doc/screenshot/cloudlet_dashboard_icehouse.png?raw=true)
+below.  ![OpenStack cloudlet extension
+dashboard](https://github.com/cmusatyalab/elijah-openstack/blob/icehouse/doc/screenshot/cloudlet_dashboard_icehouse.png?raw=true)
 Or you can check cloudlet extension by listing available OpenStack extension
-using standard OpenStack REST API.
+using standard [OpenStack API](http://developer.openstack.org/api-ref-compute-v2.html#listExtensionsv2).
 
 Then, you can import [Sample Base
 VM](https://storage.cmusatyalab.org/cloudlet-vm/precise-baseVM.zip) using
 "Import Base VM".  
 ![Import Base VM](https://github.com/cmusatyalab/elijah-openstack/blob/icehouse/doc/screenshot/import_basevm.png?raw=true)
-(login account: cloudlet, password: cloudlet)
+(VM's account: cloudlet, password: cloudlet)
 
 To resume Base VM, please use "Resume Base VM" button at Images table, and use
 "Create VM overlay" button when you ready to create VM overlay from the resumed
@@ -165,8 +126,8 @@ table. You need to input URL of the VM overlay you just downloaded.
 ![Start VM Synthesis](https://github.com/cmusatyalab/elijah-openstack/blob/icehouse/doc/screenshot/vm_synthesis.png?raw=true)
 
 
-Alternatively, you can use command line client program at at
-./client/cloudlet_client.py 
+Alternatively, you can use command line client program at
+[./client/cloudlet_client.py](https://github.com/cmusatyalab/elijah-openstack/blob/master/client/cloudlet_client.py)
 
 
 
@@ -194,7 +155,7 @@ below steps to narrow the problem.
   ``/var/log/nova``.
 
 
-2. If you still have problem in using Web interface though everything nova
+2. If you still have problem in using Web interface even though every nova
 related service is successfully running, then it's likely to be a Dashboard
 problem. We can debug it by manually running dashboard in debug mode. In
 regular OpenStack, Dashboard's code (Django) is located at
