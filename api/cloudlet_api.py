@@ -320,7 +320,7 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         flavor_ref, flavor_id = find_matching_flavor(
             flavor_list, flavor_cpu, flavor_memory)
         if flavor_ref is None or flavor_id is None:
-            msg = "Cannot find matching flavo with cpu=%d, memory=%d at %s" %\
+            msg = "Cannot find matching flavor with cpu=%d, memory=%d at %s" %\
                 (flavor_cpu, flavor_memory, end_point.netloc)
             raise HandoffError(msg)
 

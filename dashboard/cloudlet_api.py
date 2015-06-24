@@ -100,8 +100,28 @@ def request_synthesis(request, vm_name, base_disk_id, flavor_id, key_name, \
     return dd
 
 
-class test_class(object):
-    pass
+def request_handoff(request, instance_id, handoff_url, dest_token, dest_vmname):
+    token = request.user.token.id
+    management_url = url_for(request, 'compute')
+    end_point = urlparse(management_url)
+
+    params = json.dumps({
+        "cloudlet-handoff": {
+            "handoff_url": handoff_url,
+            "dest_token": dest_token,
+            #"dest_vmname":dest_vmname,
+        }
+    })
+    headers = {"X-Auth-Token": token, "Content-type": "application/json"}
+
+    conn = httplib.HTTPConnection(end_point[1])
+    command = "%s/servers/%s/action" % (end_point[2], instance_id)
+    conn.request("POST", command, params, headers)
+    response = conn.getresponse()
+    data = response.read()
+    conn.close()
+    dd = json.loads(data)
+    return dd
 
 
 def novaclient(request):

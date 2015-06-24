@@ -29,7 +29,6 @@ class CloudletUtilError(Exception):
     pass
 
 
-# original is defined at cloudlet_api.py
 class CLOUDLET_TYPE(object):
     PROPERTY_KEY_CLOUDLET       = "is_cloudlet"
     PROPERTY_KEY_CLOUDLET_TYPE  = "cloudlet_type"

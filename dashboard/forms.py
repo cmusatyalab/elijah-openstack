@@ -20,6 +20,8 @@ import math
 import zipfile
 import logging
 import shutil
+import httplib
+import json
 
 from openstack_dashboard import api
 from tempfile import mkdtemp
@@ -34,10 +36,11 @@ from django.forms import ValidationError
 from django.forms.widgets import HiddenInput
 from django.utils.translation import ugettext_lazy as _
 from django.core.files.uploadedfile import TemporaryUploadedFile
+from django.views.decorators.debug import sensitive_variables  # noqa
 from horizon import exceptions
 from horizon import forms
 from horizon import messages
-from .workflows import cloudlet_api
+from . import cloudlet_api
 
 from elijah.provisioning.package import PackagingUtil
 from elijah.provisioning.package import BaseVMPackage
@@ -198,4 +201,113 @@ class ImportImageForm(forms.SelfHandlingForm):
         if os.path.exists(dirpath) == True:
             shutil.rmtree(dirpath)
         return True
+
+
+class HandoffInstanceForm(forms.SelfHandlingForm):
+    dest_addr = forms.CharField(max_length=255, required=True,
+                                initial="mist.elijah.cs.cmu.edu:5000",
+                                label=_("Keystone endpoint for destination OpenStack"))
+    dest_account = forms.CharField(max_length=255, required=True,
+                                   label=_("Destination Account"),
+                                   initial="admin")
+    dest_password = forms.CharField(widget=forms.PasswordInput(), required=True,
+                                    initial="",
+                                    label=_("Destination Password"))
+    dest_tenant = forms.CharField(max_length=255, required=True,
+                                  label=_("Destination Tenant"),
+                                  initial="demo")
+    dest_vmname = forms.CharField(max_length=255,
+                           label=_("Instance Name at the destination"),
+                           initial="handoff-vm")
+
+    def __init__(self, request, *args, **kwargs):
+        super(HandoffInstanceForm, self).__init__(request, *args, **kwargs)
+        self.instance_id = kwargs.get('initial', {}).get('instance_id')
+
+    @staticmethod
+    def _get_token(dest_addr, user, password, tenant_name):
+        if dest_addr.endswith("/"):
+            dest_addr = dest_addr[-1:]
+        params = {
+            "auth": {
+                "passwordCredentials": {
+                    "username": user, "password": password
+                },
+                "tenantName": tenant_name
+            }
+        }
+        headers = {"Content-Type": "application/json"}
+
+        # HTTP connection
+        conn = httplib.HTTPConnection(dest_addr)
+        conn.request("POST", "/v2.0/tokens", json.dumps(params), headers)
+
+        # HTTP response
+        response = conn.getresponse()
+        data = response.read()
+        dd = json.loads(data)
+        conn.close()
+        try:
+            api_token = dd['access']['token']['id']
+            service_list = dd['access']['serviceCatalog']
+            nova_endpoint = None
+            glance_endpoint = None
+            for service in service_list:
+                if service['name'] == 'nova':
+                    nova_endpoint = service['endpoints'][0]['publicURL']
+                elif service['name'] == 'glance':
+                    glance_endpoint = service['endpoints'][0]['publicURL']
+        except KeyError as e:
+            raise
+        return api_token, nova_endpoint, glance_endpoint
+
+    def clean(self):
+        cleaned_data = super(HandoffInstanceForm, self).clean()
+        dest_addr = cleaned_data.get('dest_addr', None)
+        dest_account = cleaned_data.get('dest_account', None)
+        dest_password = cleaned_data.get('dest_password', None)
+        dest_tenant = cleaned_data.get('dest_tenant', None)
+
+        # check fields
+        if cleaned_data.get('dest_vmname', None) is None:
+            raise forms.ValidationError(_("Need name for VM at the destination"))
+        if dest_addr is None:
+            raise forms.ValidationError(_("Need URL to fetch VM overlay"))
+
+        # get token of the destination
+        try:
+            dest_token, dest_nova_endpoint, dest_glance_endpoint = \
+                self._get_token(dest_addr, dest_account,
+                                dest_password, dest_tenant)
+            cleaned_data['dest_token'] = dest_token
+            cleaned_data['dest_nova_endpoint'] = dest_nova_endpoint
+            cleaned_data['dest_glance_endpoint'] = dest_glance_endpoint
+            cleaned_data['instance_id'] = self.instance_id
+        except Exception as e:
+            msg = "Cannot get Auth-token from %s" % (dest_addr)
+            raise forms.ValidationError(_(msg))
+        return cleaned_data
+
+    def get_help_text(self):
+        return super(HandoffInstanceForm, self).get_help_text()
+
+    def handle(self, request, context):
+        try:
+            ret_json = cloudlet_api.request_handoff(
+                request,
+                context['instance_id'],
+                context['dest_nova_endpoint'],
+                context['dest_token'],
+                context['dest_vmname']
+            )
+            import pdb;pdb.set_trace()
+            error_msg = ret_json.get("badRequest", None)
+            if error_msg is not None:
+                msg = error_msg.get("message", "Failed to request VM synthesis")
+                raise Exception(msg)
+            return True
+        except:
+            exceptions.handle(request)
+            return False
+
 

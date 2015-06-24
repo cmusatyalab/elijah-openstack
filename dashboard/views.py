@@ -49,6 +49,7 @@ from util import get_cloudlet_type
 
 from horizon import forms
 from .forms import ImportImageForm
+from .forms import HandoffInstanceForm
 
 
 LOG = logging.getLogger(__name__)
@@ -184,6 +185,37 @@ class SynthesisInstanceView(workflows.WorkflowView):
         initial['project_id'] = self.request.user.tenant_id
         initial['user_id'] = self.request.user.id
         return initial
+
+
+#class HandoffInstanceView(workflows.WorkflowView):
+#    workflow_class = HandoffInstance
+#
+#    def get_context_data(self, **kwargs):
+#        context = super(HandoffInstanceView, self).get_context_data(**kwargs)
+#        context['instance_id'] = self.kwargs['instance_id']
+#        return context
+#
+#    def get_initial(self):
+#        initial = super(HandoffInstanceView, self).get_initial()
+#        initial['project_id'] = self.request.user.tenant_id
+#        initial['user_id'] = self.request.user.id
+#        initial['instance_id'] = self.kwargs['instance_id']
+#        return initial
+class HandoffInstanceView(forms.ModalFormView):
+    form_class = HandoffInstanceForm
+    template_name = 'project/cloudlet/instance/handoff.html'
+    success_url = reverse_lazy("horizon:project:cloudlet:index")
+    page_title = _("Handoff Instance")
+
+    def get_context_data(self, **kwargs):
+        context = super(HandoffInstanceView, self).get_context_data(**kwargs)
+        context['instance_id'] = self.kwargs['instance_id']
+        context['can_set_server_password'] = api.nova.can_set_server_password()
+        return context
+
+    def get_initial(self):
+        return {'instance_id': self.kwargs['instance_id']}
+
 
 
 class DetailView(tabs.TabView):

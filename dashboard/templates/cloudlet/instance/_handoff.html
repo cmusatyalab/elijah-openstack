@@ -1,0 +1,27 @@
+{% extends "horizon/common/_modal_form.html" %}
+{% load i18n %}
+
+{% block form_id %}handoff_instance_form{% endblock %}
+{% block form_action %}{% url 'horizon:project:cloudlet:handoff' instance_id %}{% endblock %}
+{% block form_attrs %}enctype="multipart/form-data"{% endblock %}
+
+{% block modal-header %}{% trans "Handoff VM instance" %}{% endblock %}
+
+{% block modal-body %}
+<div class="left">
+    <fieldset>
+    {% include "horizon/common/_form_fields.html" %}
+    </fieldset>
+</div>
+<div class="right">
+    <h3>{% trans "Description:" %}</h3>
+    <p>VM handoff will migrate the VM instance to other OpenStack cluster. This process is optimized for reducing migration time by applying various techniques covered on <a href="http://reports-archive.adm.cs.cmu.edu/anon/2015/CMU-CS-15-113.pdf" target="_blank">http://reports-archive.adm.cs.cmu.edu/anon/2015/CMU-CS-15-113.pdf</a>.</p>
+
+    <p>Although it <strong>does not save any credential information</strong>, please use command line client that accepts auth-token instead of account/password if you don't want to pass account information.</p>
+</div>
+{% endblock %}
+
+{% block modal-footer %}
+  <input class="btn btn-primary pull-right" type="submit" value="{% trans "Handoff VM instance" %}" />
+  <a href="{% url 'horizon:project:cloudlet:index' %}" class="btn secondary cancel close">{% trans "Cancel" %}</a>
+{% endblock %}

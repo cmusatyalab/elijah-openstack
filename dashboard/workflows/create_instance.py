@@ -26,6 +26,7 @@ from django.utils.translation import ugettext_lazy as _
 from horizon import exceptions
 from horizon import forms
 from horizon import workflows
+from horizon.utils import validators
 
 from openstack_dashboard import api
 from openstack_dashboard.api import glance
@@ -40,7 +41,7 @@ import requests
 from django.core.validators import URLValidator
 from django.core.exceptions import ValidationError
 
-import cloudlet_api
+from .. import cloudlet_api
 from xml.etree import ElementTree
 import urllib2
 try:
@@ -569,9 +570,7 @@ class SynthesisInstance(workflows.Workflow):
     failure_message = _('Cloudlet is unable to synthesize %(count)s named "%(name)s".')
     success_url = "horizon:project:cloudlet:index"
     default_steps = (SelectProjectUser,
-                     SetSynthesizeAction,
-                     #SetAccessControls,
-                     )
+                     SetSynthesizeAction,)
 
     def format_status_message(self, message):
         name = self.context.get('name', 'unknown instance')

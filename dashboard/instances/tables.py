@@ -34,10 +34,13 @@ from openstack_dashboard import api
 from openstack_dashboard.dashboards.project.access_and_security \
         .floating_ips.workflows import IPAssociationWorkflow
 from .tabs import InstanceDetailTabs, LogTab, ConsoleTab
+from openstack_dashboard import policy
+from openstack_dashboard.dashboards.project.instances.workflows \
+    import update_instance
 
 from ..util import get_cloudlet_type
 from ..util import CLOUDLET_TYPE
-from ..workflows import cloudlet_api
+from .. import cloudlet_api
 
 
 LOG = logging.getLogger(__name__)
@@ -79,99 +82,16 @@ class TerminateInstance(tables.BatchAction):
     classes = ('btn-danger', 'btn-terminate')
 
     def allowed(self, request, instance=None):
-        is_resumed_base = False
-        cloudlet_type = get_cloudlet_type(instance)
-        if cloudlet_type == CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
-            is_resumed_base = True
+        #is_resumed_base = False
+        #cloudlet_type = get_cloudlet_type(instance)
+        #if cloudlet_type == CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
+        #    is_resumed_base = True
+        #return (not is_resumed_base)
+        return True
 
-        return (not is_resumed_base)
 
     def action(self, request, obj_id):
         api.nova.server_delete(request, obj_id)
-
-
-class RebootInstance(tables.BatchAction):
-    name = "reboot"
-    action_present = _("Hard Reboot")
-    action_past = _("Hard Rebooted")
-    data_type_singular = _("Instance")
-    data_type_plural = _("Instances")
-    classes = ('btn-danger', 'btn-reboot')
-
-    def allowed(self, request, instance=None):
-        return ((instance.status in ACTIVE_STATES
-                 or instance.status == 'SHUTOFF')
-                and not is_deleting(instance))
-
-    def action(self, request, obj_id):
-        api.nova.server_reboot(request, obj_id, api.nova.REBOOT_HARD)
-
-
-class SoftRebootInstance(RebootInstance):
-    name = "soft_reboot"
-    action_present = _("Soft Reboot")
-    action_past = _("Soft Rebooted")
-
-    def action(self, request, obj_id):
-        api.nova.server_reboot(request, obj_id, api.nova.REBOOT_SOFT)
-
-
-class TogglePause(tables.BatchAction):
-    name = "pause"
-    action_present = (_("Pause"), _("Resume"))
-    action_past = (_("Paused"), _("Resumed"))
-    data_type_singular = _("Instance")
-    data_type_plural = _("Instances")
-    classes = ("btn-pause",)
-
-    def allowed(self, request, instance=None):
-        self.paused = False
-        if not instance:
-            return self.paused
-        self.paused = instance.status == "PAUSED"
-        if self.paused:
-            self.current_present_action = UNPAUSE
-        else:
-            self.current_present_action = PAUSE
-        return ((instance.status in ACTIVE_STATES or self.paused)
-                and not is_deleting(instance))
-
-    def action(self, request, obj_id):
-        if self.paused:
-            api.nova.server_unpause(request, obj_id)
-            self.current_past_action = UNPAUSE
-        else:
-            api.nova.server_pause(request, obj_id)
-            self.current_past_action = PAUSE
-
-
-class ToggleSuspend(tables.BatchAction):
-    name = "suspend"
-    action_present = (_("Suspend"), _("Resume"))
-    action_past = (_("Suspended"), _("Resumed"))
-    data_type_singular = _("Instance")
-    data_type_plural = _("Instances")
-    classes = ("btn-suspend",)
-
-    def allowed(self, request, instance=None):
-        self.suspended = False
-        if not instance:
-            self.suspended
-        self.suspended = instance.status == "SUSPENDED"
-        if self.suspended:
-            self.current_present_action = RESUME
-        else:
-            self.current_present_action = SUSPEND
-        return ((instance.status in ACTIVE_STATES or self.suspended)
-                and not is_deleting(instance))
-
-    def action(self, request, obj_id):
-        if self.suspended:
-            api.nova.server_resume(request, obj_id)
-            self.current_past_action = RESUME
-        else:
-            api.nova.server_suspend(request, obj_id)
-            self.current_past_action = SUSPEND
 
 
 class CreateOverlayAction(tables.BatchAction):
@@ -183,7 +103,7 @@ class CreateOverlayAction(tables.BatchAction):
     classes = ('btn-danger', 'btn-terminate')
 
     def allowed(self, request, instance=None):
-        is_active = instance.status in ACTIVE_STATES 
+        is_active = instance.status in ACTIVE_STATES
         is_resumed_base = False
         cloudlet_type = get_cloudlet_type(instance)
         if cloudlet_type == CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
@@ -229,65 +149,47 @@ class VMSynthesisLink(tables.LinkAction):
         return True  # The action should always be displayed
 
 
-class EditInstance(tables.LinkAction):
+class EditInstance(policy.PolicyTargetMixin, tables.LinkAction):
     name = "edit"
     verbose_name = _("Edit Instance")
     url = "horizon:project:instances:update"
-    classes = ("ajax-modal", "btn-edit")
+    classes = ("ajax-modal",)
+    icon = "pencil"
+    policy_rules = (("compute", "compute:update"),)
 
     def get_link_url(self, project):
         return self._get_link_url(project, 'instance_info')
 
     def _get_link_url(self, project, step_slug):
         base_url = urlresolvers.reverse(self.url, args=[project.id])
-        param = urlencode({"step": step_slug})
+        next_url = self.table.get_full_url()
+        params = {"step": step_slug,
+                  update_instance.UpdateInstance.redirect_param_name: next_url}
+        param = urlencode(params)
         return "?".join([base_url, param])
 
     def allowed(self, request, instance):
         return not is_deleting(instance)
 
 
-class EditInstanceSecurityGroups(EditInstance):
-    name = "edit_secgroups"
-    verbose_name = _("Edit Security Groups")
-
-    def get_link_url(self, project):
-        return self._get_link_url(project, 'update_security_groups')
-
-    def allowed(self, request, instance=None):
-        return (instance.status in ACTIVE_STATES and
-                not is_deleting(instance) and
-                request.user.tenant_id == instance.tenant_id)
-
-
-class ConsoleLink(tables.LinkAction):
-    name = "console"
-    verbose_name = _("Console")
-    url = "horizon:project:instances:detail"
-    classes = ("btn-console",)
-
-    def allowed(self, request, instance=None):
-        return instance.status in ACTIVE_STATES and not is_deleting(instance)
+class VMHandoffLink(tables.LinkAction):
+    name = "handoff"
+    verbose_name = _("VM Handoff")
+    url = "horizon:project:cloudlet:handoff"
+    classes = ("btn-handoff", "ajax-modal",)
+    icon = "pencil"
 
     def get_link_url(self, datum):
-        base_url = super(ConsoleLink, self).get_link_url(datum)
-        tab_query_string = ConsoleTab(InstanceDetailTabs).get_query_string()
-        return "?".join([base_url, tab_query_string])
+        instance_id = self.table.get_object_id(datum)
+        return urlresolvers.reverse(self.url, args=[instance_id])
 
+    def allowed(self, request, instance):
+        is_synthesized = False
+        cloudlet_type = get_cloudlet_type(instance)
+        if cloudlet_type == CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY:
+            is_synthesized = True
+        return is_synthesized
 
-class LogLink(tables.LinkAction):
-    name = "log"
-    verbose_name = _("View Log")
-    url = "horizon:project:instances:detail"
-    classes = ("btn-log",)
-
-    def allowed(self, request, instance=None):
-        return instance.status in ACTIVE_STATES and not is_deleting(instance)
-
-    def get_link_url(self, datum):
-        base_url = super(LogLink, self).get_link_url(datum)
-        tab_query_string = LogTab(InstanceDetailTabs).get_query_string()
-        return "?".join([base_url, tab_query_string])
 
 
 class AssociateIP(tables.LinkAction):
@@ -474,11 +376,8 @@ class InstancesTable(tables.DataTable):
         verbose_name = _("Instances")
         status_columns = ["status", "task"]
         row_class = UpdateRow
-        table_actions = (VMSynthesisLink,)
-        row_actions = (
-                CreateOverlayAction, TerminateInstance)
-                #SimpleAssociateIP, AssociateIP, SimpleDisassociateIP)
-                       #SimpleDisassociateIP, EditInstance,
-                       #EditInstanceSecurityGroups, ConsoleLink, LogLink,
-                       #TogglePause, ToggleSuspend, SoftRebootInstance,
-                       #RebootInstance, TerminateInstance)
+        table_actions = (VMSynthesisLink, )
+        row_actions = (VMHandoffLink, CreateOverlayAction,
+                       TerminateInstance, EditInstance)
+                       #SimpleAssociateIP, AssociateIP,
+                       #SimpleDisassociateIP, SimpleDisassociateIP)
