@@ -227,7 +227,8 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         return recv_overlay_meta
 
     @nova_api.check_instance_state(vm_state=[vm_states.ACTIVE])
-    def cloudlet_handoff(self, context, instance, handoff_url, dest_token=None,
+    def cloudlet_handoff(self, context, instance, handoff_url,
+                         dest_token=None, dest_vmname=None,
                          extra_properties=None):
         recv_residue_meta = None
         parsed_handoff_url = urlsplit(handoff_url)
@@ -250,10 +251,10 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         elif parsed_handoff_url.scheme == "http":
             # handoff to other OpenStack
             # Send message to the destination
-            ret_value = self._prepare_handoff_dest(
-                urlparse(handoff_url),
-                dest_token,
-                instance)
+            ret_value = self._prepare_handoff_dest(urlparse(handoff_url),
+                                                   dest_token,
+                                                   instance,
+                                                   dest_vmname)
             # parse handoff URL from the return
             handoff_dest_addr = ret_value.get("handoff", None)
             if handoff_dest_addr is None:
@@ -273,18 +274,18 @@ class CloudletAPI(nova_rpc.ComputeAPI):
                    residue_glance_id=residue_glance_id)
         return residue_glance_id
 
-    def _prepare_handoff_dest(self, end_point, dest_token, instance):
+    def _prepare_handoff_dest(self, end_point, dest_token,
+                              instance, dest_vmname=None):
         # information of current VM at source
-        instance_name = instance['display_name'] + "-handoff"
+        if dest_vmname:
+            instance_name = dest_vmname
+        else:
+            instance_name = instance['display_name'] + "-handoff"
         flavor_memory = instance['memory_mb']
         flavor_cpu = instance['vcpus']
-        requested_basevm_id = instance[
-            'system_metadata']['image_base_sha256_uuid']
-        original_overlay_url = instance.get(
-            "metadata",
-            dict()).get(
-            "overlay_url",
-            None)
+        requested_basevm_id = instance['system_metadata']['image_base_sha256_uuid']
+        original_overlay_url = \
+            instance.get("metadata", dict()).get("overlay_url", None)
 
         # find matching base VM
         image_list = self._get_server_info(end_point, dest_token, "images")

@@ -348,16 +348,19 @@ def request_handoff(server_address, token, end_point,
                     instance_uuid, handoff_url, dest_token=None):
     server_list = get_list(server_address, token, end_point, "servers")
     server_id = ''
+    server_name = ''
     for server in server_list:
         if server['id'] == instance_uuid:
             server_id = server['id']
+            server_name = server['name']
     if not server_id:
         raise CloudletClientError("cannot find matching UUID (%s)\n" %\
                                   instance_uuid)
     params = json.dumps({
         "cloudlet-handoff": {
             CLOUDLET_COMMAND.PROPERTY_KEY_HANDOFF_URL: handoff_url,
-            CLOUDLET_COMMAND.PROPERTY_KEY_HANDOFF_DEST: dest_token,
+            CLOUDLET_COMMAND.PROPERTY_KEY_HANDOFF_DEST_TOKEN: dest_token,
+            CLOUDLET_COMMAND.PROPERTY_KEY_HANDOFF_DEST_VM_NAME: server_name,
         }
     })
     headers = {"X-Auth-Token": token, "Content-type": "application/json"}

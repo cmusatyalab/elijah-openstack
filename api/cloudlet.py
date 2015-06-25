@@ -183,6 +183,7 @@ class CloudletController(wsgi.Controller):
         payload = body['cloudlet-handoff']
         handoff_url = payload.get("handoff_url", None)
         dest_token = payload.get("dest_token", None)
+        dest_vmname = payload.get("dest_vmname", None)
         if handoff_url is None:
             msg = _("Need Handoff URL")
             raise webob.exc.HTTPBadRequest(explanation=msg)
@@ -210,7 +211,8 @@ class CloudletController(wsgi.Controller):
         residue_id = self.cloudlet_api.cloudlet_handoff(context,
                                                         instance,
                                                         handoff_url,
-                                                        dest_token=dest_token)
+                                                        dest_token=dest_token,
+                                                        dest_vmname=dest_vmname)
         if residue_id:
             return {'handoff': "%s" % residue_id}
         else:

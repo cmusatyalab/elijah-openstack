@@ -109,7 +109,7 @@ def request_handoff(request, instance_id, handoff_url, dest_token, dest_vmname):
         "cloudlet-handoff": {
             "handoff_url": handoff_url,
             "dest_token": dest_token,
-            #"dest_vmname":dest_vmname,
+            "dest_vmname":dest_vmname,
         }
     })
     headers = {"X-Auth-Token": token, "Content-type": "application/json"}
