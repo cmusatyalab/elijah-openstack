@@ -300,7 +300,6 @@ class HandoffInstanceForm(forms.SelfHandlingForm):
                 context['dest_token'],
                 context['dest_vmname']
             )
-            import pdb;pdb.set_trace()
             error_msg = ret_json.get("badRequest", None)
             if error_msg is not None:
                 msg = error_msg.get("message", "Failed to request VM synthesis")

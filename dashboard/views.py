@@ -141,7 +141,7 @@ class IndexView(tables.MultiTableView):
                     setattr(instance, 'cloudlet_type', "Resumed Base VM")
                 if instance_type == CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY:
                     filtered_instances.append(instance)
-                    setattr(instance, 'cloudlet_type', "Synthesized VM")
+                    setattr(instance, 'cloudlet_type', "Provisioned VM")
 
         return filtered_instances
 

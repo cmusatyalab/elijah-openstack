@@ -82,11 +82,6 @@ class TerminateInstance(tables.BatchAction):
     classes = ('btn-danger', 'btn-terminate')
 
     def allowed(self, request, instance=None):
-        #is_resumed_base = False
-        #cloudlet_type = get_cloudlet_type(instance)
-        #if cloudlet_type == CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK:
-        #    is_resumed_base = True
-        #return (not is_resumed_base)
         return True
 
 
@@ -176,14 +171,15 @@ class VMHandoffLink(tables.LinkAction):
     name = "handoff"
     verbose_name = _("VM Handoff")
     url = "horizon:project:cloudlet:handoff"
-    classes = ("btn-handoff", "ajax-modal",)
+    classes = ("btn-danger", "btn-terminate", "ajax-modal",)
     icon = "pencil"
 
     def get_link_url(self, datum):
         instance_id = self.table.get_object_id(datum)
         return urlresolvers.reverse(self.url, args=[instance_id])
 
-    def allowed(self, request, instance):
+    def allowed(self, request, instance=None):
+        is_active = instance.status in ACTIVE_STATES
         is_synthesized = False
         cloudlet_type = get_cloudlet_type(instance)
         if cloudlet_type == CLOUDLET_TYPE.IMAGE_TYPE_OVERLAY:
@@ -308,7 +304,7 @@ def cloudlet_type(instance):
     if hasattr(instance, "cloudlet_type"):
         cloudlet_type = getattr(instance, "cloudlet_type")
         return cloudlet_type
-    return _("Unknown type")
+    return _("VM instance")
 
 
 def get_power_state(instance):
@@ -377,7 +373,7 @@ class InstancesTable(tables.DataTable):
         status_columns = ["status", "task"]
         row_class = UpdateRow
         table_actions = (VMSynthesisLink, )
-        row_actions = (VMHandoffLink, CreateOverlayAction,
-                       TerminateInstance, EditInstance)
+        row_actions = (CreateOverlayAction, TerminateInstance,
+                       VMHandoffLink, EditInstance)
                        #SimpleAssociateIP, AssociateIP,
                        #SimpleDisassociateIP, SimpleDisassociateIP)

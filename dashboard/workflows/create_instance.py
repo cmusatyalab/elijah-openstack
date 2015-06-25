@@ -87,7 +87,8 @@ KEYPAIR_IMPORT_URL = "horizon:project:access_and_security:keypairs:import"
 
 class SetResumeDetailAction(workflows.Action):
     image_id = forms.ChoiceField(label=_("Image"), required=True)
-    name = forms.CharField(max_length=80, label=_("Instance Name"), initial="Resumed VM")
+    name = forms.CharField(max_length=80, label=_("Instance Name"),
+                           initial="resumed_vm")
     security_group_ids = forms.MultipleChoiceField(label=_("Security Groups"),
                                        required=True,
                                        initial=["default"],
