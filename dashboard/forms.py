@@ -35,14 +35,12 @@ from django.conf import settings
 from django.forms import ValidationError
 from django.forms.widgets import HiddenInput
 from django.utils.translation import ugettext_lazy as _
-from django.core.files.uploadedfile import TemporaryUploadedFile
 from django.views.decorators.debug import sensitive_variables  # noqa
 from horizon import exceptions
 from horizon import forms
 from horizon import messages
 from . import cloudlet_api
 
-from elijah.provisioning.package import PackagingUtil
 from elijah.provisioning.package import BaseVMPackage
 import elijah.provisioning.memory_util as elijah_memory_util
 
@@ -50,7 +48,9 @@ LOG = logging.getLogger(__name__)
 
 
 class ImportImageForm(forms.SelfHandlingForm):
-    name = forms.CharField(max_length="255", label=_("Name"), required=True)
+    name = forms.CharField(max_length="255",
+                           label=_("Name"),
+                           required=True)
     image_file = forms.FileField(label=_("Image File"),
                                  help_text=("A local image to upload."),
                                  required=False)
@@ -72,7 +72,10 @@ class ImportImageForm(forms.SelfHandlingForm):
                 msg = _('File is not valid (No manifest file)')
                 raise ValidationError(msg)
             xml = zipbase.read(BaseVMPackage.MANIFEST_FILENAME)
-            tree = etree.fromstring(xml, etree.XMLParser(schema=BaseVMPackage.schema))
+            tree = etree.fromstring(xml,
+                                    etree.XMLParser(
+                                        schema=BaseVMPackage.schema
+                                    ))
         except Exception as e:
             msg = 'File is not valid (Not a zipped base VM)'
             raise ValidationError(_(msg))
@@ -87,7 +90,9 @@ class ImportImageForm(forms.SelfHandlingForm):
         disk_name = tree.find(BaseVMPackage.NSP + 'disk').get('path')
         memory_name = tree.find(BaseVMPackage.NSP + 'memory').get('path')
         diskhash_name = tree.find(BaseVMPackage.NSP + 'disk_hash').get('path')
-        memoryhash_name = tree.find(BaseVMPackage.NSP + 'memory_hash').get('path')
+        memoryhash_name = tree.find(
+            BaseVMPackage.NSP +
+            'memory_hash').get('path')
 
         temp_dir = mkdtemp(prefix="cloudlet-base-")
         LOG.info("Decompressing zipfile to temp dir(%s)\n" % (temp_dir))
@@ -96,7 +101,6 @@ class ImportImageForm(forms.SelfHandlingForm):
         memory_path = os.path.join(temp_dir, memory_name)
         diskhash_path = os.path.join(temp_dir, diskhash_name)
         memoryhash_path = os.path.join(temp_dir, memoryhash_name)
-
         data['base_hashvalue'] = base_hashvalue
         data['base_disk_path'] = disk_path
         data['base_memory_path'] = memory_path
@@ -117,18 +121,18 @@ class ImportImageForm(forms.SelfHandlingForm):
                           disk_size, mem_size):
             properties = {
                 "image_type": "snapshot",
-                "image_location":"snapshot",
-                CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET:"True",
-                CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET_TYPE:image_type,
-                CLOUDLET_TYPE.PROPERTY_KEY_BASE_UUID:base_hashvalue,
+                "image_location": "snapshot",
+                CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET: "True",
+                CLOUDLET_TYPE.PROPERTY_KEY_CLOUDLET_TYPE: image_type,
+                CLOUDLET_TYPE.PROPERTY_KEY_BASE_UUID: base_hashvalue,
             }
             param = {
                 "name": "%s" % image_name,
                 "data": open(filepath, "rb"),
                 "size": os.path.getsize(filepath),
-                "is_public":True,
-                "disk_format":"raw",
-                "container_format":"bare",
+                "is_public": True,
+                "disk_format": "raw",
+                "container_format": "bare",
                 "min_disk": disk_size,
                 "min_ram": mem_size,
                 "properties": properties,
@@ -149,9 +153,9 @@ class ImportImageForm(forms.SelfHandlingForm):
                                                disk_gb)
             if len(ref_flavors) == 0:
                 flavor_name = "cloudlet-flavor-%s" % basevm_name
-                flavor_ref = api.nova.flavor_create(self.request, flavor_name,
-                                                    memory_size_mb, cpu_count,
-                                                    disk_gb, is_public=True)
+                api.nova.flavor_create(self.request, flavor_name,
+                                       memory_size_mb, cpu_count,
+                                       disk_gb, is_public=True)
                 msg = "Create new flavor %s with (cpu:%d, memory:%d, disk:%d)" %\
                     (flavor_name, cpu_count, memory_size_mb, disk_gb)
                 LOG.info(msg)
@@ -178,13 +182,14 @@ class ImportImageForm(forms.SelfHandlingForm):
             LOG.info("upload base disk hash to glance")
             glance_diskhash = api.glance.image_create(request, **diskhash_param)
             LOG.info("upload base memory hash to glance")
-            glance_memoryhash = api.glance.image_create(request, **memoryhash_param)
+            glance_memoryhash = api.glance.image_create(request,
+                                                        **memoryhash_param)
 
             glance_ref = {
                 CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM: glance_memory.id,
                 CLOUDLET_TYPE.IMAGE_TYPE_BASE_DISK_HASH: glance_diskhash.id,
                 CLOUDLET_TYPE.IMAGE_TYPE_BASE_MEM_HASH: glance_memoryhash.id,
-                CLOUDLET_TYPE.PROPERTY_KEY_BASE_RESOURCE:\
+                CLOUDLET_TYPE.PROPERTY_KEY_BASE_RESOURCE:
                 libvirt_xml_str.replace("\n", "")  # API cannot send '\n'
             }
             disk_param['properties'].update(glance_ref)
@@ -198,27 +203,30 @@ class ImportImageForm(forms.SelfHandlingForm):
             exceptions.handle(request, _('Unable to import image.'))
 
         dirpath = os.path.dirname(disk_path)
-        if os.path.exists(dirpath) == True:
+        if os.path.exists(dirpath):
             shutil.rmtree(dirpath)
         return True
 
 
 class HandoffInstanceForm(forms.SelfHandlingForm):
-    dest_addr = forms.CharField(max_length=255, required=True,
-                                initial="mist.elijah.cs.cmu.edu:5000",
-                                label=_("Keystone endpoint for destination OpenStack"))
+    dest_addr = forms.CharField(
+        max_length=255,
+        required=True,
+        initial="mist.elijah.cs.cmu.edu:5000",
+        label=_("Keystone endpoint for destination OpenStack"))
     dest_account = forms.CharField(max_length=255, required=True,
                                    label=_("Destination Account"),
                                    initial="admin")
-    dest_password = forms.CharField(widget=forms.PasswordInput(), required=True,
+    dest_password = forms.CharField(widget=forms.PasswordInput(),
+                                    required=True,
                                     initial="",
                                     label=_("Destination Password"))
     dest_tenant = forms.CharField(max_length=255, required=True,
                                   label=_("Destination Tenant"),
                                   initial="demo")
     dest_vmname = forms.CharField(max_length=255,
-                           label=_("Instance Name at the destination"),
-                           initial="handoff-vm")
+                                  label=_("Instance Name at the destination"),
+                                  initial="handoff-vm")
 
     def __init__(self, request, *args, **kwargs):
         super(HandoffInstanceForm, self).__init__(request, *args, **kwargs)
@@ -270,7 +278,8 @@ class HandoffInstanceForm(forms.SelfHandlingForm):
 
         # check fields
         if cleaned_data.get('dest_vmname', None) is None:
-            raise forms.ValidationError(_("Need name for VM at the destination"))
+            raise forms.ValidationError(
+                _("Need name for VM at the destination"))
         if dest_addr is None:
             raise forms.ValidationError(_("Need URL to fetch VM overlay"))
 
@@ -302,11 +311,11 @@ class HandoffInstanceForm(forms.SelfHandlingForm):
             )
             error_msg = ret_json.get("badRequest", None)
             if error_msg is not None:
-                msg = error_msg.get("message", "Failed to request VM synthesis")
+                msg = error_msg.get(
+                    "message",
+                    "Failed to request VM synthesis")
                 raise Exception(msg)
             return True
         except:
             exceptions.handle(request)
             return False
-
-

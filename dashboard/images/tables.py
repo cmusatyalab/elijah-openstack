@@ -30,6 +30,7 @@ from openstack_dashboard import api
 
 LOG = logging.getLogger(__name__)
 
+
 class ResumeBaseVM(tables.LinkAction):
     name = "resume_base_vm"
     verbose_name = _("Resume Base VM")
@@ -113,8 +114,6 @@ class EditImage(tables.LinkAction):
         if image:
             return image.status in ("active",) and \
                 image.owner == request.user.tenant_id
-        # We don't have bulk editing, so if there isn't an image that's
-        # authorized, don't allow the action.
         return False
 
 
@@ -125,30 +124,6 @@ def filter_tenants():
 @memoized
 def filter_tenant_ids():
     return map(lambda ft: ft['tenant'], filter_tenants())
-
-
-class OwnerFilter(tables.FixedFilterAction):
-    def get_fixed_buttons(self):
-        def make_dict(text, tenant, icon):
-            return dict(text=text, value=tenant, icon=icon)
-
-        buttons = [make_dict('Project', 'project', 'icon-home')]
-        for button_dict in filter_tenants():
-            new_dict = button_dict.copy()
-            new_dict['value'] = new_dict['tenant']
-            buttons.append(new_dict)
-        buttons.append(make_dict('Shared with Me', 'shared', 'icon-share'))
-        buttons.append(make_dict('Public', 'public', 'icon-fire'))
-        return buttons
-
-    def categorize(self, table, images):
-        user_tenant_id = table.request.user.tenant_id
-        tenants = defaultdict(list)
-        for im in images:
-            categories = get_image_categories(im, user_tenant_id)
-            for category in categories:
-                tenants[category].append(im)
-        return tenants
 
 
 def get_image_categories(im, user_tenant_id):
@@ -203,8 +178,7 @@ class BaseVMsTable(tables.DataTable):
         ("resume", False),
     )
     name = tables.Column("name",
-                         link=("horizon:project:images_and_snapshots:"
-                               "images:detail"),
+                         link=("horizon:project:images:images:detail"),
                          verbose_name=_("Base VM Images"))
     image_type = tables.Column(get_image_type,
                                verbose_name=_("Type"),
@@ -240,8 +214,7 @@ class VMOverlaysTable(tables.DataTable):
         ("resume", False),
     )
     name = tables.Column("name",
-                         link=("horizon:project:images_and_snapshots:"
-                               "images:detail"),
+                         link=("horizon:project:images:images:detail"),
                          verbose_name=_("VM Overlays"))
     image_type = tables.Column(get_image_type,
                                verbose_name=_("Type"),
