@@ -278,8 +278,26 @@ class UpdateRow(tables.Row):
 
 def get_ips(instance):
     template_name = 'project/instances/_instance_ips.html'
-    context = {"instance": instance}
+    ip_groups = {}
+
+    for ip_group, addresses in instance.addresses.iteritems():
+        ip_groups[ip_group] = {}
+        ip_groups[ip_group]["floating"] = []
+        ip_groups[ip_group]["non_floating"] = []
+
+        for address in addresses:
+            if ('OS-EXT-IPS:type' in address and
+               address['OS-EXT-IPS:type'] == "floating"):
+                ip_groups[ip_group]["floating"].append(address)
+            else:
+                ip_groups[ip_group]["non_floating"].append(address)
+
+    context = {
+        "ip_groups": ip_groups,
+    }
     return template.loader.render_to_string(template_name, context)
+
+
 
 
 def get_size(instance):
@@ -347,7 +365,9 @@ class InstancesTable(tables.DataTable):
                          link=("horizon:project:instances:detail"),
                          verbose_name=_("Instance Name"))
     cloudlet_type = tables.Column(cloudlet_type, verbose_name=_("Type"))
-    ip = tables.Column(get_ips, verbose_name=_("IP Address"))
+    ip = tables.Column(get_ips,
+                       verbose_name=_("IP Address"),
+                       attrs={'data-type': "ip"})
     size = tables.Column(get_size,
                          verbose_name=_("Size"),
                          attrs={'data-type': 'size'})
