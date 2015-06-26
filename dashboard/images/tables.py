@@ -102,12 +102,14 @@ class ImportBaseVM(tables.LinkAction):
     verbose_name = _("Import Base VM")
     url = "horizon:project:cloudlet:import"
     classes = ("ajax-modal", "btn-create")
+    icon = "plus"
 
 
 class EditImage(tables.LinkAction):
     name = "edit"
     verbose_name = _("Edit")
-    url = "horizon:project:images_and_snapshots:images:update"
+    url = "horizon:project:images:images:update"
+    icon = "pencil"
     classes = ("ajax-modal", "btn-edit")
 
     def allowed(self, request, image=None):

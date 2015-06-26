@@ -203,12 +203,6 @@ class HandoffInstanceView(forms.ModalFormView):
         return {'instance_id': self.kwargs['instance_id']}
 
 
-
-class DetailView(tabs.TabView):
-    tab_group_class = SnapshotDetailTabs
-    template_name = 'project/cloudlet/snapshots/detail.html'
-
-
 def download_vm_overlay(request):
     try:
         image_id = request.GET.get("image_id", None)

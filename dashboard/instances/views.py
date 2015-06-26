@@ -35,7 +35,6 @@ from horizon import tables
 from horizon import workflows
 
 from openstack_dashboard import api
-from .tabs import InstanceDetailTabs
 from .tables import InstancesTable
 from .workflows import UpdateInstance
 
@@ -109,38 +108,3 @@ class UpdateView(workflows.WorkflowView):
                 'name': getattr(self.get_object(), 'name', '')})
         return initial
 
-
-class DetailView(tabs.TabView):
-    tab_group_class = InstanceDetailTabs
-    template_name = 'project/cloudlet/instances/detail.html'
-
-    def get_context_data(self, **kwargs):
-        context = super(DetailView, self).get_context_data(**kwargs)
-        context["instance"] = self.get_data()
-        return context
-
-    def get_data(self):
-        if not hasattr(self, "_instance"):
-            try:
-                instance_id = self.kwargs['instance_id']
-                instance = api.nova.server_get(self.request, instance_id)
-                instance.volumes = api.nova.instance_volumes_list(self.request,
-                                                                  instance_id)
-                # Sort by device name
-                instance.volumes.sort(key=lambda vol: vol.device)
-                instance.full_flavor = api.nova.flavor_get(
-                    self.request, instance.flavor["id"])
-                instance.security_groups = api.nova.server_security_groups(
-                                           self.request, instance_id)
-            except:
-                redirect = reverse('horizon:project:instances:index')
-                exceptions.handle(self.request,
-                                  _('Unable to retrieve details for '
-                                    'instance "%s".') % instance_id,
-                                    redirect=redirect)
-            self._instance = instance
-        return self._instance
-
-    def get_tabs(self, request, *args, **kwargs):
-        instance = self.get_data()
-        return self.tab_group_class(request, instance=instance, **kwargs)
