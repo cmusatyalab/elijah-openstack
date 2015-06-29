@@ -450,7 +450,8 @@ class SetSynthesizeDetailsAction(workflows.Action):
                                                    memory_mb,
                                                    disk_gb)
                 matching_flavors.update(ret_flavors)
-            self.fields['flavor'].initial = list(matching_flavors)[0]
+            if len(matching_flavors) > 0:
+                self.fields['flavor'].initial = list(matching_flavors)[0]
         except:
             matching_flavors= set()
             exceptions.handle(request,

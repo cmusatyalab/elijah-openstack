@@ -16,33 +16,11 @@ compute_node_list = ['krha@cloudlet.krha.kr']
 
 # constant
 CLOUDLET_PROVISIONING_REPO = "https://github.com/cmusatyalab/elijah-provisioning.git"
-PYTHON_LIBRARY_ROOT = "/usr/lib/python2.7/dist-packages"
+NOVA_PACKAGE_PATH = "/usr/lib/python2.7/dist-packages/nova"
 NOVA_CONF_PATH = "/etc/nova/nova.conf"
 NOVA_COMPUTE_CONF_PATH = "/etc/nova/nova-compute.conf"
 DASHBOARD_PROJECT_PATH = "/usr/share/openstack-dashboard/openstack_dashboard/dashboards/project"
 DASHBOARD_SETTING_FILE = "/usr/share/openstack-dashboard/openstack_dashboard/dashboards/project/dashboard.py"
-HORIZON_API_PATH = "/usr/share/openstack-dashboard/openstack_dashboard/api"
-
-
-def deploy_cloudlet_api():
-    ext_file = os.path.abspath("./api/cloudlet.py")
-    api_file = os.path.abspath("./api/cloudlet_api.py")
-    ext_lib_dir = os.path.join(PYTHON_LIBRARY_ROOT,
-            "nova/api/openstack/compute/contrib/")
-    api_lib_dir = os.path.join(PYTHON_LIBRARY_ROOT, "nova/compute/")
-
-    deploy_files = [
-            (ext_file, ext_lib_dir),
-            (api_file, api_lib_dir),
-            ]
-
-    # deploy files
-    for (src_file, target_dir) in deploy_files:
-        dest_filepath = os.path.join(target_dir, os.path.basename(src_file))
-        if put(src_file, dest_filepath, use_sudo=True, mode=0644).failed:
-            abort("Cannot copy %s to %s" % (src_file, lib_dir))
-
-    sudo("service nova-api restart", shell=False)
 
 
 def _replace_configuration(filepath, option_key, option_value, insert_at=1):
@@ -85,14 +63,38 @@ def _replace_configuration(filepath, option_key, option_value, insert_at=1):
     sudo("chown %s:%s %s" % (original_uid, original_gid, filepath))
 
 
+def deploy_cloudlet_api():
+    global NOVA_PACKAGE_PATH
+
+    ext_file = os.path.abspath("./api/cloudlet.py")
+    api_file = os.path.abspath("./api/cloudlet_api.py")
+    ext_lib_dir = os.path.join(NOVA_PACKAGE_PATH,
+            "api/openstack/compute/contrib/")
+    api_lib_dir = os.path.join(NOVA_PACKAGE_PATH, "compute/")
+
+    deploy_files = [
+            (ext_file, ext_lib_dir),
+            (api_file, api_lib_dir),
+            ]
+
+    # deploy files
+    for (src_file, target_dir) in deploy_files:
+        dest_filepath = os.path.join(target_dir, os.path.basename(src_file))
+        if put(src_file, dest_filepath, use_sudo=True, mode=0644).failed:
+            abort("Cannot copy %s to %s" % (src_file, lib_dir))
+
+    sudo("service nova-api restart", shell=False)
+
+
 def deploy_compute_manager():
+    global NOVA_PACKAGE_PATH
     global NOVA_CONF_PATH
     global NOVA_COMPUTE_CONF_PATH
 
     manager_file = os.path.abspath("./compute/cloudlet_manager.py")
-    manager_lib_dir = os.path.join(PYTHON_LIBRARY_ROOT, "nova/compute/")
+    manager_lib_dir = os.path.join(NOVA_PACKAGE_PATH, "compute/")
     libvirt_driver = os.path.abspath("./compute/cloudlet_driver.py")
-    libvirt_driver_dir = os.path.join(PYTHON_LIBRARY_ROOT, "nova/virt/libvirt/")
+    libvirt_driver_dir = os.path.join(NOVA_PACKAGE_PATH, "virt/libvirt/")
 
     deploy_files = [
             (manager_file, manager_lib_dir),
@@ -142,12 +144,13 @@ def check_system_requirement():
 
     # OpenStack installation test
     hostname = sudo('hostname')
-    output = sudo("nova-manage service list | grep %s" % hostname)
-    if output.failed == True or output.find("XXX") != -1:
-        msg = "OpenStack is not fully functioning.\n"
-        msg += "Check the service with 'nova-manage service list' command.\n\n"
-        msg += output
-        abort(msg)
+    with hide("stderr"):
+        output = sudo("nova-manage service list | grep %s" % hostname)
+        if output.failed == True or output.find("XXX") != -1:
+            msg = "OpenStack is not fully functioning.\n"
+            msg += "Check the service with 'nova-manage service list' command.\n\n"
+            msg += output
+            abort(msg)
 
 
 def check_VM_synthesis_package():
@@ -173,7 +176,6 @@ def check_VM_synthesis_package():
 def deploy_dashboard():
     global DASHBOARD_PROJECT_PATH
     global DASHBOARD_SETTING_FILE
-    global HORIZON_API_PATH
 
     # deploy files
     src_dir = os.path.abspath("./dashboard/*")
@@ -195,35 +197,12 @@ def deploy_dashboard():
         abort(msg)
 
 
-def deploy_svirt():
-    # check apparmor file
-    libvirt_svirt_file = "/etc/apparmor.d/abstractions/libvirt-qemu"
-    if files.exists(libvirt_svirt_file, use_sudo=True) == False:
-        abort("This system does not have libvirt profile for svirt")
-
-    # append additional files that cloudlet uses
-    security_rule = open("./svirt-profile", "r").read()
-    if files.append(libvirt_svirt_file, security_rule, use_sudo=True) == False:
-        abort("Cannot add security profile to libvirt-qemu")
-
-    # disable aa-complain /usr/lib/libvirt/virt-aa-helper
-    if sudo("aa-complain /usr/lib/libvirt/virt-aa-helper").failed:
-        abort("Cannot exclude virt-aa-helper from apparmor")
-
-
-def qemu_security_mode():
-    """Turn off qemu security mode to allow custom QEMU
+def disable_apparmor():
+    """Due to the use of custom QEMU, we put libvirtd to the complain mode
     """
-    qemu_conf_file = os.path.join("/", "etc", "libvirt", "qemu.conf")
-    if files.exists(qemu_conf_file, use_sudo=True) == False:
-        msg = "The system doesn't have QEMU confi file at %s" % qemu_conf_file
-        abort(msg)
-    # replace "security_driver" to none
-    _replace_configuration(
-        qemu_conf_file, "security_driver", "\"none\"", insert_at=-1
-    )
-    # restart libvirtd to reflect changes
-    sudo("/etc/init.d/libvirt-bin restart")
+    # disable aa-complain /usr/sbin/libvirtd
+    if sudo("aa-complain /usr/sbin/libvirtd").failed:
+        abort("Cannot exclude /usr/sbin/libvirtd from apparmor")
 
 
 @task
@@ -241,43 +220,26 @@ def remote():
 
 
 @task
-def provisioning_control():
-    check_VM_synthesis_package()
-    with hide('stdout'):
-        check_system_requirement()
-        deploy_cloudlet_api()
-        deploy_compute_manager()
-        qemu_security_mode()
-        deploy_dashboard()
-    sys.stdout.write("[SUCCESS] Finished installation\n")
-
-
-@task
-def provisioning_compute():
-    check_VM_synthesis_package()
-    with hide('stdout'):
-        check_system_requirement()
-        deploy_cloudlet_api()
-        deploy_compute_manager()
-        qemu_security_mode()
-    sys.stdout.write("[SUCCESS] Finished installation\n")
-
-
-@task
 def devstack_single_machine():
-    global PYTHON_LIBRARY_ROOT
+    global NOVA_PACKAGE_PATH
     global DASHBOARD_PROJECT_PATH
     global DASHBOARD_SETTING_FILE
-    global HORIZON_API_PATH
     global NOVA_COMPUTE_CONF_PATH
 
     DASHBOARD_PROJECT_PATH = "/opt/stack/horizon/openstack_dashboard/dashboards/project"
     DASHBOARD_SETTING_FILE = "/opt/stack/horizon/openstack_dashboard/dashboards/project/dashboard.py"
-    HORIZON_API_PATH = "/opt/stack/horizon/openstack_dashboard/api"
-    PYTHON_LIBRARY_ROOT = "/opt/stack/nova/"
+    NOVA_PACKAGE_PATH = "/opt/stack/nova/nova/"
     NOVA_COMPUTE_CONF_PATH = NOVA_CONF_PATH
 
-    provisioning_control()
+    check_VM_synthesis_package()
+    check_system_requirement()
+    with hide('stdout'):
+        deploy_cloudlet_api()
+        deploy_compute_manager()
+        disable_apparmor()
+        deploy_dashboard()
+
+    sys.stdout.write("[SUCCESS] Finished installation\n")
     sys.stdout.write("You should restart DevStack to activate changes!!\n")
     sys.stdout.write("  1. Terminate using unstack.sh\n")
     sys.stdout.write("  2. Restart using rejoin-stack.sh\n")
