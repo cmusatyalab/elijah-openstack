@@ -37,8 +37,6 @@ from django.utils.datastructures import SortedDict
 from .images.tables import BaseVMsTable
 from .images.tables import VMOverlaysTable
 from .instances.tables import InstancesTable
-from .volume_snapshots.tables import VolumeSnapshotsTable
-from .volume_snapshots.tabs import SnapshotDetailTabs
 
 from horizon import workflows
 from .workflows import SynthesisInstance
@@ -56,7 +54,7 @@ LOG = logging.getLogger(__name__)
 
 
 class IndexView(tables.MultiTableView):
-    table_classes = (BaseVMsTable, VMOverlaysTable, InstancesTable, VolumeSnapshotsTable)
+    table_classes = (BaseVMsTable, VMOverlaysTable, InstancesTable)
     template_name = 'project/cloudlet/index.html'
 
     def has_prev_data(self, table):
@@ -144,18 +142,6 @@ class IndexView(tables.MultiTableView):
                     setattr(instance, 'cloudlet_type', "Provisioned VM")
 
         return filtered_instances
-
-    def get_volume_snapshots_data(self):
-        if is_service_enabled(self.request, 'volume'):
-            try:
-                snapshots = api.cinder.volume_snapshot_list(self.request)
-            except:
-                snapshots = []
-                exceptions.handle(self.request, _("Unable to retrieve "
-                                                  "volume snapshots."))
-        else:
-            snapshots = []
-        return snapshots
 
 
 class ImportBaseView(forms.ModalFormView):
