@@ -173,6 +173,19 @@ def check_VM_synthesis_package():
         sys.stdout.write(msg)
 
 
+def set_kilo_version():
+    """DevStack uses the latest version of OpenStack module,
+    rather than the released version. Since the latest update can change
+    internal API, we use a released version for nova module:
+        https://github.com/openstack/nova/releases/tag/2015.1.0
+    """
+    global NOVA_PACKAGE_PATH
+
+    with cd(NOVA_PACKAGE_PATH):
+        import pdb;pdb.set_trace()
+        result = run("git checkout 8397b6464af520903f546ce4c6d51a2eb5b4c8a8")
+
+
 def deploy_dashboard():
     global DASHBOARD_PROJECT_PATH
     global DASHBOARD_SETTING_FILE
@@ -234,6 +247,7 @@ def devstack_single_machine():
     check_VM_synthesis_package()
     check_system_requirement()
     with hide('stdout'):
+        set_kilo_version()
         deploy_cloudlet_api()
         deploy_compute_manager()
         disable_apparmor()

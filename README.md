@@ -47,32 +47,42 @@ case](http://docs.openstack.org/developer/devstack/guides/single-machine.html).
 2. Install cloudlet library
 
     > $ cd ~  
-    > $ sudo apt-get install git openssh-server fabric git  
+    > $ sudo apt-get install git openssh-server fabric
     > $ git clone https://github.com/cmusatyalab/elijah-provisioning  
     > $ cd elijah-provisioning  
     > $ fab install
     > (Require password for you Ubuntu account)  
 
+    To check successful installation, type as follows:
+
+    > $ cloudlet list-base
+    > [DB] Create new database
+    > hash value                    path
+    > ------------------------------------------------------------------------------------------
+    > ------------------------------------------------------------------------------------------
+    > $
+    
     For more details and troubleshooting, please read [elijah-provisioning
-    repo](https://github.com/cmusatyalab/elijah-provisioning).
+    repo](https://github.com/cmusatyalab/elijah-provisioning).  
 
 
 3. Install OpenStack using DevStack (This instruction simply follows [DevStack
 guidance](http://devstack.org/guides/single-machine.html)).
 
     > $ cd ~  
-    > $ sudo echo "$USER ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers  
-    > $ git clone https://github.com/openstack-dev/devstack.git  
-    > $ cd devstack  
+    > $ echo "$USER ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers  
+    > $ wget https://github.com/openstack-dev/devstack/archive/kilo-2.tar.gz
+    > $ tar xvf kilo-2.tar.gz
+    > $ cd devstack-kilo-2/
     > $ cp samples/local.conf local.conf  
     > (Modify configuration if you need. Details are at [here](http://docs.openstack.org/developer/devstack/guides/single-machine.html#run-devstack)).  
     > $ ./stack.sh  
 
-    Please make sure that all the OpenStack funtionality is working by
+    Please make sure that all the OpenStack functionality is working by
     connecting to OpenStack Web interface (http://localhost/).
 
     If the vanilla OpenStack does not work, please check apache2 and
-    keystone-all process and manually run them, if they are not running.
+    keystone-all process and manually run them, if they are not running.  
 
 
 4. Finally, install cloudlet OpenStack extension
