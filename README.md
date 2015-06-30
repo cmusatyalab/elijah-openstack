@@ -47,20 +47,13 @@ case](http://docs.openstack.org/developer/devstack/guides/single-machine.html).
 2. Install cloudlet library
 
     > $ cd ~  
-    > $ sudo apt-get install git openssh-server fabric
+    > $ sudo apt-get install git openssh-server fabric  
     > $ git clone https://github.com/cmusatyalab/elijah-provisioning  
     > $ cd elijah-provisioning  
     > $ fab install
     > (Require password for you Ubuntu account)  
 
-    To check successful installation, type as follows:
-
-    > $ cloudlet list-base
-    > [DB] Create new database
-    > hash value                    path
-    > ------------------------------------------------------------------------------------------
-    > ------------------------------------------------------------------------------------------
-    > $
+    To check successful installation, type "$ cloudlet list-base" and check error.
     
     For more details and troubleshooting, please read [elijah-provisioning
     repo](https://github.com/cmusatyalab/elijah-provisioning).  
@@ -71,11 +64,11 @@ guidance](http://devstack.org/guides/single-machine.html)).
 
     > $ cd ~  
     > $ echo "$USER ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers  
-    > $ wget https://github.com/openstack-dev/devstack/archive/kilo-2.tar.gz
-    > $ tar xvf kilo-2.tar.gz
-    > $ cd devstack-kilo-2/
+    > $ git clone https://github.com/openstack-dev/devstack  
+    > $ cd devstack  
+    > $ git checkout stable/kilo  
     > $ cp samples/local.conf local.conf  
-    > (Modify configuration if you need. Details are at [here](http://docs.openstack.org/developer/devstack/guides/single-machine.html#run-devstack)).  
+    > (Please read the configuration documentation first at [here](http://docs.openstack.org/developer/devstack/guides/single-machine.html#run-devstack)). Malconfiguration can cause a trouble in your local network.  
     > $ ./stack.sh  
 
     Please make sure that all the OpenStack functionality is working by
@@ -96,6 +89,7 @@ guidance](http://devstack.org/guides/single-machine.html)).
     After successful installation, please restart OpenStack to reflect changes.
 
     > (Restart your devstack)  
+    > $ cd ~/devstack
     > $ ./unstack  
     > $ ./rejoin-stack.sh  
     > (Sometime, you need to manually restart apache2 and keystone-all)  
@@ -112,31 +106,50 @@ guidance](http://devstack.org/guides/single-machine.html)).
 How to use
 -----------
 
-If the installation is successful, you will see a new panel at project tab as
-below.  ![OpenStack cloudlet extension
-dashboard](https://github.com/cmusatyalab/elijah-openstack/blob/icehouse/doc/screenshot/cloudlet_dashboard_icehouse.png?raw=true)
-Or you can check cloudlet extension by listing available OpenStack extension
-using standard [OpenStack API](http://developer.openstack.org/api-ref-compute-v2.html#listExtensionsv2).
+1. If the installation is successful, you will see a new panel at project tab
+as below.  You can also check cloudlet extension by listing available OpenStack
+extension using standard [OpenStack
+API](http://developer.openstack.org/api-ref-compute-v2.html#listExtensionsv2).
+![OpenStack cloudlet extension
+dashboard](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/1-cloudlet-dashboard-kilo.png?raw=true)  
 
-Then, you can import [Sample Base
-VM](https://storage.cmusatyalab.org/cloudlet-vm/precise-baseVM.zip) using
-"Import Base VM".  
-![Import Base VM](https://github.com/cmusatyalab/elijah-openstack/blob/icehouse/doc/screenshot/import_basevm.png?raw=true)
-(VM's account: cloudlet, password: cloudlet)
+2. Import [Sample Base
+VM](https://storage.cmusatyalab.org/cloudlet-vm/precise-hotplug.zip) using
+"Import Base VM" (This process will take a while). This zip file contains disk
+and memory snapshot file of the vanilla Ubuntu distribution (VM's account:
+cloudlet, password: cloudlet). ![Import Base
+VM](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/2-import-base.png?raw=true)  
 
-To resume Base VM, please use "Resume Base VM" button at Images table, and use
-"Create VM overlay" button when you ready to create VM overlay from the resumed
-VM. Then it will create _VM overlay_ as belows: 
-![Creating VM overlay](https://github.com/cmusatyalab/elijah-openstack/blob/icehouse/doc/screenshot/creating_vm_overlay.png?raw=true)
-After finishing creating VM overlay (this process can take a long time), you
-can download VM overlay using "Download VM overlay" button.
+3. To resume Base VM, please use "Resume Base VM" button at the Base VM image
+table, and use "Create VM overlay" button when you ready to create VM overlay
+from the resumed VM. Then it will create _VM overlay_ as follows. At the first time,
+resuming Base VM can take a long time because the Base VM needs to be cached to
+the compute node. ![Resume VM
+overlay](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/3-resume-base.png?raw=true)
+![Creating VM
+overlay](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/4-create-vm-overlay.png?raw=true)
+After finishing creating VM overlay (this process can take a while), you
+can download VM overlay using "Download VM overlay" button.  
 
-To perform VM synthesis, please use "Start VM Synthesis" button at Instance
-table. You need to input URL of the VM overlay you just downloaded.
-![Start VM Synthesis](https://github.com/cmusatyalab/elijah-openstack/blob/icehouse/doc/screenshot/vm_synthesis.png?raw=true)
+4. To perform VM synthesis, please use "Start VM Synthesis" button at Instance
+table. You need to input a URL of your VM overlay. So, if you have created and
+downloaded VM overlay at the previous step, please put that VM overlay at Web
+server to create a URL for the VM overlay. At the first time, VM synthesis can
+be slow if the Base VM is not cached at the compute node. ![Start VM
+Synthesis](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/5-vm-synthesis.png?raw=true)
+![Start VM Synthesis](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/5-vm-synthesis-done.png?raw=true)  
+
+5. To migrate running VM instance to other OpenStack, please use "VM handoff"
+button at the Action column of synthesized VM instance. This will ask
+credential information of the destination OpenStack as follows.  Although it
+does not save any credential information, please use [a cloudlet command line
+client](https://github.com/cmusatyalab/elijah-openstack/blob/master/client/cloudlet_client.py)
+that accepts auth-token instead of account/password if you don't want to pass
+account information.  ![VM
+handoff](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/6-vmhandoff.png?raw=true)  
 
 
-Alternatively, you can use command line client program at
+All the above steps can be done using a command line program at
 [./client/cloudlet_client.py](https://github.com/cmusatyalab/elijah-openstack/blob/master/client/cloudlet_client.py)
 
 
@@ -162,8 +175,7 @@ below steps to narrow the problem.
   If any service is not running, Check error message of that service. In
   DevStack, you can find relevant tab at the screen ( 'screen -x' to attach to
   DevStack screen). In regular OpenStack log files are located under
-  ``/var/log/nova``.
-
+  ``/var/log/nova``.  
 
 2. If you still have problem in using Web interface even though every nova
 related service is successfully running, then it's likely to be a Dashboard
@@ -194,15 +206,4 @@ regular OpenStack, Dashboard's code (Django) is located at
 In DevStack, mostly of steps are as same except that Dashboard root directory is
 "/opt/stack/horizon".
 
-
-
-
-Current Limitations
-------------
-
-* _Early start optimization_ is turned off
-
-  Early start optimization start VM even before having the memory snapshot of
-  the VM. Therefore, it might reject socket connection for the first several
-  seconds. We'll update a workaround soon.
 

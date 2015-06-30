@@ -182,7 +182,6 @@ def set_kilo_version():
     global NOVA_PACKAGE_PATH
 
     with cd(NOVA_PACKAGE_PATH):
-        import pdb;pdb.set_trace()
         result = run("git checkout 8397b6464af520903f546ce4c6d51a2eb5b4c8a8")
 
 
@@ -210,9 +209,21 @@ def deploy_dashboard():
         abort(msg)
 
 
-def disable_apparmor():
-    """Due to the use of custom QEMU, we put libvirtd to the complain mode
+def qemu_security_mode():
+    """set qemu security mode to None to allow custom QEMU
     """
+    qemu_conf_file = os.path.join("/", "etc", "libvirt", "qemu.conf")
+    if files.exists(qemu_conf_file, use_sudo=True) == False:
+        msg = "The system doesn't have QEMU confi file at %s" % qemu_conf_file
+        abort(msg)
+
+    # replace "security_driver" to none
+    _replace_configuration(
+        qemu_conf_file, "security_driver", "\"none\"", insert_at=-1
+    )
+    # restart libvirtd to reflect changes
+    sudo("/etc/init.d/libvirt-bin restart")
+
     # disable aa-complain /usr/sbin/libvirtd
     if sudo("aa-complain /usr/sbin/libvirtd").failed:
         abort("Cannot exclude /usr/sbin/libvirtd from apparmor")
@@ -250,7 +261,7 @@ def devstack_single_machine():
         set_kilo_version()
         deploy_cloudlet_api()
         deploy_compute_manager()
-        disable_apparmor()
+        qemu_security_mode()
         deploy_dashboard()
 
     sys.stdout.write("[SUCCESS] Finished installation\n")
