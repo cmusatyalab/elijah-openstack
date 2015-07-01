@@ -50,6 +50,8 @@ LOG = logging.getLogger(__name__)
 class ImportImageForm(forms.SelfHandlingForm):
     name = forms.CharField(max_length="255",
                            label=_("Name"),
+                           widget=forms.TextInput(attrs={
+                               'placeholder': 'ubuntu-base'}),
                            required=True)
     image_file = forms.FileField(label=_("Image File"),
                                  help_text=("A local image to upload."),
@@ -212,21 +214,26 @@ class HandoffInstanceForm(forms.SelfHandlingForm):
     dest_addr = forms.CharField(
         max_length=255,
         required=True,
-        initial="mist.elijah.cs.cmu.edu:5000",
-        label=_("Keystone endpoint for destination OpenStack"))
+        label=_("Keystone endpoint for destination OpenStack"),
+        widget=forms.TextInput(attrs={
+            'placeholder': 'destination_openstack_ipaddress:5000'}
+        ))
     dest_account = forms.CharField(max_length=255, required=True,
                                    label=_("Destination Account"),
-                                   initial="admin")
+                                   widget=forms.TextInput(attrs={
+                                       'placeholder':'admin'})
+                                   )
     dest_password = forms.CharField(widget=forms.PasswordInput(),
                                     required=True,
-                                    initial="",
                                     label=_("Destination Password"))
     dest_tenant = forms.CharField(max_length=255, required=True,
                                   label=_("Destination Tenant"),
-                                  initial="demo")
+                                  widget=forms.TextInput(attrs={
+                                      'placeholder':'demo'}))
     dest_vmname = forms.CharField(max_length=255,
                                   label=_("Instance Name at the destination"),
-                                  initial="handoff-vm")
+                                  widget=forms.TextInput(attrs={
+                                      'placeholder':'handoff-vm'}))
 
     def __init__(self, request, *args, **kwargs):
         super(HandoffInstanceForm, self).__init__(request, *args, **kwargs)
