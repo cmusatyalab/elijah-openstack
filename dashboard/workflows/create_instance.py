@@ -107,7 +107,7 @@ class SetResumeDetailAction(workflows.Action):
     class Meta:
         name = _("Base VM Info")
         help_text_template = ("project/cloudlet/instance/"
-                              "_launch_details_help.html")
+                              "_resume_details_help.html")
 
     def clean(self):
         cleaned_data = super(SetResumeDetailAction, self).clean()
@@ -281,7 +281,7 @@ class SetSynthesizeDetailsAction(workflows.Action):
     class Meta:
         name = _("VM overlay Info")
         help_text_template = ("project/cloudlet/instance/"
-                              "_launch_details_help.html")
+                              "_synthesis_details_help.html")
 
     def clean(self):
         cleaned_data = super(SetSynthesizeDetailsAction, self).clean()
