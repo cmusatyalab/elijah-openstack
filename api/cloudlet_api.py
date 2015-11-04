@@ -29,6 +29,9 @@ from nova.compute import utils as compute_utils
 from nova.compute import task_states
 from oslo.config import cfg
 
+from nova.objects import quotas as quotas_obj
+from nova import objects
+
 try:
     # icehouse
     from nova.openstack.common import log as logging
@@ -199,10 +202,23 @@ class CloudletAPI(nova_rpc.ComputeAPI):
                    memoryhash_meta_id=recv_memhash_meta['id']
                    )
         return recv_disk_meta, recv_mem_meta
-
+    def _create_reservations(self, context, instance, original_task_state,project_id, user_id):
+        instance_vcpus = instance.vcpus
+        instance_memory_mb = instance.memory_mb
+        # NOTE(wangpan): if the instance is resizing, and the resources
+        #                are updated to new instance type, we should use
+        #                the old instance type to create reservation.
+        # see https://bugs.launchpad.net/nova/+bug/1099729 for more details
+                            
+        quotas = objects.Quotas(context)
+        quotas.reserve(project_id=project_id,user_id=user_id,instances=-1,cores=-instance_vcpus,ram=-instance_memory_mb)
+        return quotas
     @nova_api.check_instance_state(vm_state=[vm_states.ACTIVE])
     def cloudlet_create_overlay_finish(self, context, instance,
                                        overlay_name, extra_properties=None):
+        project_id, user_id = quotas_obj.ids_from_instance(context, instance)
+        original_task_state = instance.task_state
+        quotas = self._create_reservations(context,instance, original_task_state,project_id, user_id) 
         overlay_meta_properties = {
             CloudletAPI.PROPERTY_KEY_CLOUDLET: True,
             CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE:
@@ -221,7 +237,7 @@ class CloudletAPI(nova_rpc.ComputeAPI):
             server=nova_rpc._compute_host(None, instance), version=version
         )
         cctxt.cast(context, 'cloudlet_overlay_finish',
-                   instance=instance,
+                   instance=instance,reservations=quotas.reservations,
                    overlay_name=overlay_name,
                    overlay_id=recv_overlay_meta['id'])
         return recv_overlay_meta
@@ -230,6 +246,9 @@ class CloudletAPI(nova_rpc.ComputeAPI):
     def cloudlet_handoff(self, context, instance, handoff_url,
                          dest_token=None, dest_vmname=None,
                          extra_properties=None):
+        project_id, user_id = quotas_obj.ids_from_instance(context, instance)
+        original_task_state = instance.task_state
+        quotas = self._create_reservations(context,instance, original_task_state,project_id, user_id) 
         recv_residue_meta = None
         parsed_handoff_url = urlsplit(handoff_url)
         residue_glance_id = None
@@ -269,7 +288,7 @@ class CloudletAPI(nova_rpc.ComputeAPI):
             server=nova_rpc._compute_host(None, instance), version=version
         )
         cctxt.cast(context, 'cloudlet_handoff',
-                   instance=instance,
+                   instance=instance,reservations=quotas.reservations,
                    handoff_url=handoff_url,
                    residue_glance_id=residue_glance_id)
         return residue_glance_id
