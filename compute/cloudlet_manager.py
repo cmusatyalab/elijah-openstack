@@ -100,7 +100,7 @@ class CloudletComputeManager(compute_manager.ComputeManager):
     @compute_manager.wrap_exception()
     @compute_manager.reverts_task_state
     @compute_manager.wrap_instance_fault
-    def cloudlet_overlay_finish(self, context, instance,
+    def cloudlet_overlay_finish(self, context, instance,reservations,
                                 overlay_name, overlay_id):
         """
         Generate VM overlay with given instance, and save it as a snapshot
@@ -117,13 +117,13 @@ class CloudletComputeManager(compute_manager.ComputeManager):
 
         self.driver.create_overlay_vm(context, instance, overlay_name,
                                       overlay_id, callback_update_task_state)
-        self.cloudlet_terminate_instance(context, instance)
+        self.cloudlet_terminate_instance(context, instance,reservations)
 
     @compute_manager.object_compat
     @compute_manager.wrap_exception()
     @compute_manager.reverts_task_state
     @compute_manager.wrap_instance_fault
-    def cloudlet_handoff(self, context, instance, handoff_url,
+    def cloudlet_handoff(self, context, instance,reservations, handoff_url,
                          residue_glance_id=None):
         """
         Perform VM handoff
@@ -141,7 +141,7 @@ class CloudletComputeManager(compute_manager.ComputeManager):
         self.driver.perform_vmhandoff(context, instance, handoff_url,
                                       callback_update_task_state,
                                       residue_glance_id)
-        self.cloudlet_terminate_instance(context, instance)
+        self.cloudlet_terminate_instance(context, instance,reservations,)
 
     # Direct call to terminate_instance at the manager.py will cause
     # "InstanceActionNotFound_Remote" exception at wrap_instance_event decorator
@@ -150,13 +150,13 @@ class CloudletComputeManager(compute_manager.ComputeManager):
     @compute_manager.wrap_exception()
     @compute_manager.reverts_task_state
     @compute_manager.wrap_instance_fault
-    def cloudlet_terminate_instance(self, context, instance):
+    def cloudlet_terminate_instance(self, context, instance,reservations):
         bdms = block_device_obj.BlockDeviceMappingList.get_by_instance_uuid(
             context, instance['uuid'])
 
         # copy & paste from terminate_instance at manager.py
         quotas = quotas_obj.Quotas.from_reservations(context,
-                                                     None,
+                                                     reservations,
                                                      instance=instance)
 
         @utils.synchronized(instance['uuid'])
