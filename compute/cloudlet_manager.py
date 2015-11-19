@@ -141,7 +141,7 @@ class CloudletComputeManager(compute_manager.ComputeManager):
         self.driver.perform_vmhandoff(context, instance, handoff_url,
                                       callback_update_task_state,
                                       residue_glance_id)
-        self.cloudlet_terminate_instance(context, instance,reservations,)
+        self.cloudlet_terminate_instance(context, instance,reservations)
 
     # Direct call to terminate_instance at the manager.py will cause
     # "InstanceActionNotFound_Remote" exception at wrap_instance_event decorator
