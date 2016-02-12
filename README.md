@@ -29,6 +29,9 @@ Tested Platform
 Installation (Using DevStack)
 -----------------------------
 
+For FAQ and troubleshooting, please visit [Open Edge
+Forum](http://forum.openedgecomputing.org/).
+
 This repo is OpenStack extension for cloudlet. Therefore, you need to install
 OpenStack and [cloudlet
 library](https://github.com/cmusatyalab/elijah-provisioning) before installing
