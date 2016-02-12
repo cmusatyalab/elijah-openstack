@@ -120,7 +120,7 @@ def deploy_compute_manager():
     _replace_configuration(NOVA_CONF_PATH, "libvirt_cpu_mode",\
             "custom", insert_at=-1)
     _replace_configuration(NOVA_CONF_PATH, "libvirt_cpu_model",\
-            "core2due", insert_at=-1)
+            "core2duo", insert_at=-1)
 
     # copy files
     for (src_file, target_dir) in deploy_files:
