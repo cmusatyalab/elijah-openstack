@@ -71,7 +71,7 @@ guidance](http://devstack.org/guides/single-machine.html)).
     > $ cd devstack  
     > $ git checkout stable/kilo  
     > $ cp samples/local.conf local.conf  
-    > (Please read the configuration documentation first at [here](http://docs.openstack.org/developer/devstack/guides/single-machine.html#run-devstack)). Malconfiguration can cause a trouble in your local network.  
+    > (Please download a sample [local.conf](https://gist.github.com/krha/2bc593679132f8cee0d2) and change it to work with your system. 
     > $ ./stack.sh  
 
     Please make sure that all the OpenStack functionality is working by
