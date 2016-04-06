@@ -92,7 +92,7 @@ guidance](http://devstack.org/guides/single-machine.html)).
     After successful installation, please restart OpenStack to reflect changes.
 
     > (Restart your devstack)  
-    > $ cd ~/devstack
+    > $ cd ~/devstack  
     > $ ./unstack  
     > $ ./rejoin-stack.sh  
     > (Sometime, you need to manually restart apache2 and keystone-all)  
