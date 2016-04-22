@@ -503,7 +503,8 @@ def request_import_basevm(server_address, token,
     sys.stdout.write(
         "Decompressing zipfile(%s) to temp dir(%s)\n" %
         (import_filepath, temp_dir))
-    zipbase = zipfile.ZipFile(_FileFile("file:///%s" % import_filepath), 'r')
+    zipbase = zipfile.ZipFile(
+        _FileFile("file:///%s" % os.path.abspath(import_filepath)), 'r')
     zipbase.extractall(temp_dir)
     disk_path = os.path.join(temp_dir, disk_name)
     memory_path = os.path.join(temp_dir, memory_name)
