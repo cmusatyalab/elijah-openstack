@@ -188,8 +188,11 @@ below steps to narrow the problem.
   DevStack screen). In regular OpenStack log files are located under
   ``/var/log/nova``.  
 
-* After rejoining the stack (/devstack/rejoin_stack.sh), if you appear to be locked out of the web interface, it is likely that keystone,
-  the authentication component of OpenStack, was not restarted properly. To restart it manually, you can run the following:
+* After rejoining the stack (/devstack/rejoin_stack.sh), if you appear to be locked out of the web interface, it is likely that keystone, the authentication component of OpenStack, was not restarted properly. [Authentication Error](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/auth_error.png?raw=true)
+
+
+
+To restart it manually, you can run the following:
 
 	> $ keystone-all  
 
