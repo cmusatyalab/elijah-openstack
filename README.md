@@ -72,7 +72,7 @@ guidance](http://devstack.org/guides/single-machine.html)).
     > $ cd devstack  
     > $ git checkout stable/kilo  
     > $ cp samples/local.conf local.conf  
-    * Download a sample [local.conf](https://gist.github.com/krha/2bc593679132f8cee0d2) and read the comments in it regarding the sections you must modify for your system.  
+    * Download a sample [samples/local.conf](https://github.com/cmusatyalab/elijah-openstack/blob/master/samples/local.conf) and read the comments in it regarding the sections you must modify for your system.  
     * Modify /devstack/stackrc to change the _BRANCH variables for all the OpenStack Server Components from **-stable/kilo** to **-tags/kilo-eol.** Alternatively, you may replace the stackrc file from DevStack with the one in [samples/stackrc](https://github.com/cmusatyalab/elijah-openstack/blob/master/samples/stackrc) which already has the _BRANCH variables modified.  
     * Optionally, you may change the FLOATING_RANGE specified in stackrc to match the appropriate range of floating IP address range that should be given out to VM instances.  
     $ ./stack.sh  
@@ -114,26 +114,26 @@ guidance](http://devstack.org/guides/single-machine.html)).
 How to use
 -----------
 
-1. Check Installation - If the installation is successful, you will see a new panel on the project tab
+1. **Check Installation** - If the installation is successful, you will see a new panel on the project tab
 as seen in the figure below.  You can also check for the cloudlet extension by listing
 the available OpenStack extensions using the standard [OpenStack
 API](http://developer.openstack.org/api-ref-compute-v2.html#listExtensionsv2).
 ![OpenStack cloudlet extension
 dashboard](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/1-cloudlet-dashboard-kilo.png?raw=true)  
 
-2. Import Base - Import a [Sample Base
+2. **Import Base** - Import a [Sample Base
 VM](https://storage.cmusatyalab.org/cloudlet-vm/precise-hotplug.zip) using the
 "Import Base VM" button (This process may take a while). The zip file in the link above contains both disk
 and memory snapshots of the vanilla Ubuntu distribution (VM's account:cloudlet, password: cloudlet). ![Import Base
 VM](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/2-import-base.png?raw=true)  
 
-3. Resume VM - To resume a base VM, please use "Resume Base VM" button atop the Base VM image
+3. **Resume VM** - To resume a base VM, please use "Resume Base VM" button atop the Base VM image
 table. Initially, resuming Base VM can take a long time because the Base VM needs to be cached to
 the compute node. ![Resume VM
 overlay](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/3-resume-base.png?raw=true)
   
 
-4. Create VM Overlay - Install application specific libraries and binaries on the resumed VM to customize the image.
+4. **Create VM Overlay** - Install application specific libraries and binaries on the resumed VM to customize the image.
 Then use "Create VM overlay" button when you ready to create a VM overlay from the base VM.
  This will create a _VM overlay_ which includes the compressed differences of the disk and memory snapshots with the base VM.
 ![Creating VM
@@ -141,7 +141,7 @@ overlay](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screens
 After the VM overlay is generated (this process may take a while), you
 can download VM overlay using "Download VM overlay" button.  
 
-5. VM Synthesis - VM Synthesis is the instantiation of a VM instance by applying a VM overlay to an existing base VM image.
+5. **VM Synthesis** - VM Synthesis is the instantiation of a VM instance by applying a VM overlay to an existing base VM image.
 To perform VM synthesis, please use the "Start VM Synthesis" button atop the Instance
 table. You need to input a URL for your VM overlay. If you have created and
 downloaded the VM overlay from the previous step, you can put that VM overlay on a separate Web
@@ -150,7 +150,7 @@ be slow if the Base VM is not cached at the compute node. ![Start VM
 Synthesis](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/5-vm-synthesis.png?raw=true)
 ![Start VM Synthesis](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/5-vm-synthesis-done.png?raw=true)  
 
-6. VM Handoff - To migrate a running VM instance to another OpenStack, please use "VM Handoff"
+6. **VM Handoff** - To migrate a running VM instance to another OpenStack, please use "VM Handoff"
 button atop the Action column of synthesized VM instance. This will ask for
 credentials of the destination OpenStack as shown below.  Although it
 does not save any credential information, please use [a cloudlet command line
@@ -188,7 +188,7 @@ below steps to narrow the problem.
   DevStack screen). In regular OpenStack log files are located under
   ``/var/log/nova``.  
 
-* After rejoining the stack (/devstack/rejoin_stack.sh), if you appear to be locked out of the web interface, it is likely that keystone, the authentication component of OpenStack, was not restarted properly. [Authentication Error](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/auth_error.png?raw=true)
+* After rejoining the stack (/devstack/rejoin_stack.sh), if you appear to be locked out of the web interface, it is likely that keystone, the authentication component of OpenStack, was not restarted properly. ![Authentication Error](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/auth_error.png?raw=true)
 
 
 
@@ -197,7 +197,8 @@ To restart it manually, you can run the following:
 	> $ keystone-all  
 
   Similarly, if the web interface is not accessible after performing the rejoin, apache may not have started correctly. You can start the service manually:
-	> $ sudo service apache2 restart
+	
+	> $ sudo service apache2 restart  
  
 
 * If you still have problems using Web interface even though every nova
