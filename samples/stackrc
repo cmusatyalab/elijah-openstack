@@ -60,7 +60,7 @@ if ! isset ENABLED_SERVICES ; then
     # Dashboard
     ENABLED_SERVICES+=,horizon
     # Additional services
-    ENABLED_SERVICES+=,rabbit,tempest,mysql,dstat
+    ENABLED_SERVICES+=,rabbit,mysql,dstat
 fi
 
 # SQLAlchemy supports multiple database drivers for each database server
@@ -251,7 +251,7 @@ REQUIREMENTS_BRANCH=${REQUIREMENTS_BRANCH:-stable/kilo}
 
 # Tempest test suite
 TEMPEST_REPO=${TEMPEST_REPO:-${GIT_BASE}/openstack/tempest.git}
-TEMPEST_BRANCH=${TEMPEST_BRANCH:-master}
+TEMPEST_BRANCH=${TEMPEST_BRANCH:-14.0.0}
 
 # TODO(sdague): this should end up as a library component like below
 GITREPO["tempest-lib"]=${TEMPEST_LIB_REPO:-${GIT_BASE}/openstack/tempest-lib.git}
