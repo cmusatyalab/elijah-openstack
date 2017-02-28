@@ -1,0 +1,39 @@
+- name: (OPENSTACK-EXT) install git
+  apt: 
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - git
+
+- name: (OPENSTACK-EXT) checkout elijah-openstack code from github
+  git:
+    repo: https://github.com/cmusatyalab/elijah-openstack.git
+    dest: ~/elijah-openstack
+
+- name: (OPENSTACK-EXT) copy cloudlet.py
+  shell: "cp ~/elijah-openstack/api/cloudlet.py /usr/lib/python2.7/dist-packages/nova/api/openstack/compute/contrib/cloudlet.py" 
+  notify:
+    - restart nova
+
+- name: (OPENSTACK-EXT) copy cloudlet_api.py
+  shell: "cp ~/elijah-openstack/api/cloudlet_api.py /usr/lib/python2.7/dist-packages/nova/compute/cloudlet_api.py"
+  notify:
+    - restart nova
+
+- name: (OPENSTACK-EXT) ensure nova.conf is up to date
+  template: src=nova.conf.j2 dest="/etc/nova/nova.conf" owner=root group=root mode=0644
+  notify: restart nova
+
+- name: (OPENSTACK-EXT) copy dashboard files
+  shell: "cp -r ~/elijah-openstack/dashboard/ /usr/share/openstack-dashboard/openstack_dashboard/dashboards/project/cloudlet" 
+  notify:
+    - restart apache
+
+- name: (OPENSTACK-EXT) add cloudlet panel to dashboard
+  lineinfile:
+    dest: /usr/share/openstack-dashboard/openstack_dashboard/dashboards/project/dashboard.py
+    state: present
+    regexp: "^[ ]+'instances',"
+    line: "              'instances', 'cloudlet',"
+  notify:
+    - restart apache

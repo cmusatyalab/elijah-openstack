@@ -1,0 +1,49 @@
+---
+- name: restart mysql
+  service: name=mysql state=restarted
+
+- name: restart apache
+  service: name=apache2 state=restarted
+
+- name: restart keystone
+  service: name=keystone state=restarted
+
+- name: restart glance
+  service: name={{item}} state=restarted
+  with_items:
+      - glance-registry
+      - glance-api
+
+- name: restart heat
+  service: name={{item}} state=restarted
+  with_items:
+      - heat-engine
+      - heat-api
+      - heat-api-cfn
+
+- name: restart nova
+  service: name={{item}} state=restarted
+  with_items:
+      - nova-api
+      - nova-cert
+      - nova-consoleauth
+      - nova-conductor
+      - nova-scheduler
+      - nova-novncproxy
+
+- name: restart neutron
+  service: name={{item}} state=restarted
+  with_items:
+      - neutron-server
+      - neutron-plugin-linuxbridge-agent
+      - neutron-dhcp-agent
+      - neutron-metadata-agent
+
+- name: restart nova-network
+  service: name={{item}} state=restarted
+  with_items:
+      - nova-network
+
+- name: restart networking
+  service: name=networking state=restarted
+

@@ -1,0 +1,70 @@
+- name: (GLANCE) transfer glancedb SQL script
+  template: src=glancedb.sql.j2 dest="~/glancedb.sql" owner=root group=root mode=0600
+
+- name: (GLANCE) check if glance db already exists
+  command: 'mysql --user root --password={{mysql_pw}} -e "show databases;"'
+  register: databases_list
+
+- name: (GLANCE) create glance db
+  shell: "cat ~/glancedb.sql | mysql --user root --password={{mysql_pw}}"
+  when: databases_list.stdout.find('glance') == -1
+
+- name: (GLANCE) check if glance user already exists
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user list"
+  register: openstack_users
+
+- name: (GLANCE) create glance user
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user create --password {{ keystone_admin_pw }} glance"
+  when: openstack_users.stdout.find('glance') == -1
+
+- name: (GLANCE) check if glance user is admin in service project
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role list --project service --user glance"
+  register: glance_perms
+
+- name: (GLANCE) add glance user to service project
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role add --project service --user glance admin"
+  when: glance_perms.stdout.find('admin') == -1
+
+- name: (GLANCE) check if glance service exists
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service list"
+  register: glance_service
+
+- name: (GLANCE) create glance service entity
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service create --name glance --description \"OpenStack Image Service\" image"
+  when: glance_service.stdout.find('glance') == -1
+
+- name: (GLANCE) check if glance endpoint exists
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint list"
+  register: glance_endpoint
+
+- name: (GLANCE) create api endpoint
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint create --publicurl http://{{openstack_controller_node}}:9292 --internalurl http://{{openstack_controller_node}}:9292 --adminurl http://{{openstack_controller_node}}:9292 --region RegionOne image"
+  when: glance_endpoint.stdout.find('image') == -1
+
+- name: (GLANCE) install glance and associated packages
+  apt: 
+    name: "{{ item }}"
+    state: present
+    default_release: trusty-updates/kilo
+  with_items:
+    - glance
+    - python-glanceclient
+
+- name: (GLANCE) replace glance-api.conf
+  template: src=glance-api.conf.j2 dest="/etc/glance/glance-api.conf" owner=root group=root mode=0644
+
+- name: (GLANCE) replace glance-registry.conf
+  template: src=glance-registry.conf.j2 dest="/etc/glance/glance-registry.conf" owner=root group=root mode=0644
+
+- name: (GLANCE) populate image service database
+  shell: "/bin/sh -c 'glance-manage db_sync' glance"
+  notify:
+    - restart glance
+
+- name: (GLANCE) force glance restart
+  meta: flush_handlers
+
+- name: (GLANCE) remove SQLite
+  file:
+    state: absent
+    path: /var/lib/glance/glance.sqlite

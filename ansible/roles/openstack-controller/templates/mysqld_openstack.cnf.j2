@@ -1,0 +1,8 @@
+[mysqld]
+bind-address = {{openstack_controller_node}}
+default-storage-engine = innodb
+innodb_file_per_table
+collation-server = utf8_general_ci
+init-connect = 'SET NAMES utf8'
+character-set-server = utf8
+max_connections = 9999

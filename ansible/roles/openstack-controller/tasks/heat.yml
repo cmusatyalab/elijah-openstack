@@ -1,0 +1,126 @@
+- name: (HEAT) transfer heatdb SQL script
+  template: src=heatdb.sql.j2 dest="~/heatdb.sql" owner=root group=root mode=0600
+
+- name: (HEAT) check if heat db already exists
+  command: 'mysql --user root --password={{mysql_pw}} -e "show databases;"'
+  register: databases_list
+
+- name: (HEAT) create heat db
+  shell: "cat ~/heatdb.sql | mysql --user root --password={{mysql_pw}}"
+  when: databases_list.stdout.find('heat') == -1
+
+- name: (HEAT) check if heat user already exists
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user list"
+  register: openstack_users
+
+- name: (HEAT) create heat user
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user create --password {{ keystone_admin_pw }} heat"
+  when: openstack_users.stdout.find('heat') == -1
+
+- name: (HEAT) check if heat user is admin in service project
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role list --project service --user heat"
+  register: heat_perms
+
+- name: (HEAT) add heat user to service project
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role add --project service --user heat admin"
+  when: heat_perms.stdout.find('admin') == -1
+
+- name: (HEAT) check if heat service exists
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service list"
+  register: heat_service
+
+- name: (HEAT) create heat service entity
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service create --name heat --description \"OpenStack Orchestration\" orchestration"
+  when: heat_service.stdout.find('heat') == -1
+
+- name: (HEAT) check if cloudformation service exists
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service list"
+  register: cfn_service
+
+- name: (HEAT) create cloudformation service entity
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service create --name heat-cfn --description \"OpenStack Orchestration\" cloudformation"
+  when: cfn_service.stdout.find('heat-cfn') == -1
+
+- name: (HEAT) check if orchestration endpoint exists
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint list"
+  register: heat_endpoint
+
+- name: (HEAT) create orchestration endpoint
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint create --publicurl http://{{openstack_controller_node}}:8004/v1/%(tenant_id)s --internalurl http://{{openstack_controller_node}}:8004/v1/%(tenant_id)s --adminurl http://{{openstack_controller_node}}:8004/v1/%(tenant_id)s --region RegionOne heat"
+  when: heat_endpoint.stdout.find('heat') == -1
+
+- name: (HEAT) check if cloudformation endpoint exists
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint list"
+  register: cfn_endpoint
+
+- name: (HEAT) create cloudformation endpoint
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint create --publicurl http://{{openstack_controller_node}}:8000/v1 --internalurl http://{{openstack_controller_node}}:8000/v1 --adminurl http://{{openstack_controller_node}}:8000/v1 --region RegionOne cloudformation"
+  when: cfn_endpoint.stdout.find('cloudformation') == -1
+
+#- name: (HEAT) create heat domain
+#  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 domain create --description \"Stack projects and user\" heat"
+
+- name: (HEAT) check if heat user already exists
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user list"
+  register: openstack_users
+
+- name: (HEAT) create heat_domain_admin user
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user create --password {{ keystone_admin_pw }} heat_domain_admin"
+  when: openstack_users.stdout.find('heat_domain_admin') == -1
+
+- name: (HEAT) give heat_domain_admin admin privs
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role add --project admin --user heat_domain_admin admin"
+  ignore_errors: yes #openstack will complain if the user already has privs
+
+- name: (HEAT) check if stack owner role exists
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role list"
+  register: openstack_roles
+
+- name: (HEAT) create stack owner role
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role create heat_stack_owner"
+  when: openstack_roles.stdout.find('heat_stack_owner') == -1
+
+- name: (HEAT) give hadmin heat_stack_owner privs
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role add --project admin --user admin heat_stack_owner"
+  ignore_errors: yes #openstack will complain if the user already has privs
+
+- name: (HEAT) check if stack user role exists
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role list"
+  register: openstack_roles
+
+- name: (HEAT) create stack user role
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role create heat_stack_user"
+  when: openstack_roles.stdout.find('heat_stack_user') == -1
+
+- name: (HEAT) create heat-domain script
+  template: src=heat-domain.sh.j2 dest="~/heat-domain.sh" owner=root group=root mode=0600
+
+- name: (HEAT) install heat and associated packages
+  apt: 
+    name: "{{ item }}"
+    state: present
+    default_release: trusty-updates/kilo
+  with_items:
+    - heat-api
+    - heat-engine
+    - heat-api-cfn
+    - python-heatclient
+
+- name: (HEAT) replace heat.conf
+  template: src=heat.conf.j2 dest="/etc/heat/heat.conf" owner=root group=root mode=0644
+
+- name: (HEAT) populate orchestration database
+  shell: "/bin/sh -c 'heat-manage db_sync' heat"
+  notify:
+    - restart heat
+
+- name: (HEAT) force heat restart
+  meta: flush_handlers
+
+- name: (HEAT) run domain script to create heat domain
+  shell: "/bin/bash ~/heat-domain.sh"
+
+- name: (HEAT) remove SQLite
+  file:
+    state: absent
+    path: /var/lib/heat/heat.sqlite

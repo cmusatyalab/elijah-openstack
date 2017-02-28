@@ -1,0 +1,65 @@
+---
+- name: (COMPUTE) install nova-compute
+  apt: 
+    name: "{{ item }}" 
+    state: present
+    default_release: trusty-updates/kilo
+  with_items:
+    - nova-compute
+    - sysfsutils
+
+- name: (COMPUTE) install neutron-plugin
+  apt: 
+    name: "{{ item }}" 
+    state: present
+    default_release: trusty-updates/kilo
+  with_items:
+    - neutron-plugin-linuxbridge-agent
+    - conntrack
+  when: neutron
+
+- name: (COMPUTE) replace nova.conf
+  template: src=nova.conf.j2 dest="/etc/nova/nova.conf" owner=root group=root mode=0644
+  notify: restart nova-compute
+  when: not single_node
+
+- name: (COMPUTE) replace nova-compute.conf
+  template: src=nova-compute.conf.j2 dest="/etc/nova/nova-compute.conf" owner=root group=root mode=0644
+  notify: restart nova-compute
+
+- name: (COMPUTE) replace neutron.conf
+  template: src=neutron.conf.j2 dest="/etc/neutron/neutron.conf" owner=root group=root mode=0644
+  notify: restart linuxbridge-agent
+  when: neutron
+
+- name: (COMPUTE) replace linuxbridge_agent.ini
+  template: src=linuxbridge_agent.ini.j2 dest="/etc/neutron/plugins/ml2/linuxbridge_agent.ini" owner=root group=root mode=0644
+  notify: restart linuxbridge-agent
+  when: neutron
+
+- name: (COMPUTE) remove SQLite
+  file:
+    state: absent
+    path: /var/lib/nova/nova.sqlite
+
+- name: (COMPUTE) create OpenStack client script
+  template: 
+    src: admin-openrc.sh.j2
+    dest: "~/admin-openrc.sh"
+    owner: root
+    group: root
+    mode: 0700
+
+# - name: add openstack flat interface and enable promiscuous mode
+#   template: src=openstack_if.cfg.j2 dest="/etc/network/interfaces.d/openstack_if.cfg" owner=root group=root mode=0644
+#   notify: restart nova-compute
+
+# - name: create bridge
+#   command: brctl addbr br100
+#   when: not neutron
+
+- include: cloudlet.yml
+  tags: cloudlet
+
+- include: openstack-ext.yml
+  tags: openstack-compute-ext

@@ -1,0 +1,6 @@
+
+DROP DATABASE IF EXISTS heat;
+CREATE DATABASE heat;
+
+GRANT ALL PRIVILEGES ON heat.* TO 'heat'@'localhost' IDENTIFIED BY '{{ db_pw }}';
+GRANT ALL PRIVILEGES ON heat.* TO 'heat'@'%' IDENTIFIED BY '{{ db_pw }}';

@@ -1,0 +1,81 @@
+---
+#SQL
+- name: (CONTROLLER) install mariadb and python lib
+  package: name="{{ item }}" state=present
+  with_items:
+    - mariadb-server
+    - python-mysqldb
+    - python-pip
+  tags: prereqs
+
+#pexpect is required to use expect ansible module
+- pip:
+    name: pexpect==3.3
+
+- name: (CONTROLLER) run mysql installation
+  expect:
+    command: mysql_secure_installation
+    echo: yes
+    responses:
+      Enter current password for root: ["\n", "{{ mysql_pw }}"]
+      Change the root password: "n"
+      Set root password: "Y"
+      New password: "{{ mysql_pw }}"
+      Re-enter new password: "{{ mysql_pw }}"
+      Remove anonymous users: "Y"
+      Disallow root login remotely: "Y"
+      Remove test database and access to it: "Y"
+      Reload privilege tables now: "Y"
+  tags: prereqs
+
+- name: (CONTROLLER) create mysql conf
+  template: src=mysqld_openstack.cnf.j2 dest="/etc/mysql/my.cnf" owner=root group=root mode=0644
+  notify: restart mysql
+  tags: prereqs
+
+- name: (CONTROLLER) force mysql restart before we install keystone
+  meta: flush_handlers
+
+#RabbitMQ
+- name: (CONTROLLER) install RabbitMQ
+  package: name=rabbitmq-server state=present
+  tags: prereqs
+
+- name: (CONTROLLER) check if openstack user already exists
+  command: rabbitmqctl list_users
+  register: rabbit_users
+  tags: prereqs
+
+- name: (CONTROLLER) create openstack rabbitmq user
+  command: rabbitmqctl add_user openstack {{ rabbit_pw }}
+  when: rabbit_users.stdout.find('openstack') == -1
+  tags: prereqs
+
+- name: (CONTROLLER) set user perms
+  command: "rabbitmqctl set_permissions openstack \".*\" \".*\" \".*\""
+  tags: prereqs
+
+- include: keystone.yml
+  tags: keystone
+
+- include: glance.yml
+  tags: glance
+
+- include: nova.yml
+  tags: nova
+
+#- include: neutron.yml
+#  when: neutron
+#  tags: neutron
+
+- include: heat.yml
+  tags: heat
+
+- include: horizon.yml
+  tags: horizon
+
+- include: cloudlet.yml
+  tags: cloudlet
+
+- include: openstack-ext.yml
+  tags: openstack-ext

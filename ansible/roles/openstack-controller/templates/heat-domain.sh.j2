@@ -1,0 +1,3 @@
+#!
+source ~/admin-openrc.sh
+heat-keystone-setup-domain --stack-user-domain-name heat_user_domain --stack-domain-admin heat_domain_admin --stack-domain-admin-password {{ keystone_admin_pw }}

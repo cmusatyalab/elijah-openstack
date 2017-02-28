@@ -1,0 +1,32 @@
+---
+- name: (OS-COMMON) modify grub config to show text on boot
+  lineinfile:
+    dest: /etc/default/grub
+    state: present
+    regexp: "^GRUB_CMDLINE_LINUX_DEFAULT "
+    line: "GRUB_CMDLINE_LINUX_DEFAULT=\"text\""
+
+# Install core OpenStack components
+- name: (OS-COMMON) install Ubuntu-Cloud-Keyring
+  package: name=ubuntu-cloud-keyring state=present
+
+- name: (OS-COMMON) add Kilo repo
+  lineinfile: 
+    line: "deb http://ubuntu-cloud.archive.canonical.com/ubuntu trusty-updates/kilo main"
+    dest: /etc/apt/sources.list.d/cloudarchive-kilo.list
+    create: yes
+    state: present
+
+- name: (OS-COMMON) update cache and perform upgrade
+  apt:
+    update_cache: yes
+    upgrade: dist
+
+- name: (OS-COMMON) install python openstack client
+  apt: 
+    name: "{{ item }}" 
+    state: present
+    default_release: trusty-updates/kilo
+  with_items:
+    - python-openstackclient
+  tags: base-packages

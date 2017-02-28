@@ -26,89 +26,48 @@ Tested Platform
 - We have tested OpenStack++ on Ubuntu 14.04 LTS 64-bit using the OpenStack Kilo release.
 
 
-Installation (Using DevStack)
+Installation (Using Ansible)
 -----------------------------
-
-For FAQ and troubleshooting, please visit the [Open Edge
-Forum](http://forum.openedgecomputing.org/).
-
-OpenStack++ is an OpenStack extension for cloudlets. Therefore, you first need to install
-OpenStack and the [cloudlet
-library](https://github.com/cmusatyalab/elijah-provisioning) before installing
-this extension. Since installing OpenStack is non-trivial, we recommend
-[DevStack](http://devstack.org/), which provides a set
-of scripts to quickly install and test OpenStack. And for the cloudlet library, we
-provide a [fabric script](http://www.fabfile.org/en/latest/) to help with installation.
-If you already have installed the cloudlet library, please start from step 3 below.  The
-following installation steps are for [DevStack (all-in-one-single-machine)
-case](http://docs.openstack.org/developer/devstack/guides/single-machine.html).
-
 
 1. Prepare Ubuntu 14.04 64-bit
 
+2. Become root
+    > $ sudo -i
 
-2. Install cloudlet library
+3. Install Ansible
 
-    > $ cd ~  
-    > $ sudo apt-get install git openssh-server fabric  
-    > $ git clone https://github.com/cmusatyalab/elijah-provisioning  
-    > $ cd elijah-provisioning  
-    > $ fab install
-    > (Requires password for your account)  
+    > $ apt-get install software-properties-common  
+    > $ apt-add-repository ppa:ansible/ansible  
+    > $ apt-get update  
+    > $ apt-get install ansible 
 
-    To check the installation, execute "cloudlet list-base". If successful,
-    you should see an empty table with two columns: hash value and path.
-    
-    For more details and troubleshooting, please read [elijah-provisioning
-    repo](https://github.com/cmusatyalab/elijah-provisioning).  
-
-
-3. Install OpenStack using DevStack (Reference: [DevStack
-guidance](http://devstack.org/guides/single-machine.html)).
-
-    > $ cd ~  
-    > $ echo "$USER ALL=(ALL) NOPASSWD: ALL" | sudo tee -a /etc/sudoers  
-    > $ git clone https://github.com/openstack-dev/devstack  
-    > $ cd devstack  
-    > $ git checkout stable/kilo  
-    > $ cp samples/local.conf local.conf  
-    * Download a sample [samples/local.conf](https://github.com/cmusatyalab/elijah-openstack/blob/master/samples/local.conf) and read the comments in it regarding the sections you must modify for your system.  
-    * Modify /devstack/stackrc to change the _BRANCH variables for all the OpenStack Server Components from **-stable/kilo** to **-tags/kilo-eol.** Alternatively, you may replace the stackrc file from DevStack with the one in [samples/stackrc](https://github.com/cmusatyalab/elijah-openstack/blob/master/samples/stackrc) which already has the _BRANCH variables modified.  
-    * Optionally, you may change the FLOATING_RANGE specified in stackrc to match the appropriate range of floating IP address range that should be given out to VM instances.  
-    $ ./stack.sh  
-
-    Please make sure that all the OpenStack functionality is working by
-    connecting to OpenStack Web interface (http://localhost/) and logging
-    in with the admin account.
-
-    If the vanilla OpenStack does not work, please check the troubleshooting section below.
-    You may need to restart apache and/or the keystone component.  
-
-
-4. Finally, install the OpenStack++ extension
+3. Pull down the elijah-openstack repository.
 
     > $ cd ~  
     > $ git clone https://github.com/cmusatyalab/elijah-openstack  
-    > $ cd elijah-openstack  
-    > $ fab localhost devstack_single_machine  
-    > (Requires password for your account)  
+    > $ cd ~/elijah-openstack/ansible
+    
+4. Configure the Ansible script.
+    * Ensure the variables defined in roles/openstack-controller/vars/main.yml and roles/openstack-compute/vars/main.yml are satisfactory. Specifically you should ensure that the interfaces defined by pub_iface and flat_iface are valid. pub_iface is used by the physical machine to reach the internet. flat_iface is used by OpenStack in order to communicate with the virtual machines running on the host. If you only have a single network interface, make sure that flat_iface is something unique as a virtual interface with that name will be created when the one_nic variable is True.
+    * Installation of the cloudlet library from https://github.com/cmusatyalab/elijah-provisioning requires a local user/password. Ensure that these are properly reflected in roles/openstack-compute/vars/main.yml.
+    * By default, the script is setup to install all OpenStack components on a single node that has a single NIC card.  If you have two network interface cards, set one_nic to False in openstack-kilo.yaml.  If you are setting up a multi-node cluster where the compute node will on a separate host(s) from the controller, you must configure additional hosts in the inventory (hosts/inventory), change openstack-kilo.yaml to reflect which hosts should be the compute node, and ensure that the single_node variable is set to False. You will also need to change the controller IP and hostname in the var/main.yml to reflect those of the controller.
 
-    This fabric script will check the cloudlet library version as well as OpenStack
-    installation, and just place relevant files in the correct directories.  It
-    **does not change any existing OpenStack code**, and is designed to be a purely
-    pluggable extension, so you can revert back to original state by reversing
-    these installation steps. We enable cloudlet features by changing the nova
-    configuration file at /etc/nova/nova.conf.
+5. Launch ansible playbook to install OpenStack.
 
-    After successful installation, please restart OpenStack to reflect the changes.
-  
-    > $ cd ~/devstack  
-    > $ ./unstack  
-    > $ ./rejoin-stack.sh  
-    > (Often you may need to restart apache and/or the keystone service manually after rejoining. Please see the the troubleshooting section below for more information.)  
+    > $ cd ~/elijah-openstack/ansible   
+    > $ ansible-playbook -i ./hosts openstack-kilo.yaml  
 
+6. Create the initial private network
 
+    > $ source ~/admin-openrc.sh  
+    > $ nova network-create <name> --fixed-range-v4 <cidr> --fixed-cidr <cidr> --bridge <name of bridge to create>
 
+   For example, to create a private network for VMs on 10.11.12.1 to 10.11.12.255:
+    > $ nova network-create vmprivate --fixed-range-v4 10.11.12.0/24 --fixed-cidr 10.11.12.0/24 --bridge br100
+
+7. Create a pool of floating IP addresses. These can be assigned to VMs to allow public access to them.
+
+   > $ nova floating-ip-bulk-create <cidr range>
 
 
 How to use
@@ -170,64 +129,4 @@ Troubleshooting
 
 If you have any problems after installing OpenStack++ cloudlet extension, please follow
 below steps to narrow the problem.
-
-* Checking status of OpenStack after restarting services
-
-  > $ sudo nova-manage service list  
-  > Binary           Host                                 Zone             Status     State Updated_At  
-  > nova-conductor   krha-cloudlet                        internal         enabled    :-)   2014-05-04 15:32:54  
-  > nova-network     krha-cloudlet                        internal         enabled    :-)   2014-05-04 15:32:54  
-  > nova-consoleauth krha-cloudlet                        internal         enabled    :-)   2014-05-04 15:32:54  
-  > nova-scheduler   krha-cloudlet                        internal         enabled    :-)   2014-05-04 15:32:44  
-  > nova-cert        krha-cloudlet                        internal         enabled    :-)   2014-05-04 15:32:54  
-  > nova-compute     krha-cloudlet                        nova             enabled    :-)   2014-05-04 15:32:54  
-  > $
-
-  If any service is not running, check for error messages in that service. In
-  DevStack, you can find relevant tab using ``screen`` ( 'screen -x' to attach to
-  DevStack screen). In regular OpenStack log files are located under
-  ``/var/log/nova``.  
-
-* After rejoining the stack (/devstack/rejoin_stack.sh), if you appear to be locked out of the web interface, it is likely that keystone, the authentication component of OpenStack, was not restarted properly. ![Authentication Error](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/auth_error.png?raw=true)
-
-
-
-To restart it manually, you can run the following:
-
-	> $ keystone-all  
-
-  Similarly, if the web interface is not accessible after performing the rejoin, apache may not have started correctly. You can start the service manually:
-	
-	> $ sudo service apache2 restart  
- 
-
-* If you still have problems using Web interface even though every nova
-related service is successfully running, then it's likely to be a Dashboard
-problem. We can debug it by manually running the dashboard in debug mode. In
-regular OpenStack, Dashboard's code (Django) is located at
-/usr/share/openstack-dashbaord
-
-   You first need to turn on the debug configuration on Django
-
-   > $ cd /usr/share/openstack-dashboard  
-   > $ vi ./settings.py
-
-   Change ``DEBUG = False`` to ``DEBUG = True``. Then, turn on the server using specific port
-
-   > $ ./manage.py runserver 0.0.0.0:9090  
-   > Validating models...  
-   >
-   > 0 errors found  
-   > Django version 1.4.5, using settings 'openstack_dashboard.settings'  
-   > Development server is running at http://0.0.0.0:9090/  
-   > Quit the server with CONTROL-C.  
-   >
-
-   At this point, you check detail debug messages of Dashboard when you connect 
-   __using the specified port (ex. port 9090)__
-
-
-In DevStack, most of steps are as same except that the Dashboard root directory is
-"/opt/stack/horizon".
-
 

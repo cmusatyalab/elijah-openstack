@@ -1,0 +1,8 @@
+[DEFAULT]
+#compute_driver=libvirt.LibvirtDriver
+compute_driver = nova.virt.libvirt.cloudlet_driver.CloudletDriver
+
+[libvirt]
+virt_type=kvm
+cpu_mode = custom
+cpu_model = core2duo

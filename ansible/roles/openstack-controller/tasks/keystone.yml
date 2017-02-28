@@ -1,0 +1,133 @@
+- name: (KEYSTONE) transfer keystonedb SQL script
+  template: src=keystonedb.sql.j2 dest="~/keystonedb.sql" owner=root group=root mode=0600
+
+- name: (KEYSTONE) check if keystone db already exists
+  command: 'mysql --user root --password={{mysql_pw}} -e "show databases;"'
+  register: databases_list
+
+- name: (KEYSTONE) create keystone db
+  shell: "cat ~/keystonedb.sql | mysql --user root --password={{mysql_pw}}"
+  when: databases_list.stdout.find('keystone') == -1
+
+- name: (KEYSTONE) disable automatic startup of keystone
+  shell: "echo 'manual' > /etc/init/keystone.override"
+
+- name: (KEYSTONE) install keystone...
+  apt: 
+    name: "{{ item }}" 
+    state: present
+    default_release: trusty-updates/kilo
+  with_items:
+    - keystone
+
+
+- name: (KEYSTONE)  install apache/memcached
+  package: name="{{ item }}" state=present
+  with_items:
+    - apache2
+    - libapache2-mod-wsgi
+    - memcached
+    - python-memcache
+
+- name: (KEYSTONE) replace keystone conf
+  template: src=keystone.conf.j2 dest="/etc/keystone/keystone.conf" owner=root group=root mode=0644
+
+- name: (KEYSTONE) populate identity service database
+  shell: "/bin/sh -c 'keystone-manage db_sync' keystone"
+
+##Apache Config
+- name: (KEYSTONE) replace servername in apache conf
+  lineinfile:
+    dest: /etc/apache2/apache2.conf
+    state: present
+    regexp: "^ServerName "
+    line: "ServerName {{openstack_controller_node}}"
+
+- name: (KEYSTONE) create wsgi-keystone.conf
+  copy: src=wsgi-keystone.conf dest="/etc/apache2/sites-available/wsgi-keystone.conf" owner=root group=root mode=0600
+
+- name: (KEYSTONE) enable identity service virtual hosts
+  file:
+      src: /etc/apache2/sites-available/wsgi-keystone.conf
+      dest: /etc/apache2/sites-enabled/keystone.conf
+      state: link
+      owner: root
+      group: root
+
+- name: (KEYSTONE) create wsgi dir
+  file:
+      path: /var/www/cgi-bin/keystone
+      state: directory
+      owner: keystone
+      group: keystone
+      mode: 0755
+
+- name: (KEYSTONE) copy keystone wsgi components
+  copy: 
+    src: wsgi-file
+    dest: "/var/www/cgi-bin/keystone/main"
+    owner: keystone
+    group: keystone
+    mode: 0755
+  notify:
+    - restart apache
+
+- name: (KEYSTONE) copy keystone wsgi components
+  copy: 
+    src: wsgi-file
+    dest: "/var/www/cgi-bin/keystone/admin"
+    owner: keystone
+    group: keystone
+    mode: 0755
+  notify:
+    - restart apache
+
+- name: (KEYSTONE) stop keystone service if running (it will restart with apache2)
+  service:
+    name: keystone
+    state: stopped
+
+- name: (KEYSTONE) remove SQLite
+  file:
+    state: absent
+    path: /var/lib/keystone/keystone.db
+
+- name: (KEYSTONE) force keystone restart
+  meta: flush_handlers
+
+- name: (KEYSTONE) wait 5s for keystone to come back up
+  command: sleep 5s
+
+#Create service entity and endpoint
+- name: (KEYSTONE) create identity service
+  command: "openstack service create --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 --name keystone --description \"OpenStack Identity\" identity"
+
+- name: (KEYSTONE) create identity endpoint
+  command: "openstack endpoint create --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 --publicurl http://{{openstack_controller_node}}:5000/v2.0 --internalurl http://{{openstack_controller_node}}:5000/v2.0 --adminurl http://{{openstack_controller_node}}:35357/v2.0 --region RegionOne identity"
+
+# Create admin user/role/project
+- name: (KEYSTONE) create admin project
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 project create --description \"Admin Project\" admin"
+
+- name: (KEYSTONE) create service project
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 project create --description \"Service Project\" service"
+
+- name: (KEYSTONE) create admin user
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user create --password {{ keystone_admin_pw }} admin"
+
+- name: (KEYSTONE) create admin role
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role create admin"
+
+- name: (KEYSTONE) create user role
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role create user"
+
+- name: (KEYSTONE) add admin role to admin user
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role add --project admin --user admin admin"
+
+- name: (KEYSTONE) create OpenStack client script
+  template: 
+    src: admin-openrc.sh.j2
+    dest: "~/admin-openrc.sh"
+    owner: root
+    group: root
+    mode: 0700
