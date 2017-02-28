@@ -9,6 +9,7 @@
   git:
     repo: https://github.com/cmusatyalab/elijah-openstack.git
     dest: ~/elijah-openstack
+    update: no
 
 - name: (OPENSTACK-EXT) copy cloudlet.py
   shell: "cp ~/elijah-openstack/api/cloudlet.py /usr/lib/python2.7/dist-packages/nova/api/openstack/compute/contrib/cloudlet.py" 
