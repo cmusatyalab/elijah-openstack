@@ -74,8 +74,5 @@
 - include: horizon.yml
   tags: horizon
 
-- include: cloudlet.yml
-  tags: cloudlet
-
 - include: openstack-ext.yml
   tags: openstack-ext
