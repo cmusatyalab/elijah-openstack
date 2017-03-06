@@ -1,0 +1,71 @@
+heat_template_version: 2013-05-23
+
+description: Template to deploy a single compute instance
+
+parameters:
+  image:
+    type: string
+    label: Image name or ID
+    description: Image to be used for compute instance
+    default: Ubuntu 16.04  
+  flavor:
+    type: string
+    label: Flavor
+    description: Type of instance (flavor) to be used
+    default: test
+  #private_network:
+  #  type: string
+  #  label: Private network name or ID
+  #  description: Network to attach instance to.
+  #  default:
+
+resources:
+  #wait_condition:
+  #  type: OS::Heat::WaitCondition
+  #  properties:
+  #    handle: { get_resource: wait_handle }
+  #    count: 1
+  #    timeout: 600
+
+  #wait_handle:
+  #  type: OS::Heat::WaitConditionHandle
+
+  my_instance:
+    type: OS::Nova::Server
+    properties:
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+      key_name: shared
+      user_data: |
+        #!/bin/sh
+        echo "Hello, World!"
+      user_data_format: RAW
+
+      #user_data_format: RAW
+      #user_data:
+      #  str_replace:
+      #    params:
+      #      wc_notify: { get_attr: ['wait_handle', 'curl_cli'] }
+      #    template: |
+      #      #!/bin/sh -ex
+      #      echo "Hello, World!"
+      #      cd /home/ubuntu/Workspace/gabriel/server/bin/
+      #      python gabriel-control &
+      #      sleep 2
+      #      python gabriel-ucomm &
+      #      sleep 2
+      #      cd /home/ubuntu/Workspace/gabriel-apps/lego/
+      #      python proxy.py &
+      #      sleep 6
+      #      wc_notify --data-binary '{"status": "SUCCESS"}'
+
+      #networks:
+      #  - network: { get_param: private_network }
+
+outputs:
+  instance_name:
+    description: Name of the instance
+    value: { get_attr: [my_instance, name] }
+  instance_ip:
+    description: IP address of the instance
+    value: { get_attr: [my_instance, first_address] }
