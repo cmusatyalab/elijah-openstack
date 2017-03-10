@@ -101,28 +101,36 @@
 #Create service entity and endpoint
 - name: (KEYSTONE) create identity service
   command: "openstack service create --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 --name keystone --description \"OpenStack Identity\" identity"
+  when: databases_list.stdout.find('keystone') == -1
 
 - name: (KEYSTONE) create identity endpoint
   command: "openstack endpoint create --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 --publicurl http://{{openstack_controller_node}}:5000/v2.0 --internalurl http://{{openstack_controller_node}}:5000/v2.0 --adminurl http://{{openstack_controller_node}}:35357/v2.0 --region RegionOne identity"
+  when: databases_list.stdout.find('keystone') == -1
 
 # Create admin user/role/project
 - name: (KEYSTONE) create admin project
   command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 project create --description \"Admin Project\" admin"
+  when: databases_list.stdout.find('keystone') == -1
 
 - name: (KEYSTONE) create service project
   command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 project create --description \"Service Project\" service"
+  when: databases_list.stdout.find('keystone') == -1
 
 - name: (KEYSTONE) create admin user
   command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user create --password {{ keystone_admin_pw }} admin"
+  when: databases_list.stdout.find('keystone') == -1
 
 - name: (KEYSTONE) create admin role
   command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role create admin"
+  when: databases_list.stdout.find('keystone') == -1
 
 - name: (KEYSTONE) create user role
   command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role create user"
+  when: databases_list.stdout.find('keystone') == -1
 
 - name: (KEYSTONE) add admin role to admin user
   command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role add --project admin --user admin admin"
+  when: databases_list.stdout.find('keystone') == -1
 
 - name: (KEYSTONE) create OpenStack client script
   template: 

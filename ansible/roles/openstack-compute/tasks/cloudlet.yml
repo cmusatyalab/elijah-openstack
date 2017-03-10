@@ -17,13 +17,9 @@
   args:
     chdir: ~/elijah-provisioning
 
+- name: (CLOUDLET) uninstall pbr installed with elijah-provisioning as it conflicts with openstack python clients
+  pip:
+    name: pbr
+    state: absent
 
-# - name: (CLOUDLET) install cloudlet library
-#   expect:
-#     command: fab install
-#     chdir: ~/elijah-provisioning
-#     responses:
-#       [localhost] Login password for 'root': "{{localuser_pw}}"
-#   become: true
-#   become_user: "{{localuser}}"
 
