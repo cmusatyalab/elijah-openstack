@@ -44,7 +44,7 @@ Installation (Using Ansible)
 3. Pull down the elijah-openstack repository.
 
     > $ cd ~  
-    > $ git clone https://github.com/cmusatyalab/elijah-openstack  
+    > $ git clone -b ansible https://github.com/cmusatyalab/elijah-openstack  
     > $ cd ~/elijah-openstack/ansible
     
 4. Configure the Ansible script.
