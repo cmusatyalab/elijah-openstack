@@ -12,3 +12,6 @@
   service: name={{item}} state=restarted
   with_items:
       - neutron-plugin-linuxbridge-agent
+
+- name: restart apache
+  service: name=apache2 state=restarted

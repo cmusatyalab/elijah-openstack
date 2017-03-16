@@ -1,4 +1,10 @@
 ---
+- hosts: compute
+  remote_user: root
+  tags: cloudlet
+  roles:
+    - cloudlet
+
 - hosts: controller, compute
   remote_user: root
   tags: common

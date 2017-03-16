@@ -25,6 +25,7 @@
   shell: "cp ~/elijah-openstack/api/cloudlet_api.py /usr/lib/python2.7/dist-packages/nova/compute/cloudlet_api.py"
   notify:
     - restart nova-compute
+    - restart apache
     
 - name: (OPENSTACK-EXT) ensure nova-compute.conf is up to date
   template: src=nova-compute.conf.j2 dest="/etc/nova/nova-compute.conf" owner=root group=root mode=0644

@@ -58,8 +58,5 @@
 #   command: brctl addbr br100
 #   when: not neutron
 
-- include: cloudlet.yml
-  tags: cloudlet
-
 - include: openstack-ext.yml
   tags: openstack-compute-ext

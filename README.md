@@ -60,14 +60,14 @@ Installation (Using Ansible)
 6. Create the initial private network
 
     > $ source ~/admin-openrc.sh  
-    > $ nova network-create <name> --fixed-range-v4 <cidr> --fixed-cidr <cidr> --bridge <name of bridge to create>
+    > $ nova network-create name --fixed-range-v4 cidr --fixed-cidr cidr --bridge bridge --bridge-interface flat_interface
 
    For example, to create a private network for VMs on 10.11.12.1 to 10.11.12.255:
-    > $ nova network-create vmprivate --fixed-range-v4 10.11.12.0/24 --fixed-cidr 10.11.12.0/24 --bridge br100
+    > $ nova network-create vmprivate --fixed-range-v4 10.11.12.0/24 --fixed-cidr 10.11.12.0/24 --bridge br100 --bridge-interface veth1
 
 7. Create a pool of floating IP addresses. These can be assigned to VMs to allow public access to them.
 
-   > $ nova floating-ip-bulk-create <cidr range>
+   > $ nova floating-ip-bulk-create cidr
 
 
 How to use

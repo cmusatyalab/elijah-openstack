@@ -9,8 +9,3 @@ openstack_controller_node: localhost
 controller_ip: 127.0.0.1
 pub_iface: em1
 flat_iface: em1
-
-#required to run the fabric script from https://github.com/cmusatyalab/elijah-provisioning
-local_user: cloudlet
-local_user_pw: cloudlet
-
