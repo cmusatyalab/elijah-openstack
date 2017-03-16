@@ -5,7 +5,7 @@ mobile computing and cloud computing. It represents the middle tier of a
 3-tier hierarchy:  mobile device - cloudlet - cloud.   A cloudlet can be
 viewed as a "data center in a box" whose  goal is to "bring the cloud closer".
 
-Copyright (C) 2012-2016 Carnegie Mellon University This is a developing project
+Copyright (C) 2012-2017 Carnegie Mellon University This is a developing project
 and some features might not be stable yet.  Please visit our website at [Elijah
 page](http://elijah.cs.cmu.edu/).
 
@@ -39,7 +39,7 @@ Installation (Using Ansible)
     > $ apt-get install software-properties-common  
     > $ apt-add-repository ppa:ansible/ansible  
     > $ apt-get update  
-    > $ apt-get install ansible 
+    > $ apt-get install ansible git
 
 3. Pull down the elijah-openstack repository.
 
@@ -49,7 +49,7 @@ Installation (Using Ansible)
     
 4. Configure the Ansible script.
     * Ensure the variables defined in roles/openstack-controller/vars/main.yml and roles/openstack-compute/vars/main.yml are satisfactory. Specifically you should ensure that the interfaces defined by pub_iface and flat_iface are valid. pub_iface is used by the physical machine to reach the internet. flat_iface is used by OpenStack in order to communicate with the virtual machines running on the host. If you only have a single network interface, make sure that flat_iface is something unique as a virtual interface with that name will be created when the one_nic variable is True.
-    * Installation of the cloudlet library from https://github.com/cmusatyalab/elijah-provisioning requires a local user/password. Ensure that these are properly reflected in roles/openstack-compute/vars/main.yml. You should also ensure that password login is enable in your ssh configuration in /etc/ssh/sshd_config (#PasswordAuthentication yes)
+    * Installation of the cloudlet library from https://github.com/cmusatyalab/elijah-provisioning requires a local user/password. Ensure that these are properly reflected in roles/cloudlet/vars/main.yml. You should also ensure that password login is enable in your ssh configuration in /etc/ssh/sshd_config (#PasswordAuthentication yes)
     * By default, the script is setup to install all OpenStack components on a single node that has a single NIC card.  If you have two network interface cards, set one_nic to False in openstack-kilo.yaml.  If you are setting up a multi-node cluster where the compute node will reside on a separate host(s) from the controller, you must configure additional hosts in the inventory (hosts/inventory), change openstack-kilo.yaml to reflect which hosts should be compute nodes, and ensure that the single_node variable is set to False. You will also need to change the controller IP and hostname in the var/main.yml to reflect those of the controller.
 
 5. Launch ansible playbook to install OpenStack.

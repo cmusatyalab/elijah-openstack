@@ -25,11 +25,21 @@
   shell: "cp ~/elijah-openstack/api/cloudlet_api.py /usr/lib/python2.7/dist-packages/nova/compute/cloudlet_api.py"
   notify:
     - restart nova-compute
-    - restart apache
     
 - name: (OPENSTACK-EXT) ensure nova-compute.conf is up to date
   template: src=nova-compute.conf.j2 dest="/etc/nova/nova-compute.conf" owner=root group=root mode=0644
   notify: restart nova-compute
+
+- name: (OPENSTACK-EXT) restart core nova service if running everything on a single node
+  service: name={{item}} state=restarted
+  with_items:
+      - nova-api
+      - nova-cert
+      - nova-consoleauth
+      - nova-conductor
+      - nova-scheduler
+      - nova-novncproxy
+  when: single_node
 
 - name: (OPENSTACK-EXT) ensure symlink to bios.bin exists
   file:
