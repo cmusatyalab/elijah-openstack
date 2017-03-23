@@ -1,0 +1,3 @@
+#required to run the fabric script from https://github.com/cmusatyalab/elijah-provisioning
+local_user: cloudlet
+local_user_pw: cloudlet

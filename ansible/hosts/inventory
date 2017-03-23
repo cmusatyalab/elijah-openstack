@@ -1,0 +1,5 @@
+[controller]
+localhost ansible_connection=local
+
+[compute]
+localhost ansible_connection=local

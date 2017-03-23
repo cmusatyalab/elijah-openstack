@@ -1,0 +1,19 @@
+- name: (ELIJAH) install fabric/openssh/git
+  apt: 
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - fabric
+    - git
+    - openssh-server
+
+- name: (ELIJAH) checkout elijah-provisioning code from github
+  git:
+    repo: https://github.com/cmusatyalab/elijah-provisioning/elijah-provisioning.git
+    dest: ~/elijah-provisioning
+
+- name: (ELIJAH) install cloudlet library
+  command: fab install
+    chdir: ~/elijah-provisioning
+
+

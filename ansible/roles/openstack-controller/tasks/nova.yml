@@ -1,0 +1,128 @@
+- name: (NOVA) transfer novadb SQL script
+  template: src=novadb.sql.j2 dest="~/novadb.sql" owner=root group=root mode=0600
+
+- name: (NOVA) check if nova db already exists
+  command: 'mysql --user root --password={{mysql_pw}} -e "show databases;"'
+  register: databases_list
+
+- name: (NOVA) create nova db
+  shell: "cat ~/novadb.sql | mysql --user root --password={{mysql_pw}}"
+  when: databases_list.stdout.find('nova') == -1
+
+- name: (NOVA) check if nova user already exists
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user list"
+  register: openstack_users
+
+- name: (NOVA) create nova user
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user create --password {{ keystone_admin_pw }} nova"
+  when: openstack_users.stdout.find('nova') == -1
+
+- name: (NOVA) check if nova user is admin in service project
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role list --project service --user nova"
+  register: perms
+
+- name: (NOVA) add nova user to service project
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role add --project service --user nova admin"
+  when: perms.stdout.find('admin') == -1
+
+- name: (NOVA) check if nova service exists
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service list"
+  register: services
+
+- name: (NOVA) create nova service entity
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service create --name nova --description \"OpenStack Compute\" compute"
+  when: services.stdout.find('nova') == -1
+
+- name: (NOVA) check if nova endpoint exists
+  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint list"
+  register: endpoints
+
+- name: (NOVA) create nova api endpoint
+  command: 'openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint create --publicurl http://{{openstack_controller_node}}:8774/v2/%(tenant_id)s --internalurl http://{{openstack_controller_node}}:8774/v2/%(tenant_id)s --adminurl http://{{openstack_controller_node}}:8774/v2/%(tenant_id)s --region RegionOne compute'
+  when: endpoints.stdout.find('compute') == -1  
+
+- name: (NOVA) install nova-api and associated packages
+  apt: 
+    name: "{{ item }}"
+    state: present
+    default_release: trusty-updates/kilo
+  with_items:
+    - nova-api
+    - nova-cert
+    - nova-conductor
+    - nova-consoleauth
+    - nova-novncproxy
+    - nova-scheduler
+    - python-novaclient
+
+- name: (NOVA) install nova-network
+  apt: 
+    name: "{{ item }}"
+    state: present
+    default_release: trusty-updates/kilo
+  with_items:
+    - nova-network
+  #  - nova-api-metadata #This seems to get pulled in with the nova-api package
+  when: not neutron
+
+- name: (NOVA) replace nova.conf
+  template: src=nova.conf.j2 dest="/etc/nova/nova.conf" owner=root group=root mode=0644
+
+- name: (NOVA) replace api-paste.ini
+  copy: src=api-paste.ini dest="/etc/nova/api-paste.ini" owner=root group=root mode=0644
+
+- name: (NOVA) replace rootwrap.conf
+  copy: src=rootwrap.conf dest="/etc/nova/rootwrap.conf" owner=root group=root mode=0644
+
+- name: (NOVA) replace policy.json
+  copy: src=policy.json dest="/etc/nova/policy.json" owner=root group=root mode=0644
+
+- name: (NOVA) populate nova service database
+  shell: "/bin/sh -c 'nova-manage db sync' nova"
+  notify:
+    - restart nova
+
+- name: (NOVA) force nova services restart
+  meta: flush_handlers
+
+- name: (NOVA) remove SQLite
+  file:
+    state: absent
+    path: /var/lib/nova/nova.sqlite
+
+- name: (SINGLE_NIC) install dummy kernel module
+  command: modprobe dummy
+  when: one_nic
+
+- name: (SINGLE_NIC) check if secondary NIC exists
+  command: ip a
+  when: one_nic
+  register: virtual_nic
+
+- name: (SINGLE_NIC) create virtual NIC
+  command: ip link set promisc on name {{flat_iface}} dev dummy0
+  when: one_nic and virtual_nic.stdout.find('{{flat_iface}}') == -1 
+  notify:
+    - restart nova-network
+
+# - name: source admin creds
+#   shell: "source ~/admin-openrc.sh"
+#   args:
+#     executable: /bin/bash
+#   when: not neutron
+
+# - name: check if initial nova network exists
+#   command: "nova network-list"
+#   register: network
+#   when: not neutron
+
+# - name: create initial nova network
+#   command: "nova network-create vlan101 --fixed-range-v4 172.16.0.0/24 --fixed-cidr 172.16.0.0/24 --bridge br101 --bridge-interface {{flat_iface}} --dns1 8.8.4.4 --gateway   172.16.0.1 --vlan 101"
+#   when: not neutron and network.stdout.find('vlan101') == -1
+#   notify:
+#     - restart nova-network
+
+# - name: add openstack flat interface and enable promiscuous mode
+#   template: src=openstack_if.cfg.j2 dest="/etc/network/interfaces.d/openstack_if.cfg" owner=root group=root mode=0644
+#   notify:
+#     - restart nova-network

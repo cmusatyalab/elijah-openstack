@@ -1,0 +1,17 @@
+- name: restart nova-compute
+  service: name={{item}} state=restarted
+  with_items:
+      - nova-compute
+
+- name: restart libvirt-bin
+  service: name={{item}} state=restarted
+  with_items:
+      - libvirt-bin
+
+- name: restart linuxbridge-agent
+  service: name={{item}} state=restarted
+  with_items:
+      - neutron-plugin-linuxbridge-agent
+
+- name: restart apache
+  service: name=apache2 state=restarted

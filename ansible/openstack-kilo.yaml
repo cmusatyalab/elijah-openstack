@@ -1,0 +1,28 @@
+---
+- hosts: compute
+  remote_user: root
+  tags: cloudlet
+  roles:
+    - cloudlet
+
+- hosts: controller, compute
+  remote_user: root
+  tags: common
+  roles:
+    - openstack-common
+
+- hosts: controller
+  remote_user: root
+  vars:
+    one_nic: True
+  roles:
+    - openstack-controller
+
+- hosts: compute
+  remote_user: root
+  vars:
+    single_node: True
+    one_nic: True
+  tags: compute
+  roles:
+    - openstack-compute

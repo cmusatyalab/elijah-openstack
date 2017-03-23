@@ -1,0 +1,78 @@
+- name: (OPENSTACK-EXT) install fabric/openssh/git
+  apt: 
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - git
+
+- name: (OPENSTACK-EXT) checkout elijah-openstack code from github
+  git:
+    repo: https://github.com/cmusatyalab/elijah-openstack.git
+    dest: ~/elijah-openstack
+    update: no
+
+- name: (OPENSTACK-EXT) copy cloudlet_manager.py
+  shell: "cp ~/elijah-openstack/compute/cloudlet_manager.py /usr/lib/python2.7/dist-packages/nova/compute/cloudlet_manager.py"
+  notify:
+    - restart nova-compute
+
+- name: (OPENSTACK-EXT) copy cloudlet_driver.py
+  shell: "cp ~/elijah-openstack/compute/cloudlet_driver.py /usr/lib/python2.7/dist-packages/nova/virt/libvirt/cloudlet_driver.py" 
+  notify:
+    - restart nova-compute
+
+- name: (OPENSTACK-EXT) copy cloudlet_api.py
+  shell: "cp ~/elijah-openstack/api/cloudlet_api.py /usr/lib/python2.7/dist-packages/nova/compute/cloudlet_api.py"
+  notify:
+    - restart nova-compute
+    
+- name: (OPENSTACK-EXT) ensure nova-compute.conf is up to date
+  template: src=nova-compute.conf.j2 dest="/etc/nova/nova-compute.conf" owner=root group=root mode=0644
+  notify: restart nova-compute
+
+- name: (OPENSTACK-EXT) restart core nova service if running everything on a single node
+  service: name={{item}} state=restarted
+  with_items:
+      - nova-api
+      - nova-cert
+      - nova-consoleauth
+      - nova-conductor
+      - nova-scheduler
+      - nova-novncproxy
+  when: single_node
+
+- name: (OPENSTACK-EXT) ensure symlink to bios.bin exists
+  file:
+    src: /usr/share/seabios/bios.bin
+    dest: /usr/share/qemu/bios.bin
+    owner: root
+    group: root
+    state: link
+
+- name: (OPENSTACK-EXT) ensure symlink to kvmvapic.bin exists
+  file:
+    src: /usr/share/seabios/kvmvapic.bin
+    dest: /usr/share/qemu/kvmvapic.bin
+    owner: root
+    group: root
+    state: link
+
+- name: (OPENSTACK-EXT) ensure symlink to vgabios-cirrus.bin exists
+  file:
+    src: /usr/share/seabios/vgabios-cirrus.bin
+    dest: /usr/share/qemu/vgabios-cirrus.bin
+    owner: root
+    group: root
+    state: link
+
+- name: (OPENSTACK-EXT) change qemu conf
+  lineinfile:
+    dest: /etc/libvirt/qemu.conf
+    state: present
+    regexp: "^#security_driver"
+    line: "security_driver=\"none\""
+  notify:
+    - restart libvirt-bin
+
+- name: (OPENSTACK-EXT) exclude libvirt from apparmor
+  command: aa-complain /usr/sbin/libvirtd

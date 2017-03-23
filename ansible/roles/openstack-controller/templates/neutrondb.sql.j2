@@ -1,0 +1,6 @@
+
+DROP DATABASE IF EXISTS neutron;
+CREATE DATABASE neutron;
+
+GRANT ALL PRIVILEGES ON neutron.* TO 'neutron'@'localhost' IDENTIFIED BY '{{ db_pw }}';
+GRANT ALL PRIVILEGES ON neutron.* TO 'neutron'@'%' IDENTIFIED BY '{{ db_pw }}';
