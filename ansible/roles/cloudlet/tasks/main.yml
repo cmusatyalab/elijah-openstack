@@ -22,10 +22,3 @@
     name: pbr
     state: absent
 
-- name: (CLOUDLET) hold qemu-kvm/libvirt-bin packages to prevent updates
-  command: "apt-mark hold {{ item }}"
-  with_items:
-    - qemu-kvm
-    - libvirt-bin
-
-
