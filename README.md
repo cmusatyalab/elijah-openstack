@@ -97,7 +97,7 @@ dashboard](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/scree
 
 ### 2. Import Base
 Import a [Sample Base
-VM](https://storage.cmusatyalab.org/cloudlet-vm/precise-hotplug.zip) using the
+VM](https://storage.cmusatyalab.org/cloudlet-vm/precise-hotplug-new.zip) using the
 __[Import Base VM]__ button (This process may take a while). The zip file in the link above contains both disk
 and memory snapshots of the vanilla Ubuntu distribution (VM's account:cloudlet, password: cloudlet). ![Import Base
 VM](https://github.com/cmusatyalab/elijah-openstack/blob/master/doc/screenshot-kilo/2-import-base.png?raw=true)
