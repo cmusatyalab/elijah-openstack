@@ -64,9 +64,9 @@
 - include: nova.yml
   tags: nova
 
-#- include: neutron.yml
-#  when: neutron
-#  tags: neutron
+- include: neutron.yml
+  when: neutron
+  tags: neutron
 
 - include: heat.yml
   tags: heat

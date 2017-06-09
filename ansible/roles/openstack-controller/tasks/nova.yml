@@ -102,8 +102,6 @@
 - name: (SINGLE_NIC) create virtual NIC
   command: ip link set promisc on name {{flat_iface}} dev dummy0
   when: one_nic and virtual_nic.stdout.find('{{flat_iface}}') == -1 
-  notify:
-    - restart nova-network
 
 # - name: source admin creds
 #   shell: "source ~/admin-openrc.sh"
