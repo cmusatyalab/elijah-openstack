@@ -9,6 +9,13 @@ dhcpbridge=/usr/bin/nova-dhcpbridge
 api_paste_config=/etc/nova/api-paste.ini
 enabled_apis=osapi_compute,metadata
 
+{% if neutron %}
+network_api_class = nova.network.neutronv2.api.API
+security_group_api = neutron
+linuxnet_interface_driver = nova.network.linux_net.LinuxOVSInterfaceDriver
+firewall_driver = nova.virt.firewall.NoopFirewallDriver
+{% endif %}
+
 rpc_backend = rabbit
 
 my_ip = {{controller_ip}}

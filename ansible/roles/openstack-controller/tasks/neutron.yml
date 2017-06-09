@@ -49,11 +49,7 @@
   with_items:
     - neutron-server
     - neutron-plugin-ml2
-    - neutron-plugin-linuxbridge-agent
-    - neutron-dhcp-agent
-    - neutron-metadata-agent
     - python-neutronclient
-    - conntrack
 
 - name: replace neutron.conf
   template: src=neutron.conf.j2 dest="/etc/neutron/neutron.conf" owner=root group=root mode=0644
@@ -83,3 +79,36 @@
   file:
     state: absent
     path: /var/lib/neutron/neutron.sqlite
+
+#NETWORK NODE - TODO: move to separate role?
+
+- name: setup ipv4 sysctl params
+  blockinfile:
+    dest: /etc/sysctl.conf
+    block: |
+      net.ipv4.ip_forward=1
+      net.ipv4.conf.all.rp_filter=0
+      net.ipv4.conf.default.rp_filter=0
+
+- name: push sysctl changes
+  command: sysctl -p
+
+- name: install networking components
+  apt:
+    name: "{{ item }}"
+    state: present
+    default_release: trusty-updates/kilo
+  with_items:
+    - neutron-plugin-ml2
+    - neutron-plugin-openvswitch-agent
+    - neutron-l3-agent
+    - neutron-dhcp-agent
+    - neutron-metadata-agent
+
+- name: replace neutron.conf
+  template: src=neutron.conf.j2 dest="/etc/neutron/neutron.conf" owner=root group=root mode=0644
+  notify: restart neutron
+
+- name: replace ml2_conf.ini
+  template: src=ml2_conf.ini.j2 dest="/etc/neutron/plugins/ml2/ml2_conf.ini" owner=root group=root mode=0644
+  notify: restart neutron

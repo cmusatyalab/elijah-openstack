@@ -2,19 +2,19 @@
 # (ListOpt) List of network type driver entrypoints to be loaded from
 # the neutron.ml2.type_drivers namespace.
 #
-type_drivers = local,flat,vlan
+type_drivers = local,flat,vlan, gre vxlan
 # Example: type_drivers = flat,vlan,gre,vxlan
 
 # (ListOpt) Ordered list of network_types to allocate as tenant
 # networks. The default value 'local' is useful for single-box testing
 # but provides no connectivity between hosts.
 #
-tenant_network_types =
+tenant_network_types = gre
 # Example: tenant_network_types = vlan,gre,vxlan
 
 # (ListOpt) Ordered list of networking mechanism driver entrypoints
 # to be loaded from the neutron.ml2.mechanism_drivers namespace.
-mechanism_drivers = linuxbridge
+mechanism_drivers = linuxbridge, openvswitch
 # Example: mechanism_drivers = openvswitch,mlnx
 # Example: mechanism_drivers = arista
 # Example: mechanism_drivers = cisco,logger
@@ -54,7 +54,7 @@ extension_drivers = port_security
 # can be created. Use * to allow flat networks with arbitrary
 # physical_network names.
 #
-flat_networks = public
+flat_networks = *
 # Example:flat_networks = physnet1,physnet2
 # Example:flat_networks = *
 
@@ -69,7 +69,7 @@ flat_networks = public
 
 [ml2_type_gre]
 # (ListOpt) Comma-separated list of <tun_min>:<tun_max> tuples enumerating ranges of GRE tunnel IDs that are available for tenant network allocation
-# tunnel_id_ranges =
+tunnel_id_ranges = 1:1000
 
 [ml2_type_vxlan]
 # (ListOpt) Comma-separated list of <vni_min>:<vni_max> tuples enumerating
@@ -87,8 +87,16 @@ flat_networks = public
 [securitygroup]
 # Controls if neutron security group is enabled or not.
 # It should be false when you use nova security group.
-# enable_security_group = True
+enable_security_group = True
 
 # Use ipset to speed-up the iptables security groups. Enabling ipset support
 # requires that ipset is installed on L2 agent node.
 enable_ipset = True
+firewall_driver = neutron.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver
+
+[ovs]
+local_ip = {{openstack_controller_node}}
+bridge_mappings = external:br-ex
+
+[agent]
+tunnel_types = gre
