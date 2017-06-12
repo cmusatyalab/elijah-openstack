@@ -18,13 +18,22 @@ novncproxy_base_url=http://{{openstack_controller_node}}:6080/vnc_auto.html
 
 auth_strategy = keystone
 
-network_api_class = nova.network.api.API
-security_group_api = nova
-public_interface = {{pub_iface}}
-vlan_interface = {{flat_iface}}
-flat_interface = {{flat_iface}}
-network_manager=nova.network.manager.FlatDHCPManager
-osapi_compute_workers = 8
+{% if not neutron %}
+#network_api_class = nova.network.api.API
+#security_group_api = nova
+#public_interface = {{pub_iface}}
+#vlan_interface = {{flat_iface}}
+#flat_interface = {{flat_iface}}
+#network_manager=nova.network.manager.FlatDHCPManager
+#osapi_compute_workers = 8
+{% endif %}
+
+{% if neutron %}
+network_api_class = nova.network.neutronv2.api.API
+security_group_api = neutron
+linuxnet_interface_driver = nova.network.linux_net.LinuxOVSInterfaceDriver
+firewall_driver = nova.virt.firewall.NoopFirewallDriver
+{% endif %}
 
 [glance]
 api_servers={{openstack_controller_node}}:9292
@@ -52,14 +61,11 @@ workers = 8
 {% if neutron %}
 [neutron]
 url = http://{{openstack_controller_node}}:9696
-auth_url = http://{{openstack_controller_node}}:35357
-auth_plugin = password
-project_domain_id = default
-user_domain_id = default
-region_name = RegionOne
-project_name = service
-username = neutron
-password = {{keystone_admin_pw}}
+auth_strategy = keystone
+admin_auth_url = http://controller:35357/v2.0
+admin_tenant_name = service
+admin_username = neutron
+admin_password = NEUTRON_PASS
 
 service_metadata_proxy = True
 metadata_proxy_shared_secret = {{metadata_secret}}

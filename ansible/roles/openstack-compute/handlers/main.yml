@@ -15,3 +15,9 @@
 
 - name: restart apache
   service: name=apache2 state=restarted
+
+- name: restart openvswitch
+  service: name={{item}} state=restarted
+  with_items:
+      - openvswitch-switch
+      - neutron-plugin-openvswitch-agent

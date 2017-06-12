@@ -27,16 +27,6 @@
   template: src=nova-compute.conf.j2 dest="/etc/nova/nova-compute.conf" owner=root group=root mode=0644
   notify: restart nova-compute
 
-- name: (COMPUTE) replace neutron.conf
-  template: src=neutron.conf.j2 dest="/etc/neutron/neutron.conf" owner=root group=root mode=0644
-  notify: restart linuxbridge-agent
-  when: neutron
-
-- name: (COMPUTE) replace linuxbridge_agent.ini
-  template: src=linuxbridge_agent.ini.j2 dest="/etc/neutron/plugins/ml2/linuxbridge_agent.ini" owner=root group=root mode=0644
-  notify: restart linuxbridge-agent
-  when: neutron
-
 - name: (COMPUTE) remove SQLite
   file:
     state: absent
@@ -57,6 +47,9 @@
 # - name: create bridge
 #   command: brctl addbr br100
 #   when: not neutron
+
+- include: neutron.yml
+  when: neutron
 
 - include: openstack-ext.yml
   tags: openstack-compute-ext
