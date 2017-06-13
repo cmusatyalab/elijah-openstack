@@ -1,47 +1,47 @@
-- name: transfer neutrondb SQL script
+- name: (NEUTRON) transfer neutrondb SQL script
   template: src=neutrondb.sql.j2 dest="~/neutrondb.sql" owner=root group=root mode=0600
 
-- name: check if neutron db already exists
+- name: (NEUTRON) check if neutron db already exists
   command: 'mysql --user root --password={{mysql_pw}} -e "show databases;"'
   register: databases_list
 
-- name: create neutron db
+- name: (NEUTRON) create neutron db
   shell: "cat ~/neutrondb.sql | mysql --user root --password={{mysql_pw}}"
   when: databases_list.stdout.find('neutron') == -1
 
-- name: check if neutron user already exists
+- name: (NEUTRON) check if neutron user already exists
   command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user list"
   register: openstack_users
 
-- name: create neutron user
+- name: (NEUTRON) create neutron user
   command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user create --password {{ keystone_admin_pw }} neutron"
   when: openstack_users.stdout.find('neutron') == -1
 
-- name: check if neutron user is admin in service project
+- name: (NEUTRON) check if neutron user is admin in service project
   command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role list --project service --user neutron"
   register: neutron_perms
 
-- name: add neutron user to service project
+- name: (NEUTRON) add neutron user to service project
   command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role add --project service --user neutron admin"
   when: neutron_perms.stdout.find('admin') == -1
 
-- name: check if neutron service exists
+- name: (NEUTRON) check if neutron service exists
   command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service list"
   register: neutron_service
 
-- name: create neutron service entity
+- name: (NEUTRON) create neutron service entity
   command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service create --name neutron --description \"OpenStack Networking Service\" network"
   when: neutron_service.stdout.find('neutron') == -1
 
-- name: check if neutron endpoint exists
+- name: (NEUTRON) check if neutron endpoint exists
   command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint list"
   register: neutron_endpoint
 
-- name: create api endpoint
+- name: (NEUTRON) create api endpoint
   command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint create --publicurl http://{{openstack_controller_node}}:9696 --internalurl http://{{openstack_controller_node}}:9696 --adminurl http://{{openstack_controller_node}}:9696 --region RegionOne network"
   when: neutron_endpoint.stdout.find('network') == -1
 
-- name: install neutron and associated packages
+- name: (NEUTRON) install neutron and associated packages
   apt: 
     name: "{{ item }}"
     state: present
@@ -51,37 +51,37 @@
     - neutron-plugin-ml2
     - python-neutronclient
 
-- name: replace neutron.conf
+- name: (NEUTRON) replace neutron.conf
   template: src=neutron.conf.j2 dest="/etc/neutron/neutron.conf" owner=root group=root mode=0644
 
-- name: replace ml2_conf.ini
+- name: (NEUTRON) replace ml2_conf.ini
   template: src=ml2_conf.ini.j2 dest="/etc/neutron/plugins/ml2/ml2_conf.ini" owner=root group=root mode=0644
 
-- name: replace linuxbridge_agent.ini
+- name: (NEUTRON) replace linuxbridge_agent.ini
   template: src=linuxbridge_agent.ini.j2 dest="/etc/neutron/plugins/ml2/linuxbridge_agent.ini" owner=root group=root mode=0644
 
-- name: replace dhcp_agent.ini
+- name: (NEUTRON) replace dhcp_agent.ini
   template: src=dhcp_agent.ini.j2 dest="/etc/neutron/dhcp_agent.ini" owner=root group=root mode=0644
 
-- name: replace metadata_agent.ini
+- name: (NEUTRON) replace metadata_agent.ini
   template: src=metadata_agent.ini.j2 dest="/etc/neutron/metadata_agent.ini" owner=root group=root mode=0644
 
-- name: populate network service database
+- name: (NEUTRON) populate network service database
   shell: "/bin/sh -c 'neutron-db-manage --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini upgrade head' neutron"
   notify:
     - restart nova
 
-- name: force neutron/nova-api restart
+- name: (NEUTRON) force neutron/nova-api restart
   meta: flush_handlers
 
-- name: remove SQLite
+- name: (NEUTRON) remove SQLite
   file:
     state: absent
     path: /var/lib/neutron/neutron.sqlite
 
 #NETWORK NODE - TODO: move to separate role?
 
-- name: setup ipv4 sysctl params
+- name: (NEUTRON) setup ipv4 sysctl params
   blockinfile:
     dest: /etc/sysctl.conf
     block: |
@@ -92,7 +92,7 @@
 - name: push sysctl changes
   command: sysctl -p
 
-- name: install networking components
+- name: (NEUTRON) install networking components
   apt:
     name: "{{ item }}"
     state: present
@@ -104,10 +104,16 @@
     - neutron-dhcp-agent
     - neutron-metadata-agent
 
-- name: replace neutron.conf
+- name: (NEUTRON) replace neutron.conf
   template: src=neutron.conf.j2 dest="/etc/neutron/neutron.conf" owner=root group=root mode=0644
   notify: restart neutron
 
-- name: replace ml2_conf.ini
+- name: (NEUTRON) replace ml2_conf.ini
   template: src=ml2_conf.ini.j2 dest="/etc/neutron/plugins/ml2/ml2_conf.ini" owner=root group=root mode=0644
   notify: restart neutron
+
+- name: (NEUTRON) create ovs bridge
+  command: ovs-vsctl add-br br-ex
+
+- name: (NEUTRON) attach bridge to interface
+  command: ovs-vsctl add-port br-ex {{public_iface}}
