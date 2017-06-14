@@ -9,12 +9,12 @@ type_drivers = local,flat,vlan, gre, vxlan
 # networks. The default value 'local' is useful for single-box testing
 # but provides no connectivity between hosts.
 #
-tenant_network_types = gre
+tenant_network_types = vxlan
 # Example: tenant_network_types = vlan,gre,vxlan
 
 # (ListOpt) Ordered list of networking mechanism driver entrypoints
 # to be loaded from the neutron.ml2.mechanism_drivers namespace.
-mechanism_drivers = linuxbridge, openvswitch
+mechanism_drivers = linuxbridge
 # Example: mechanism_drivers = openvswitch,mlnx
 # Example: mechanism_drivers = arista
 # Example: mechanism_drivers = cisco,logger

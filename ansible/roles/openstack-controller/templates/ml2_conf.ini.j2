@@ -2,19 +2,19 @@
 # (ListOpt) List of network type driver entrypoints to be loaded from
 # the neutron.ml2.type_drivers namespace.
 #
-type_drivers = local,flat,vlan, gre, vxlan
+type_drivers = local, flat,vlan, vxlan
 # Example: type_drivers = flat,vlan,gre,vxlan
 
 # (ListOpt) Ordered list of network_types to allocate as tenant
 # networks. The default value 'local' is useful for single-box testing
 # but provides no connectivity between hosts.
 #
-tenant_network_types = gre
+tenant_network_types = vxlan
 # Example: tenant_network_types = vlan,gre,vxlan
 
 # (ListOpt) Ordered list of networking mechanism driver entrypoints
 # to be loaded from the neutron.ml2.mechanism_drivers namespace.
-mechanism_drivers = linuxbridge, openvswitch
+mechanism_drivers = linuxbridge
 # Example: mechanism_drivers = openvswitch,mlnx
 # Example: mechanism_drivers = arista
 # Example: mechanism_drivers = cisco,logger
@@ -54,7 +54,7 @@ extension_drivers = port_security
 # can be created. Use * to allow flat networks with arbitrary
 # physical_network names.
 #
-flat_networks = *
+flat_networks = provider
 # Example:flat_networks = physnet1,physnet2
 # Example:flat_networks = *
 
@@ -69,13 +69,13 @@ flat_networks = *
 
 [ml2_type_gre]
 # (ListOpt) Comma-separated list of <tun_min>:<tun_max> tuples enumerating ranges of GRE tunnel IDs that are available for tenant network allocation
-tunnel_id_ranges = 1:1000
+#tunnel_id_ranges = 1:1000
 
 [ml2_type_vxlan]
 # (ListOpt) Comma-separated list of <vni_min>:<vni_max> tuples enumerating
 # ranges of VXLAN VNI IDs that are available for tenant network allocation.
 #
-# vni_ranges =
+vni_ranges = 1:1000
 
 # (StrOpt) Multicast group for the VXLAN interface. When configured, will
 # enable sending all broadcast traffic to this multicast group. When left
@@ -93,10 +93,3 @@ enable_security_group = True
 # requires that ipset is installed on L2 agent node.
 enable_ipset = True
 firewall_driver = neutron.agent.linux.iptables_firewall.OVSHybridIptablesFirewallDriver
-
-[ovs]
-local_ip = {{openstack_controller_node}}
-bridge_mappings = external:br-ex
-
-[agent]
-tunnel_types = gre

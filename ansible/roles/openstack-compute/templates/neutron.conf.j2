@@ -66,7 +66,7 @@ core_plugin = ml2
 # with previous versions, the class name of a plugin can be specified instead
 # of its entrypoint name.
 #
-service_plugins =
+service_plugins = router
 # Example: service_plugins = router,firewall,lbaas,vpnaas,metering
 
 # Paste configuration file
@@ -118,7 +118,7 @@ auth_strategy = keystone
 # Enable or disable overlapping IPs for subnets
 # Attention: the following parameter MUST be set to False if Neutron is
 # being used in conjunction with nova security groups
-# allow_overlapping_ips = False
+allow_overlapping_ips = True
 # Ensure that configured gateway is on subnet. For IPv6, validate only if
 # gateway is not a link local address. Deprecated, to be removed during the
 # K release, at which point the check will be mandatory.
@@ -452,10 +452,7 @@ nova_url = http://{{openstack_controller_node}}:8774/v2
 
 # The RabbitMQ broker address where a single node is used.
 # (string value)
-rabbit_host = {{openstack_controller_node}}
-rabbit_userid = openstack
-rabbit_password = {{rabbit_pw}}
-
+# rabbit_host=localhost
 
 # The RabbitMQ broker port where a single node is used.
 # (integer value)
@@ -710,7 +707,7 @@ auth_plugin = password
 project_domain_id = default
 user_domain_id = default
 project_name = service
-username = keystone
+username = neutron
 password = {{ keystone_admin_pw }}
 
 [database]
@@ -957,9 +954,7 @@ lock_path = $state_path/lock
 
 # The RabbitMQ broker address where a single node is used. (string value)
 # Deprecated group/name - [DEFAULT]/rabbit_host
-rabbit_host = {{openstack_controller_node}}
-rabbit_userid = openstack
-rabbit_password = {{rabbit_pw}}
+rabbit_host = {{ openstack_controller_node }}
 
 # The RabbitMQ broker port where a single node is used. (integer value)
 # Deprecated group/name - [DEFAULT]/rabbit_port

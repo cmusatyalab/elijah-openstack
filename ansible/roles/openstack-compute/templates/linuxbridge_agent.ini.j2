@@ -1,8 +1,9 @@
 [linux_bridge]
-physical_interface_mappings = public:{{pub_iface}}
+physical_interface_mappings = provider:{{flat_iface}}
 
 [vxlan]
-enable_vxlan = False
+enable_vxlan = True
+local_ip = {{controller_ip}}
 
 [agent]
 prevent_arp_spoofing = True
