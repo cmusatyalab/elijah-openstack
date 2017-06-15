@@ -16,6 +16,16 @@ linuxnet_interface_driver = nova.network.linux_net.LinuxOVSInterfaceDriver
 firewall_driver = nova.virt.firewall.NoopFirewallDriver
 {% endif %}
 
+{% if not neutron %}
+network_api_class = nova.network.api.API
+security_group_api = nova
+public_interface = {{pub_iface}}
+vlan_interface = {{flat_iface}}
+flat_interface = {{flat_iface}}
+network_manager=nova.network.manager.FlatDHCPManager
+osapi_compute_workers = 8
+{% endif %}
+
 rpc_backend = rabbit
 
 my_ip = {{controller_ip}}
@@ -27,13 +37,7 @@ novncproxy_base_url=http://{{openstack_controller_node}}:6080/vnc_auto.html
 
 auth_strategy = keystone
 
-network_api_class = nova.network.api.API
-security_group_api = nova
-public_interface = {{pub_iface}}
-vlan_interface = {{flat_iface}}
-flat_interface = {{flat_iface}}
-network_manager=nova.network.manager.FlatDHCPManager
-osapi_compute_workers = 8
+
 
 compute_driver = nova.virt.libvirt.cloudlet_driver.CloudletDriver
 compute_manager = nova.compute.cloudlet_manager.CloudletComputeManager
