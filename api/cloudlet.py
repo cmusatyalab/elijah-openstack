@@ -13,59 +13,29 @@
 # for more details.
 #
 
-import webob
+from webob import exc
 from urlparse import urlsplit
 
 from nova.compute import API
 from nova.compute import HostAPI
+from nova.api.openstack import common
 from nova.compute.cloudlet_api import CloudletAPI as CloudletAPI
-from nova import exception
 from nova.api.openstack import extensions
 from nova.api.openstack import wsgi
-try:
-    # icehouse
-    from nova.openstack.common import log as logging
-    from nova.openstack.common.gettextutils import _
-except ImportError as e:
-    # kilo
-    from oslo_log import log as logging
-    from nova.i18n import _
+from oslo_log import log as logging
+from nova.i18n import _
 
 
 LOG = logging.getLogger(__name__)
-authorize = extensions.extension_authorizer('compute', 'cloudlet')
+ALIAS = 'os-cloudlet'
 
 
-class Cloudlet(extensions.ExtensionDescriptor):
-
-    """Cloudlet compute API support"""
-
-    name = "Cloudlets"
-    alias = "os-cloudlet"
-    namespace = "http://elijah.cs.cmu.edu/compute/ext/cloudlet/api/v1.1"
-    updated = "2014-05-27T00:00:00+00:00"
-
-    def get_controller_extensions(self):
-        servers_extension = extensions.ControllerExtension(
-            self, 'servers', CloudletController())
-        return [servers_extension]
-
-
-class CloudletController(wsgi.Controller):
-
+class CloudletActionController(wsgi.Controller):
     def __init__(self, *args, **kwargs):
-        super(CloudletController, self).__init__(*args, **kwargs)
+        super(CloudletActionController, self).__init__(*args, **kwargs)
         self.cloudlet_api = CloudletAPI()
         self.host_api = HostAPI()
         self.compute_api = API()
-
-    def _get_instance(self, context, instance_id, want_objects=False):
-        try:
-            return self.compute_api.get(context, instance_id,
-                                        want_objects=want_objects)
-        except exception.InstanceNotFound:
-            msg = _("Server not found")
-            raise webob.exc.HTTPNotFound(explanation=msg)
 
     def _append_synthesis_info(self, context, body, resp_obj):
         LOG.debug("return synthesis information")
@@ -85,6 +55,7 @@ class CloudletController(wsgi.Controller):
         # node, the other for setting up port forwarding
         repeat_count = 0
         MAX_COUNT = 30
+        instance_hostname = None
         while repeat_count < MAX_COUNT:
             instance = self.compute_api.get(context, instance_id)
             instance_hostname = instance.get('node', None)
@@ -122,8 +93,10 @@ class CloudletController(wsgi.Controller):
                 "error": "cannot setup port forwarding"
             }
 
+            # Define support for GET on a collection
+
     @wsgi.extends
-    def create(self, req, body):
+    def create(self, req, resp_obj, body):
         context = req.environ['nova.context']
         resp_obj = (yield)
         if 'server' in body and 'metadata' in body['server']:
@@ -135,8 +108,10 @@ class CloudletController(wsgi.Controller):
                 # create VM using VM handoff
                 self._append_port_forwarding(context, body, resp_obj)
 
+    @extensions.expected_errors((400, 404, 409))
+    @wsgi.response(202)
     @wsgi.action('cloudlet-base')
-    def cloudlet_base_creation(self, req, id, body):
+    def _cloudlet_base_creation(self, req, id, body):
         """Generate cloudlet base VM
         """
         context = req.environ['nova.context']
@@ -146,16 +121,18 @@ class CloudletController(wsgi.Controller):
             baseVM_name = body['cloudlet-base']['name']
         else:
             msg = _("Need to set base VM name")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+            raise exc.HTTPBadRequest(explanation=msg)
 
         LOG.debug(_("cloudlet Generate Base VM %r"), id)
-        instance = self._get_instance(context, id, want_objects=True)
+        instance = common.get_instance(self.compute_api, context, id)
         disk_meta, memory_meta = self.cloudlet_api.cloudlet_create_base(
             context, instance, baseVM_name)
         return {'base-disk': disk_meta, 'base-memory': memory_meta}
 
+    @extensions.expected_errors((400, 404, 409))
+    @wsgi.response(202)
     @wsgi.action('cloudlet-overlay-finish')
-    def cloudlet_overlay_finish(self, req, id, body):
+    def _cloudlet_overlay_finish(self, req, id, body):
         """Generate overlay VM from the requested instance
         """
         context = req.environ['nova.context']
@@ -165,18 +142,20 @@ class CloudletController(wsgi.Controller):
             overlay_name = body['cloudlet-overlay-finish']['overlay-name']
         else:
             msg = _("Need overlay Name")
-            raise webob.exc.HTTPNotFound(explanation=msg)
+            raise exc.HTTPNotFound(explanation=msg)
 
         LOG.debug(_("cloudlet Generate overlay VM finish %r"), id)
-        instance = self._get_instance(context, id, want_objects=True)
+        instance = common.get_instance(self.compute_api, context, id)
         overlay_id = self.cloudlet_api.cloudlet_create_overlay_finish(
             context,
             instance,
             overlay_name)
         return {'overlay-id': overlay_id}
 
+    @extensions.expected_errors((400, 404, 409))
+    @wsgi.response(202)
     @wsgi.action('cloudlet-handoff')
-    def cloudlet_handoff(self, req, id, body):
+    def _cloudlet_handoff(self, req, id, body):
         """Perform VM migration across OpenStack
         """
         context = req.environ['nova.context']
@@ -186,28 +165,28 @@ class CloudletController(wsgi.Controller):
         dest_vmname = payload.get("dest_vmname", None)
         if handoff_url is None:
             msg = _("Need Handoff URL")
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+            raise exc.HTTPBadRequest(explanation=msg)
         parsed_handoff_url = urlsplit(handoff_url)
         if parsed_handoff_url.scheme != "file" and\
                 parsed_handoff_url.scheme != "http" and\
                 parsed_handoff_url.scheme != "https":
             msg = "Invalid handoff_url (%s). " % handoff_url
             msg += "Only support file and http scheme."
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+            raise exc.HTTPBadRequest(explanation=msg)
         if len(parsed_handoff_url.netloc) == 0:
             msg = "Invalid handoff_url (%s). " % handoff_url
             msg += "Need destination (e.g. handoff destination address)"
-            raise webob.exc.HTTPBadRequest(explanation=msg)
+            raise exc.HTTPBadRequest(explanation=msg)
 
         if parsed_handoff_url.scheme == "http" or\
                 parsed_handoff_url.scheme == "https":
             if dest_token is None:
                 msg = "Need auth-token for the handoff destination"
-                raise webob.exc.HTTPBadRequest(explanation=msg)
+                raise exc.HTTPBadRequest(explanation=msg)
 
         LOG.debug(_("cloudlet handoff %r (handoff_url:%s)"),
                   id, handoff_url)
-        instance = self._get_instance(context, id, want_objects=True)
+        instance = common.get_instance(self.compute_api, context, id)
         residue_id = self.cloudlet_api.cloudlet_handoff(context,
                                                         instance,
                                                         handoff_url,
@@ -217,3 +196,20 @@ class CloudletController(wsgi.Controller):
             return {'handoff': "%s" % residue_id}
         else:
             return {'handoff': "%s" % handoff_url}
+
+
+class Cloudlet(extensions.V21APIExtensionBase):
+    """Cloudlet compute API support."""
+
+    name = "Cloudlet"
+    alias = ALIAS
+    version = 1
+
+    def get_controller_extensions(self):
+        controller = CloudletActionController()
+        servers_extension = extensions.ControllerExtension(
+            self, 'servers', controller=controller)
+        return [servers_extension]
+
+    def get_resources(self):
+        return []
