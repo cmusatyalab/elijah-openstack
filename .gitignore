@@ -7,3 +7,6 @@
 *.pyc
 *.class
 .ropeproject
+.DS_Store
+.idea/
+.vagrant/
