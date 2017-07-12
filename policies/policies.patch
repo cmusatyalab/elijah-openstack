@@ -1,0 +1,19 @@
+diff -Naur old/nova/policies/__init__.py new/nova/policies/__init__.py
+--- old/nova/policies/__init__.py	2017-07-12 17:39:37.775800734 +0000
++++ new/nova/policies/__init__.py	2017-07-12 17:36:58.284517914 +0000
+@@ -99,6 +99,7 @@
+ from nova.policies import virtual_interfaces
+ from nova.policies import volumes
+ from nova.policies import volumes_attachments
++from nova.policies import cloudlet
+ 
+ 
+ def list_rules():
+@@ -188,5 +189,6 @@
+         versions.list_rules(),
+         virtual_interfaces.list_rules(),
+         volumes.list_rules(),
+-        volumes_attachments.list_rules()
++        volumes_attachments.list_rules(),
++        cloudlet.list_rules()
+     )
