@@ -21,26 +21,22 @@ import threading
 from urlparse import urlparse
 from urlparse import urlsplit
 import httplib
+
+from nova.i18n import _LW
+from nova import utils
+from nova import exception
 from nova import image as image
 from nova.compute import api as nova_api
 from nova.compute import rpcapi as nova_rpc
 from nova.compute import vm_states
-from nova.compute import utils as compute_utils
 from nova.compute import task_states
-from oslo.config import cfg
+
+from oslo_config import cfg
+from oslo_log import log as logging
+from oslo_serialization import jsonutils
 
 from nova.objects import quotas as quotas_obj
 from nova import objects
-
-try:
-    # icehouse
-    from nova.openstack.common import log as logging
-    from nova.openstack.common import jsonutils
-except ImportError as e:
-    # kilo
-    from oslo_log import log as logging
-    from oslo_serialization import jsonutils
-
 from hashlib import sha256
 
 LOG = logging.getLogger(__name__)
@@ -98,16 +94,26 @@ class CloudletAPI(nova_rpc.ComputeAPI):
             'image_type': image_type,
         }
         image_ref = instance.image_ref
+        image_api_ref = self.image_api
 
-        if hasattr(self.nova_api, "image_service"):
-            # icehouse
-            image_api_ref = self.nova_api.image_service
-        else:
-            # kilo
-            image_api_ref = self.image_api
+        image_system_meta = {}
+        if image_ref is not None and image_ref != '':
+            try:
+                image = image_api_ref.get(context, image_ref)
+            except (exception.ImageNotAuthorized,
+                    exception.ImageNotFound,
+                    exception.Invalid) as e:
+                LOG.warning(_LW("Can't access image %(image_id)s: %(error)s"),
+                            {"image_id": image_ref, "error": e},
+                            instance=instance)
+            else:
+                flavor = instance.get_flavor()
+                image_system_meta = utils.get_system_metadata_from_image(image,
+                                                                         flavor)
+        system_meta = utils.instance_sys_meta(instance)
+        system_meta.update(image_system_meta)
 
-        sent_meta = compute_utils.get_image_metadata(
-            context, image_api_ref, image_ref, instance)
+        sent_meta = utils.get_image_from_system_metadata(system_meta)
         sent_meta['name'] = name
         sent_meta['is_public'] = False
         # The properties set up above and in extra_properties have precedence
@@ -115,7 +121,6 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         sent_meta['properties'].update(properties)
         return image_api_ref.create(context, sent_meta)
 
-    @nova_api.wrap_check_policy
     @nova_api.check_instance_state(vm_state=[vm_states.ACTIVE])
     def cloudlet_create_base(self, context, instance, base_name,
                              extra_properties=None):
@@ -189,8 +194,9 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         instance.save(expected_task_state=[None])
 
         # api request
-        version = self.client.target.version
-        cctxt = self.client.prepare(
+        client = self.router.clients['default'].client
+        version = self.router.target.version
+        cctxt = client.prepare(
             server=nova_rpc._compute_host(None, instance), version=version
         )
         cctxt.call(context, 'cloudlet_create_base',
@@ -202,23 +208,30 @@ class CloudletAPI(nova_rpc.ComputeAPI):
                    memoryhash_meta_id=recv_memhash_meta['id']
                    )
         return recv_disk_meta, recv_mem_meta
-    def _create_reservations(self, context, instance, original_task_state,project_id, user_id):
+
+    def _create_reservations(self, context, instance, original_task_state, project_id, user_id):
         instance_vcpus = instance.vcpus
         instance_memory_mb = instance.memory_mb
         # NOTE(wangpan): if the instance is resizing, and the resources
         #                are updated to new instance type, we should use
         #                the old instance type to create reservation.
         # see https://bugs.launchpad.net/nova/+bug/1099729 for more details
-                            
+
         quotas = objects.Quotas(context)
-        quotas.reserve(project_id=project_id,user_id=user_id,instances=-1,cores=-instance_vcpus,ram=-instance_memory_mb)
+        quotas.reserve(project_id=project_id,
+                       user_id=user_id,
+                       instances=-1,
+                       cores=-instance_vcpus,
+                       ram=-instance_memory_mb
+                       )
         return quotas
+
     @nova_api.check_instance_state(vm_state=[vm_states.ACTIVE])
     def cloudlet_create_overlay_finish(self, context, instance,
                                        overlay_name, extra_properties=None):
         project_id, user_id = quotas_obj.ids_from_instance(context, instance)
         original_task_state = instance.task_state
-        quotas = self._create_reservations(context,instance, original_task_state,project_id, user_id) 
+        quotas = self._create_reservations(context, instance, original_task_state, project_id, user_id)
         overlay_meta_properties = {
             CloudletAPI.PROPERTY_KEY_CLOUDLET: True,
             CloudletAPI.PROPERTY_KEY_CLOUDLET_TYPE:
@@ -232,12 +245,14 @@ class CloudletAPI(nova_rpc.ComputeAPI):
         instance.save(expected_task_state=[None])
 
         # api request
-        version = self.client.target.version
-        cctxt = self.client.prepare(
+        client = self.router.clients['default'].client
+        version = self.router.target.version
+        cctxt = client.prepare(
             server=nova_rpc._compute_host(None, instance), version=version
         )
         cctxt.cast(context, 'cloudlet_overlay_finish',
-                   instance=instance,reservations=quotas.reservations,
+                   instance=instance,
+                   reservations=quotas.reservations,
                    overlay_name=overlay_name,
                    overlay_id=recv_overlay_meta['id'])
         return recv_overlay_meta
@@ -248,7 +263,7 @@ class CloudletAPI(nova_rpc.ComputeAPI):
                          extra_properties=None):
         project_id, user_id = quotas_obj.ids_from_instance(context, instance)
         original_task_state = instance.task_state
-        quotas = self._create_reservations(context,instance, original_task_state,project_id, user_id) 
+        quotas = self._create_reservations(context, instance, original_task_state, project_id, user_id)
         recv_residue_meta = None
         parsed_handoff_url = urlsplit(handoff_url)
         residue_glance_id = None
@@ -283,8 +298,9 @@ class CloudletAPI(nova_rpc.ComputeAPI):
                                            handoff_dest_addr['server_port'])
 
         # api request
-        version = self.client.target.version
-        cctxt = self.client.prepare(
+        client = self.router.clients['default'].client
+        version = self.router.target.version
+        cctxt = client.prepare(
             server=nova_rpc._compute_host(None, instance), version=version
         )
         cctxt.cast(context, 'cloudlet_handoff',
@@ -403,8 +419,7 @@ class CloudletAPI(nova_rpc.ComputeAPI):
 
 
 class PortForwarding(threading.Thread):
-
-    """Forward VM handoff packet to the compute node"""
+    """Forward VM handoff packet to the compute node."""
 
     def __init__(self, dest_ip, dest_port, source_port=None):
         self.dest_ip = dest_ip
