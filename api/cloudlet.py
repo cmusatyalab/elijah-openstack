@@ -98,7 +98,6 @@ class CloudletActionController(wsgi.Controller):
     @wsgi.extends
     def create(self, req, resp_obj, body):
         context = req.environ['nova.context']
-        resp_obj = (yield)
         if 'server' in body and 'metadata' in body['server']:
             metadata = body['server']['metadata']
             if ('overlay_url' in metadata) and ('handoff_info' not in metadata):
