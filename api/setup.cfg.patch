@@ -1,0 +1,19 @@
+diff -Naur old/setup.cfg new/setup.cfg
+--- old/setup.cfg	2017-07-12 17:51:06.412609591 +0000
++++ new/setup.cfg	2017-07-12 17:50:15.933125612 +0000
+@@ -156,6 +156,7 @@
+     versions = nova.api.openstack.compute.versionsV21:Versions
+     virtual_interfaces = nova.api.openstack.compute.virtual_interfaces:VirtualInterfaces
+     volumes = nova.api.openstack.compute.volumes:Volumes
++    cloudlet = nova.api.openstack.compute.cloudlet:Cloudlet
+ 
+ nova.api.v21.extensions.server.create =
+     availability_zone = nova.api.openstack.compute.availability_zone:AvailabilityZone
+@@ -167,6 +168,7 @@
+     scheduler_hints = nova.api.openstack.compute.scheduler_hints:SchedulerHints
+     security_groups = nova.api.openstack.compute.security_groups:SecurityGroups
+     user_data = nova.api.openstack.compute.user_data:UserData
++    cloudlet = nova.api.openstack.compute.cloudlet:Cloudlet
+ 
+ nova.api.v21.test_extensions =
+     basic = nova.tests.unit.api.openstack.compute.basic:Basic
