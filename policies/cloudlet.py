@@ -1,6 +1,5 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
-# Copyright 2012 Nebula, Inc.
+# Copyright 2017 inwinSTACK inc
+# All Rights Reserved.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -14,16 +13,24 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from django.utils.translation import ugettext_lazy as _
+from oslo_policy import policy
 
-import horizon
-
-from openstack_dashboard.dashboards.project import dashboard
+from nova.policies import base
 
 
-class Cloudlet(horizon.Panel):
-    name = _("Cloudlet")
-    slug = 'cloudlet'
+BASE_POLICY_NAME = 'os_compute_api:os-cloudlet'
+POLICY_ROOT = 'os_compute_api:os-cloudlet:%s'
 
 
-dashboard.Project.register(Cloudlet)
+cloudlet_policies = [
+    policy.RuleDefault(
+        name=POLICY_ROOT % 'discoverable',
+        check_str=base.RULE_ANY),
+    policy.RuleDefault(
+        name=BASE_POLICY_NAME,
+        check_str=base.RULE_ADMIN_OR_OWNER),
+]
+
+
+def list_rules():
+    return cloudlet_policies

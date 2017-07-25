@@ -1,6 +1,4 @@
-# vim: tabstop=4 shiftwidth=4 softtabstop=4
-
-# Copyright 2012 Nebula, Inc.
+# Copyright 2017 inwinSTACK inc.
 #
 #    Licensed under the Apache License, Version 2.0 (the "License"); you may
 #    not use this file except in compliance with the License. You may obtain
@@ -14,16 +12,6 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-from django.utils.translation import ugettext_lazy as _
+from nova.virt.cloudlet import driver
 
-import horizon
-
-from openstack_dashboard.dashboards.project import dashboard
-
-
-class Instances(horizon.Panel):
-    name = _("Instances")
-    slug = 'instances'
-
-
-dashboard.Project.register(Instances)
+CloudletDriver = driver.CloudletDriver
