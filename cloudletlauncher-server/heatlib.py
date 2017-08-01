@@ -2,10 +2,10 @@
 
 import time
 
-def start_heat_connection(AUTH_URL = "http://172.16.0.2:5000/v3",
-                          #AUTH_URL = "http://10.3.0.243:35357/v3",
+def start_heat_connection(#AUTH_URL = "http://172.16.0.2:5000/v3",
+                          AUTH_URL = "http://localhost:35357/v3",
                           USERNAME = "admin",
-                          PASSWORD = "rabbitseatcarrots",
+                          PASSWORD = "changeme",
                           PROJECT_NAME = "admin",
                           USER_DOMAIN_ID = "default",
                           USER_DOMAIN_NAME = "default",
@@ -16,15 +16,30 @@ def start_heat_connection(AUTH_URL = "http://172.16.0.2:5000/v3",
     from keystoneauth1 import session
 
     loader = loading.get_plugin_loader('password')
-    auth = loader.load_from_options(auth_url = AUTH_URL,
-                                    username = USERNAME,
-                                    password = PASSWORD,
-                                    project_name = PROJECT_NAME,
-                                    user_domain_name = USER_DOMAIN_NAME,
-                                    user_domain_id = USER_DOMAIN_ID,
-                                    project_domain_id = PROJECT_DOMAIN_ID,)
-    sess = session.Session(auth = auth)
-    heat = client.Client('1', session = sess)
+    auth = loader.load_from_options(auth_url=AUTH_URL,
+                                    username=USERNAME,
+                                    password=PASSWORD,
+                                    project_name=PROJECT_NAME,
+                                    user_domain_name=USER_DOMAIN_NAME,
+                                    user_domain_id=USER_DOMAIN_ID,
+                                    project_domain_id=PROJECT_DOMAIN_ID )
+    sess = session.Session(auth=auth)
+    heat = client.Client('1', session=sess)
+
+    # This implementation is required for newer versions of the python-openstackclient
+   #  from keystoneclient.auth.identity import v3
+   #  from keystoneclient import session
+   #
+   # # loader = keystone.get_plugin_class('password')
+   #  auth = v3.Password(auth_url = AUTH_URL,
+   #                     username = USERNAME,
+   #                     password = PASSWORD,
+   #                     project_name = PROJECT_NAME,
+   #                     user_domain_name = USER_DOMAIN_NAME,
+   #                     user_domain_id = USER_DOMAIN_ID,
+   #                     project_domain_id = PROJECT_DOMAIN_ID)
+   #  sess = session.Session(auth = auth)
+   #  heat = client.Client('1', AUTH_URL, session = sess)
     heat.stacks.list()
 
     return heat

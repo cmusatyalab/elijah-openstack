@@ -38,11 +38,9 @@ from nova.compute import task_states
 from nova.openstack.common import fileutils
 try:
     # icehouse
-    from nova.openstack.common import log as openstack_logging
     from nova.openstack.common.gettextutils import _
 except ImportError as e:
     # kilo
-    from oslo_log import log as openstack_logging
     from nova.i18n import _
 from nova.openstack.common import loopingcall
 
@@ -61,8 +59,9 @@ from elijah.provisioning.package import VMOverlayPackage
 from elijah.provisioning.configuration import Const as Cloudlet_Const
 from elijah.provisioning.configuration import Options
 
+import logging
 
-LOG = openstack_logging.getLogger(__name__)
+LOG = logging.getLogger(__name__)
 synthesis.LOG = LOG  # overwrite cloudlet's own log
 
 
@@ -842,31 +841,9 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
                "%s" % handoff_recv_datafile]
         LOG.debug("subprocess: %s" % cmd)
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, close_fds=True)
-        stdout_buf = StringIO.StringIO()
 
-        def _wait_for_handoff_recv(print_log=True):
-            """Called at an interval until VM synthesis finishes."""
-            returncode = proc.poll()
-            if returncode is None:
-                # keep record stdout
-                LOG.debug("waiting for finishing handoff recv")
-                in_ready, _, _ = select.select([proc.stdout], [], [])
-                try:
-                    buf = os.read(proc.stdout.fileno(), 1024*100)
-                    if print_log:
-                        LOG.debug(buf)
-                    stdout_buf.write(buf)
-                except OSError as e:
-                    if e.errno == errno.EAGAIN or e.errno == errno.EWOULDBLOCK:
-                        return
-            else:
-                # handoff finishes. Read reamining stdout
-                in_ready, _, _ = select.select([proc.stdout], [], [], 0.1)
-                buf = proc.stdout.read()
-                stdout_buf.write(buf)
-                raise loopingcall.LoopingCallDone()
-        timer = loopingcall.FixedIntervalLoopingCall(_wait_for_handoff_recv)
-        timer.start(interval=0.5).wait()
+        stdout_buf, _ = proc.communicate()
+
         LOG.info("Handoff recv finishes")
         returncode = proc.poll()
         if returncode is not 0:
@@ -875,7 +852,7 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
 
         # parse output: this will be fixed at cloudlet deamon
         keyword, disksize, memorysize, disk_overlay_map, memory_overlay_map =\
-            stdout_buf.getvalue().split("\n")[-1].split("\t")
+            stdout_buf.split("\n")[-1].split("\t")
         if keyword.lower() != "openstack":
             raise handoff.HandoffError("Failed to parse returned data")
         return disksize, memorysize, disk_overlay_map, memory_overlay_map

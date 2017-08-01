@@ -21,12 +21,10 @@ import functools
 from nova.compute import task_states
 try:
     # icehouse
-    from nova.openstack.common import log as logging
     from nova.openstack.common.gettextutils import _
     from nova.openstack.common import excutils
 except ImportError as e:
     # kilo
-    from oslo_log import log as logging
     from nova.i18n import _
     from oslo_utils import excutils
 from nova.objects import block_device as block_device_obj
@@ -37,6 +35,8 @@ from nova import rpc
 from nova import exception
 from nova import utils
 import oslo_messaging as messaging
+
+import logging
 
 
 LOG = logging.getLogger(__name__)
@@ -164,7 +164,7 @@ class CloudletComputeManager(compute_manager.ComputeManager):
             try:
                 self._delete_instance(context, instance, bdms, quotas)
             except exception.InstanceNotFound:
-                LOG.info(_("Instance is terminate"), instance=instance)
+                LOG.info(_("Instance has been terminated."), instance=instance)
             except Exception:
                 # As we're trying to delete always go to Error if something
                 # goes wrong that _delete_instance can't handle.

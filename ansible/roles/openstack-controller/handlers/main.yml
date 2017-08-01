@@ -38,12 +38,15 @@
       - neutron-plugin-linuxbridge-agent
       - neutron-dhcp-agent
       - neutron-metadata-agent
+      - neutron-l3-agent
 
 - name: restart nova-network
   service: name={{item}} state=restarted
   with_items:
       - nova-network
+  when: not neutron
 
 - name: restart networking
   service: name=networking state=restarted
+
 

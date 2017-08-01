@@ -79,7 +79,7 @@ class ThreadingHTTPServer(SocketServer.ThreadingMixIn, HTTPServer):
 
 
 def run(server_class = ThreadingHTTPServer, handler_class = CloudletHandler, port = 9127):
-    server_address = ('8.225.186.10', port)
+    server_address = ('localhost', port)
     httpd = server_class(server_address, handler_class)
     print "Server has initialized"
     httpd.serve_forever()

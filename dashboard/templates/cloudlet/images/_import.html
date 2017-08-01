@@ -16,11 +16,11 @@
 <div class="right">
     <h3>{% trans "Description:" %}</h3>
     <p>
-        {% trans "Select a base VM to upload to the Image Service." %}
+        {% trans "Select a base image to upload to the Image Service (glance)." %}
     </p>
     <p>
         <strong>{% trans "Please note: " %}</strong>
-        {% trans "The Base VM image must be created using the export tool provided a cloudlet script." %}
+        {% trans "The Base VM image must be created using the export-base command of the cloudlet library. i.e. cloudlet export-base /path/to/base_disk.img image.zip" %}
     </p>
 </div>
 {% endblock %}

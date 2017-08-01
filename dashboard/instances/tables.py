@@ -92,9 +92,9 @@ class TerminateInstance(tables.BatchAction):
 class CreateOverlayAction(tables.BatchAction):
     name = "overlay"
     action_present = _("Create")
-    action_past = _("Scheduled VM overlay creation of")
-    data_type_singular = _("VM overlay")
-    data_type_plural = _("VM overlays")
+    action_past = _("Scheduled creation of")
+    data_type_singular = _("VM Overlay")
+    data_type_plural = _("VM Overlays")
     classes = ('btn-danger', 'btn-terminate')
 
     def allowed(self, request, instance=None):
@@ -112,10 +112,10 @@ class CreateOverlayAction(tables.BatchAction):
 
 class VMSynthesisLink(tables.LinkAction):
     name = "synthesis"
-    verbose_name = _("Start VM Synthesis")
+    verbose_name = _("Synthesize VM")
     url = "horizon:project:cloudlet:synthesis"
     classes = ("btn-launch", "ajax-modal")
-    icon = "plus"
+    icon = "flask"
 
     def allowed(self, request, datum):
         try:
@@ -173,7 +173,7 @@ class VMHandoffLink(tables.LinkAction):
     verbose_name = _("VM Handoff")
     url = "horizon:project:cloudlet:handoff"
     classes = ("btn-danger", "btn-terminate", "ajax-modal",)
-    icon = "pencil"
+    icon = "home"
 
     def get_link_url(self, datum):
         instance_id = self.table.get_object_id(datum)

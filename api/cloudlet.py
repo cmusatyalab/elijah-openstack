@@ -24,13 +24,16 @@ from nova.api.openstack import extensions
 from nova.api.openstack import wsgi
 try:
     # icehouse
-    from nova.openstack.common import log as logging
     from nova.openstack.common.gettextutils import _
 except ImportError as e:
     # kilo
-    from oslo_log import log as logging
     from nova.i18n import _
 
+import logging
+import logging.config
+
+
+logging.config.fileConfig('/var/log/nova/cloudlet_log.conf')
 
 LOG = logging.getLogger(__name__)
 authorize = extensions.extension_authorizer('compute', 'cloudlet')
@@ -145,10 +148,10 @@ class CloudletController(wsgi.Controller):
         if body['cloudlet-base'] and ('name' in body['cloudlet-base']):
             baseVM_name = body['cloudlet-base']['name']
         else:
-            msg = _("Need to set base VM name")
+            msg = _("Name required for base VM.")
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        LOG.debug(_("cloudlet Generate Base VM %r"), id)
+        LOG.info(_("Importing base VM %r..."), id)
         instance = self._get_instance(context, id, want_objects=True)
         disk_meta, memory_meta = self.cloudlet_api.cloudlet_create_base(
             context, instance, baseVM_name)
@@ -164,10 +167,10 @@ class CloudletController(wsgi.Controller):
         if 'overlay-name' in body['cloudlet-overlay-finish']:
             overlay_name = body['cloudlet-overlay-finish']['overlay-name']
         else:
-            msg = _("Need overlay Name")
+            msg = _("Overlay name required.")
             raise webob.exc.HTTPNotFound(explanation=msg)
 
-        LOG.debug(_("cloudlet Generate overlay VM finish %r"), id)
+        LOG.info(_("Generating overlay VM %r..."), id)
         instance = self._get_instance(context, id, want_objects=True)
         overlay_id = self.cloudlet_api.cloudlet_create_overlay_finish(
             context,
@@ -185,27 +188,27 @@ class CloudletController(wsgi.Controller):
         dest_token = payload.get("dest_token", None)
         dest_vmname = payload.get("dest_vmname", None)
         if handoff_url is None:
-            msg = _("Need Handoff URL")
+            msg = _("Handoff URL Required")
             raise webob.exc.HTTPBadRequest(explanation=msg)
         parsed_handoff_url = urlsplit(handoff_url)
         if parsed_handoff_url.scheme != "file" and\
                 parsed_handoff_url.scheme != "http" and\
                 parsed_handoff_url.scheme != "https":
-            msg = "Invalid handoff_url (%s). " % handoff_url
-            msg += "Only support file and http scheme."
+            msg = "Invalid handoff URL (%s). " % handoff_url
+            msg += "Only file and http(s) schemes are supported."
             raise webob.exc.HTTPBadRequest(explanation=msg)
         if len(parsed_handoff_url.netloc) == 0:
-            msg = "Invalid handoff_url (%s). " % handoff_url
-            msg += "Need destination (e.g. handoff destination address)"
+            msg = "Invalid handoff URL (%s). " % handoff_url
+            msg += "Destination unreachable."
             raise webob.exc.HTTPBadRequest(explanation=msg)
 
         if parsed_handoff_url.scheme == "http" or\
                 parsed_handoff_url.scheme == "https":
             if dest_token is None:
-                msg = "Need auth-token for the handoff destination"
+                msg = "An auth token required to handoff to the destination."
                 raise webob.exc.HTTPBadRequest(explanation=msg)
 
-        LOG.debug(_("cloudlet handoff %r (handoff_url:%s)"),
+        LOG.info(_("Handoff initiated for %r (destination URL:%s)..."),
                   id, handoff_url)
         instance = self._get_instance(context, id, want_objects=True)
         residue_id = self.cloudlet_api.cloudlet_handoff(context,

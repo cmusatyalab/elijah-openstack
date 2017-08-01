@@ -34,14 +34,14 @@ from nova import objects
 
 try:
     # icehouse
-    from nova.openstack.common import log as logging
     from nova.openstack.common import jsonutils
 except ImportError as e:
     # kilo
-    from oslo_log import log as logging
     from oslo_serialization import jsonutils
 
 from hashlib import sha256
+
+import logging
 
 LOG = logging.getLogger(__name__)
 CONF = cfg.CONF
@@ -431,7 +431,7 @@ class PortForwarding(threading.Thread):
         eventlet.spawn_n(self.forward, server, client)
 
     def closed_callback(self):
-        LOG.info("Port forwadring finishes")
+        LOG.info("Port forwarding finished.")
 
     def forward(self, source, dest, cb=lambda: None):
         while True:
