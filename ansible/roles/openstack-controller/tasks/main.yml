@@ -55,6 +55,14 @@
   command: "rabbitmqctl set_permissions openstack \".*\" \".*\" \".*\""
   tags: prereqs
 
+- name: (CONTROLLER) setup log configuration
+  copy:
+    src: cloudlet_log.conf
+    dest: "/var/log/nova/cloudlet_log.conf"
+    owner: root
+    group: root
+    mode: 0755
+
 - include: keystone.yml
   tags: keystone
 
