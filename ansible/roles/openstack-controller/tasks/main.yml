@@ -55,22 +55,6 @@
   command: "rabbitmqctl set_permissions openstack \".*\" \".*\" \".*\""
   tags: prereqs
 
-- name: (CONTROLLER) make log directory
-  file:
-    path: "/var/log/openstackpp"
-    state: directory
-    mode: 0755
-    owner: nova
-    group: nova
-
-- name: (CONTROLLER) setup log configuration
-  copy:
-    src: cloudlet_log.conf
-    dest: "/var/log/openstackpp/cloudlet_log.conf"
-    owner: nova
-    group: nova
-    mode: 0755
-
 - include: keystone.yml
   tags: keystone
 

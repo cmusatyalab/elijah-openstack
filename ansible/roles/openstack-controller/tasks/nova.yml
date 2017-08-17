@@ -55,6 +55,22 @@
     - nova-scheduler
     - python-novaclient
 
+- name: (NOVA) make log directory
+  file:
+    path: "/var/log/openstackpp"
+    state: directory
+    mode: 0755
+    owner: nova
+    group: nova
+
+- name: (NOVA) setup log configuration
+  copy:
+    src: cloudlet_log.conf
+    dest: "/var/log/openstackpp/cloudlet_log.conf"
+    owner: nova
+    group: nova
+    mode: 0755
+
 - name: (NOVA) install nova-network
   apt: 
     name: "{{ item }}"
