@@ -33,7 +33,7 @@ import logging
 import logging.config
 
 
-logging.config.fileConfig('/var/log/nova/cloudlet_log.conf')
+logging.config.fileConfig('/var/log/openstackpp/cloudlet_log.conf')
 
 LOG = logging.getLogger(__name__)
 authorize = extensions.extension_authorizer('compute', 'cloudlet')

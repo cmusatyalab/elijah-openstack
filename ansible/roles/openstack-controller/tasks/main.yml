@@ -55,10 +55,16 @@
   command: "rabbitmqctl set_permissions openstack \".*\" \".*\" \".*\""
   tags: prereqs
 
+- name: (CONTROLLER) make log directory
+  file:
+    path: "/var/log/openstackpp"
+    state: directory
+    mode: 0755
+
 - name: (CONTROLLER) setup log configuration
   copy:
     src: cloudlet_log.conf
-    dest: "/var/log/nova/cloudlet_log.conf"
+    dest: "/var/log/openstackpp/cloudlet_log.conf"
     owner: root
     group: root
     mode: 0755
