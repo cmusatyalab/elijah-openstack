@@ -98,6 +98,14 @@
   notify:
     - restart nova
 
+- name: (NOVA) add nova to kvm/libvirtd groups
+  user:
+    name: nova
+    append: yes
+    groups: kvm, libvirtd
+  notify:
+    - restart nova
+
 - name: (NOVA) force nova services restart
   meta: flush_handlers
 

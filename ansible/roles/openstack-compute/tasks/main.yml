@@ -27,6 +27,15 @@
   template: src=nova-compute.conf.j2 dest="/etc/nova/nova-compute.conf" owner=root group=root mode=0644
   notify: restart nova-compute
 
+- name: (COMPUTE) add nova to kvm/libvirtd groups
+  user:
+    name: nova
+    append: yes
+    groups: kvm, libvirtd
+  notify:
+    - restart nova-compute
+
+
 - name: (COMPUTE) remove SQLite
   file:
     state: absent

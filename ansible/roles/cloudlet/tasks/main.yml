@@ -22,3 +22,8 @@
     name: pbr
     state: absent
 
+- name: (CLOUDLET) add user to kvm/libvirtd groups
+  user:
+    name: "{{local_user}}"
+    append: yes
+    groups: kvm, libvirtd
