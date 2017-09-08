@@ -20,7 +20,7 @@ cloudlet open source project are licensed under the [Apache License, Version
 ## Tested Platform
 We have tested OpenStack++ on __Ubuntu 14.04 LTS 64-bit__ using the __OpenStack Kilo release__.
 
-## Installation (Using Ansible)
+## Installation (Using [Ansible](http://docs.ansible.com/))
 
 
 ### Step 1. Become root
@@ -35,7 +35,7 @@ $ apt-get update
 $ apt-get upgrade
 ```
 
-### Step 3. Install Ansible
+### Step 3. Install [Ansible](http://docs.ansible.com/)
 ```sh
 $ apt-get install software-properties-common  
 $ apt-add-repository -y ppa:ansible/ansible  
@@ -50,18 +50,18 @@ $ git clone https://github.com/cmusatyalab/elijah-openstack
 $ cd ~/elijah-openstack/ansible
   ```
 
-### Step 5. Configure the Ansible script.
+### Step 5. Configure the [Ansible](http://docs.ansible.com/) scripts
 #### Configure OpenStack variables
 Ensure the variables defined in `roles/openstack-controller/vars/main.yml` and `roles/openstack-compute/vars/main.yml` are satisfactory.
 
 > * Specifically you should ensure that the interfaces defined by `pub_iface` and `flat_iface` are valid. `pub_iface` is used by the physical machine to reach the internet. `flat_iface` is used by OpenStack in order to communicate with the virtual machines running on the host.
-> * If you only have a single network interface, make sure that `flat_iface` is something unique as a virtual interface with that name will be created when the `one_nic` variable is `True`.
+> * If you only have a single network interface, make sure that `flat_iface` is something unique as a virtual interface with that name will be created when the `one_nic` variable in openstack-kilo.yaml is `True`. **Please note that this virtual interface is not persistent and will be lost after reboot. To remedy this, you can run the entire Ansible playbook after rebooting which will recreate the dummy interface and restart the necessary nova services.**
 > * By default, the script is setup to install all OpenStack components on a single node that has a single NIC card.  If you have two network interface cards, set `one_nic` to `False` in `openstack-kilo.yaml`.  If you are setting up a multi-node cluster where the compute node will reside on a separate host(s) from the controller, you must configure additional hosts in the `hosts/inventory`, change `openstack-kilo.yaml` to reflect which hosts should be compute nodes, and ensure that the `single_node` variable is set to `False`. You will also need to change the controller IP and hostname in the `var/main.yml` to reflect those of the controller.
 
 #### Configure cloudlet variables
 Installation of the cloudlet library from https://github.com/cmusatyalab/elijah-provisioning requires a local user/password. Ensure that these are properly reflected in `roles/cloudlet/vars/main.yml`. You should also ensure that password login is enable in your ssh configuration in `/etc/ssh/sshd_config` (#PasswordAuthentication yes)
 
-### Step 6. Launch ansible playbook to install OpenStack.
+### Step 6. Launch ansible playbook to install OpenStack, the clouldet library, and the OpenStack++ extensions
 ```sh
 $ cd ~/elijah-openstack/ansible   
 $ ansible-playbook -i ./hosts openstack-kilo.yaml
@@ -72,17 +72,22 @@ $ ansible-playbook -i ./hosts openstack-kilo.yaml
 $ source ~/admin-openrc.sh  
 $ nova network-create <name> --fixed-range-v4 <cidr> --fixed-cidr <cidr> --bridge <bridge> --bridge-interface <flat_interface>
 ```
+**NOTE: The bridge name you specify here will be created by nova, so this can be any name. The bridge-interface however, must correspond to the name of the actual interface that was specified as the flat_iface in the Ansible variables.**
 
-For example, to create a private network for VMs on 10.11.12.1 to 10.11.12.255:
+For example, to create a private 10.11.12.x network for VMs, with a bridge named br100, on the dummy flat interface called veth1:
 ```sh
 $ nova network-create vmprivate --fixed-range-v4 10.11.12.0/24 --fixed-cidr 10.11.12.0/24 --bridge br100 --bridge-interface veth1
 ```
 
-### Step 8. Create a pool of floating IP addresses.
+### Step 8. Create a pool of floating IP addresses
 These can be assigned to VMs to allow public access to them.
 ```sh
 $ nova floating-ip-bulk-create <cidr>
 ```
+### Step 9. Edit/create security group rules
+In order to be able to access VM instances, you first need to edit the rules corresponding to the default security group or create a new security group and set of rules.  From the 'Project' drop down menu at the left, select the 'Access & Security' panel.  Under the 'Security Group' tab, you can then create a new security group or click the 'Manage Rules' button of the default security group. Once under the rules section, you can create rules for various types of traffic based on port/protocol and a CIDR range.
+
+**NOTE: If you create a new security group, you must be sure to assign the VM that security group after launching it.**
 
 
 ## How to use
@@ -148,3 +153,7 @@ All the above steps can be done using the command line program at
 ## Troubleshooting
 If you have any problems after installing OpenStack++ cloudlet extension, please follow
 below steps to narrow the problem.
+
+
+### Resumed VMs have incorrect IP address
+When you resume a base VM you did not create (for example, the Ubuntu Precise image found here [Sample Base VM](https://storage.cmusatyalab.org/cloudlet-vm/precise-hotplug-new.zip) ) the network configuration may have been entirely different when the image was created. This can cause difficulty connecting to the VM. Soft rebooting the instance from the 'Project->Instances' panel should result in the proper IP addressed being assigned from the pool that was created when the `nova create-network` command was issued.
