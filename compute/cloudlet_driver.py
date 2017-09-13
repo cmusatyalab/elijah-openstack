@@ -868,7 +868,8 @@ class CloudletDriver(libvirt_driver.LibvirtDriver):
             Cloudlet_Const.CLOUDLETFS_PATH, Cloudlet_Const.CHUNK_SIZE,
             base_diskpath, launch_disk_size, base_mempath, launch_memory_size,
             resumed_disk=launch_disk,  disk_overlay_map=disk_overlay_map,
-            resumed_memory=launch_memory, memory_overlay_map=memory_overlay_map
+            resumed_memory=launch_memory, memory_overlay_map=memory_overlay_map,
+            valid_bit=1
         )
         synthesized_vm = synthesis.SynthesizedVM(
             launch_disk, launch_memory, fuse,
