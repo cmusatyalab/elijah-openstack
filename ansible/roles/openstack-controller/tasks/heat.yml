@@ -99,12 +99,11 @@
   apt: 
     name: "{{ item }}"
     state: present
-    default_release: trusty-updates/kilo
+    default_release: xenial-updates/newton
   with_items:
     - heat-api
     - heat-engine
     - heat-api-cfn
-    - python-heatclient
 
 - name: (HEAT) replace heat.conf
   template: src=heat.conf.j2 dest="/etc/heat/heat.conf" owner=root group=root mode=0644

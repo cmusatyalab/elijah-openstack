@@ -1,81 +1,59 @@
 [DEFAULT]
-logdir=/var/log/nova
-state_path=/var/lib/nova
-lock_path=/var/lock/nova
-connection_type=libvirt
-verbose=False
 dhcpbridge_flagfile=/etc/nova/nova.conf
 dhcpbridge=/usr/bin/nova-dhcpbridge
-api_paste_config=/etc/nova/api-paste.ini
+state_path=/var/lib/nova
+force_dhcp_release=True
+verbose=True
+ec2_private_dns_show_ip=True
 enabled_apis=osapi_compute,metadata
-
-{% if neutron %}
-network_api_class = nova.network.neutronv2.api.API
-security_group_api = neutron
-linuxnet_interface_driver = nova.network.linux_net.LinuxOVSInterfaceDriver
-firewall_driver = nova.virt.firewall.NoopFirewallDriver
-{% endif %}
-
-{% if not neutron %}
-network_api_class = nova.network.api.API
-security_group_api = nova
-public_interface = {{pub_iface}}
-vlan_interface = {{flat_iface}}
-flat_interface = {{flat_iface}}
-network_manager=nova.network.manager.FlatDHCPManager
-osapi_compute_workers = 8
-{% endif %}
-
-rpc_backend = rabbit
-
-my_ip = {{controller_ip}}
-vncserver_listen = {{openstack_controller_node}}
-vncserver_proxyclient_address = {{openstack_controller_node}}
-
-novnc_enabled=true
-novncproxy_base_url=http://{{openstack_controller_node}}:6080/vnc_auto.html
-
+transport_url = rabbit://openstack:{{rabbit_pw}}@{{openstack_controller_node}}
 auth_strategy = keystone
-
-
-
-compute_driver = nova.virt.libvirt.cloudlet_driver.CloudletDriver
-compute_manager = nova.compute.cloudlet_manager.CloudletComputeManager
-[glance]
-api_servers={{openstack_controller_node}}:9292
+my_ip = {{controller_ip}}
+use_neutron = True
+firewall_driver = nova.virt.firewall.NoopFirewallDriver
 
 [database]
-connection = mysql://nova:{{db_pw}}@{{openstack_controller_node}}/nova
+connection = mysql+pymysql://nova:{{db_pw}}@{{openstack_controller_node}}/nova
+
+[api_database]
+connection = mysql+pymysql://nova:{{db_pw}}@{{openstack_controller_node}}/nova_api
+
+[oslo_concurrency]
+lock_path=/var/lock/nova/tmp
+
+[libvirt]
+use_virtio_for_bridges=True
+
+[wsgi]
+api_paste_config=/etc/nova/api-paste.ini
 
 [keystone_authtoken]
 auth_uri = http://{{openstack_controller_node}}:5000
-auth_host = {{openstack_controller_node}}
-auth_port = 35357
-auth_protocol = http
-admin_tenant_name = service
-admin_user = nova
-admin_password = {{keystone_admin_pw}}
+auth_url = http://{{openstack_controller_node}}:35357
+memcached_servers = {{openstack_controller_node}}:11211
+auth_type = password
+project_domain_name = Default
+user_domain_name = Default
+project_name = service
+username = nova
+password = {{ keystone_admin_pw }}
 
-[oslo_messaging_rabbit]
-rabbit_host = {{openstack_controller_node}}
-rabbit_userid = openstack
-rabbit_password = {{rabbit_pw}}
+[vnc]
+vncserver_listen = $my_ip
+vncserver_proxyclient_address = $my_ip
 
-[conductor]
-workers = 8
+[glance]
+api_servers = http://{{openstack_controller_node}}:9292
 
-{% if neutron %}
 [neutron]
 url = http://{{openstack_controller_node}}:9696
 auth_url = http://{{openstack_controller_node}}:35357
-auth_plugin = password
-project_domain_id = default
-user_domain_id = default
+auth_type = password
+project_domain_name = Default
+user_domain_name = Default
 region_name = RegionOne
 project_name = service
 username = neutron
 password = {{keystone_admin_pw}}
-
 service_metadata_proxy = True
 metadata_proxy_shared_secret = {{metadata_secret}}
-{% endif %}

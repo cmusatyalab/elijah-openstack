@@ -45,10 +45,9 @@
   apt: 
     name: "{{ item }}"
     state: present
-    default_release: trusty-updates/kilo
+    default_release: xenial-updates/newton
   with_items:
     - glance
-    - python-glanceclient
 
 - name: (GLANCE) replace glance-api.conf
   template: src=glance-api.conf.j2 dest="/etc/glance/glance-api.conf" owner=root group=root mode=0644

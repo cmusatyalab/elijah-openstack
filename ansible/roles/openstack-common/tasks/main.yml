@@ -1,21 +1,17 @@
 ---
-- name: (OS-COMMON) modify grub config to show text on boot
-  lineinfile:
-    dest: /etc/default/grub
-    state: present
-    regexp: "^GRUB_CMDLINE_LINUX_DEFAULT "
-    line: "GRUB_CMDLINE_LINUX_DEFAULT=\"text\""
-
 # Install core OpenStack components
-- name: (OS-COMMON) install Ubuntu-Cloud-Keyring
-  package: name=ubuntu-cloud-keyring state=present
+#- name: (OS-COMMON) install Ubuntu-Cloud-Keyring
+#  package: name=ubuntu-cloud-keyring state=present
+#
+#- name: (OS-COMMON) add Kilo repo
+#  lineinfile:
+#    line: "deb http://ubuntu-cloud.archive.canonical.com/ubuntu xenial-updates/newton main"
+#    dest: /etc/apt/sources.list.d/cloudarchive-newton.list
+#    create: yes
+#    state: present
 
-- name: (OS-COMMON) add Kilo repo
-  lineinfile: 
-    line: "deb http://ubuntu-cloud.archive.canonical.com/ubuntu trusty-updates/kilo main"
-    dest: /etc/apt/sources.list.d/cloudarchive-kilo.list
-    create: yes
-    state: present
+- name: (OS-COMMON) add newton repo
+  command: "add-apt-repository cloud-archive:newton"
 
 - name: (OS-COMMON) update cache and perform upgrade
   apt:
@@ -26,7 +22,7 @@
   apt: 
     name: "{{ item }}" 
     state: present
-    default_release: trusty-updates/kilo
+    default_release: xenial-updates/newton
   with_items:
     - python-openstackclient
   tags: base-packages

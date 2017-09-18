@@ -38,47 +38,50 @@
   register: endpoints
 
 - name: (NOVA) create nova api endpoint
-  command: 'openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint create --publicurl http://{{openstack_controller_node}}:8774/v2/%(tenant_id)s --internalurl http://{{openstack_controller_node}}:8774/v2/%(tenant_id)s --adminurl http://{{openstack_controller_node}}:8774/v2/%(tenant_id)s --region RegionOne compute'
+  command: 'openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint create --publicurl http://{{openstack_controller_node}}:8774/v2.1/%(tenant_id)s --internalurl http://{{openstack_controller_node}}:8774/v2.1/%(tenant_id)s --adminurl http://{{openstack_controller_node}}:8774/v2.1/%(tenant_id)s --region RegionOne compute'
   when: endpoints.stdout.find('compute') == -1  
 
 - name: (NOVA) install nova-api and associated packages
   apt: 
     name: "{{ item }}"
     state: present
-    default_release: trusty-updates/kilo
+    default_release: xenial-updates/newton
   with_items:
     - nova-api
-    - nova-cert
     - nova-conductor
     - nova-consoleauth
     - nova-novncproxy
     - nova-scheduler
-    - python-novaclient
 
-- name: (NOVA) install nova-network
-  apt: 
-    name: "{{ item }}"
-    state: present
-    default_release: trusty-updates/kilo
-  with_items:
-    - nova-network
-  #  - nova-api-metadata #This seems to get pulled in with the nova-api package
-  when: not neutron
+#- name: (NOVA) install nova-network
+#  apt:
+#    name: "{{ item }}"
+#    state: present
+#    default_release: xenial-updates/newton
+#  with_items:
+#    - nova-network
+#  #  - nova-api-metadata #This seems to get pulled in with the nova-api package
+#  when: not neutron
 
 - name: (NOVA) replace nova.conf
   template: src=nova.conf.j2 dest="/etc/nova/nova.conf" owner=root group=root mode=0644
 
-- name: (NOVA) replace api-paste.ini
-  copy: src=api-paste.ini dest="/etc/nova/api-paste.ini" owner=root group=root mode=0644
-
-- name: (NOVA) replace rootwrap.conf
-  copy: src=rootwrap.conf dest="/etc/nova/rootwrap.conf" owner=root group=root mode=0644
-
-- name: (NOVA) replace policy.json
-  copy: src=policy.json dest="/etc/nova/policy.json" owner=root group=root mode=0644
+#- name: (NOVA) replace api-paste.ini
+#  copy: src=api-paste.ini dest="/etc/nova/api-paste.ini" owner=root group=root mode=0644
+#
+#- name: (NOVA) replace rootwrap.conf
+#  copy: src=rootwrap.conf dest="/etc/nova/rootwrap.conf" owner=root group=root mode=0644
+#
+#- name: (NOVA) replace policy.json
+#  copy: src=policy.json dest="/etc/nova/policy.json" owner=root group=root mode=0644
 
 - name: (NOVA) populate nova service database
   shell: "/bin/sh -c 'nova-manage db sync' nova"
+  notify:
+    - restart nova
+
+- name: (NOVA) populate nova_api database
+  shell: "/bin/sh -c 'nova-manage api_db sync' nova"
   notify:
     - restart nova
 

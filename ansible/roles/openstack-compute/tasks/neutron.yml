@@ -2,7 +2,7 @@
   apt:
     name: "{{ item }}"
     state: present
-    default_release: trusty-updates/kilo
+    default_release: xenial-updates/newton
   with_items:
     - neutron-plugin-linuxbridge-agent
 

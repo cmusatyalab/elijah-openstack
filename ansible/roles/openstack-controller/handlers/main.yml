@@ -35,7 +35,7 @@
   service: name={{item}} state=restarted
   with_items:
       - neutron-server
-      - neutron-plugin-linuxbridge-agent
+      - neutron-linuxbridge-agent
       - neutron-dhcp-agent
       - neutron-metadata-agent
 

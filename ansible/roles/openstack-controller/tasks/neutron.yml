@@ -45,13 +45,11 @@
   apt: 
     name: "{{ item }}"
     state: present
-    default_release: trusty-updates/kilo
+    default_release: xenial-updates/newton
   with_items:
     - neutron-server
     - neutron-plugin-ml2
-    - python-neutronclient
-    - neutron-plugin-linuxbridge-agent
-    - neutron-l3-agent
+    - neutron-linuxbridge-agent
     - neutron-dhcp-agent
     - neutron-metadata-agent
 
@@ -64,9 +62,6 @@
 - name: (NEUTRON) replace linuxbridge_agent.ini
   template: src=linuxbridge_agent.ini.j2 dest="/etc/neutron/plugins/ml2/linuxbridge_agent.ini" owner=root group=root mode=0644
 
-- name: (NEUTRON) replace l3_agent.ini
-  template: src=l3_agent.ini.j2 dest="/etc/neutron/l3_agent.ini" owner=root group=root mode=0644
-
 - name: (NEUTRON) replace dhcp_agent.ini
   template: src=dhcp_agent.ini.j2 dest="/etc/neutron/dhcp_agent.ini" owner=root group=root mode=0644
 
@@ -77,6 +72,7 @@
   shell: "/bin/sh -c 'neutron-db-manage --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini upgrade head' neutron"
   notify:
     - restart nova
+    - restart neutron
 
 - name: (NEUTRON) force neutron/nova-api restart
   meta: flush_handlers

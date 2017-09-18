@@ -9,25 +9,25 @@
   shell: "cat ~/keystonedb.sql | mysql --user root --password={{mysql_pw}}"
   when: databases_list.stdout.find('keystone') == -1
 
-- name: (KEYSTONE) disable automatic startup of keystone
-  shell: "echo 'manual' > /etc/init/keystone.override"
+#- name: (KEYSTONE) disable automatic startup of keystone
+#  shell: "echo 'manual' > /etc/init/keystone.override"
 
 - name: (KEYSTONE) install keystone...
   apt: 
     name: "{{ item }}" 
     state: present
-    default_release: trusty-updates/kilo
+    default_release: xenial-updates/newton
   with_items:
     - keystone
 
 
-- name: (KEYSTONE)  install apache/memcached
-  package: name="{{ item }}" state=present
-  with_items:
-    - apache2
-    - libapache2-mod-wsgi
-    - memcached
-    - python-memcache
+#- name: (KEYSTONE)  install apache/memcached
+#  package: name="{{ item }}" state=present
+#  with_items:
+#    - apache2
+#    - libapache2-mod-wsgi
+#    - memcached
+#    - python-memcache
 
 - name: (KEYSTONE) replace keystone conf
   template: src=keystone.conf.j2 dest="/etc/keystone/keystone.conf" owner=root group=root mode=0644
@@ -42,45 +42,47 @@
     state: present
     regexp: "^ServerName "
     line: "ServerName {{openstack_controller_node}}"
-
-- name: (KEYSTONE) create wsgi-keystone.conf
-  copy: src=wsgi-keystone.conf dest="/etc/apache2/sites-available/wsgi-keystone.conf" owner=root group=root mode=0600
-
-- name: (KEYSTONE) enable identity service virtual hosts
-  file:
-      src: /etc/apache2/sites-available/wsgi-keystone.conf
-      dest: /etc/apache2/sites-enabled/keystone.conf
-      state: link
-      owner: root
-      group: root
-
-- name: (KEYSTONE) create wsgi dir
-  file:
-      path: /var/www/cgi-bin/keystone
-      state: directory
-      owner: keystone
-      group: keystone
-      mode: 0755
-
-- name: (KEYSTONE) copy keystone wsgi components
-  copy: 
-    src: wsgi-file
-    dest: "/var/www/cgi-bin/keystone/main"
-    owner: keystone
-    group: keystone
-    mode: 0755
   notify:
     - restart apache
 
-- name: (KEYSTONE) copy keystone wsgi components
-  copy: 
-    src: wsgi-file
-    dest: "/var/www/cgi-bin/keystone/admin"
-    owner: keystone
-    group: keystone
-    mode: 0755
-  notify:
-    - restart apache
+#- name: (KEYSTONE) create wsgi-keystone.conf
+#  copy: src=wsgi-keystone.conf dest="/etc/apache2/sites-available/wsgi-keystone.conf" owner=root group=root mode=0600
+#
+#- name: (KEYSTONE) enable identity service virtual hosts
+#  file:
+#      src: /etc/apache2/sites-available/wsgi-keystone.conf
+#      dest: /etc/apache2/sites-enabled/keystone.conf
+#      state: link
+#      owner: root
+#      group: root
+#
+#- name: (KEYSTONE) create wsgi dir
+#  file:
+#      path: /var/www/cgi-bin/keystone
+#      state: directory
+#      owner: keystone
+#      group: keystone
+#      mode: 0755
+#
+#- name: (KEYSTONE) copy keystone wsgi components
+#  copy:
+#    src: wsgi-file
+#    dest: "/var/www/cgi-bin/keystone/main"
+#    owner: keystone
+#    group: keystone
+#    mode: 0755
+#  notify:
+#    - restart apache
+#
+#- name: (KEYSTONE) copy keystone wsgi components
+#  copy:
+#    src: wsgi-file
+#    dest: "/var/www/cgi-bin/keystone/admin"
+#    owner: keystone
+#    group: keystone
+#    mode: 0755
+#  notify:
+#    - restart apache
 
 - name: (KEYSTONE) stop keystone service if running (it will restart with apache2)
   service:
@@ -98,14 +100,28 @@
 - name: (KEYSTONE) wait 5s for keystone to come back up
   command: sleep 5s
 
-#Create service entity and endpoint
-- name: (KEYSTONE) create identity service
-  command: "openstack service create --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 --name keystone --description \"OpenStack Identity\" identity"
-  when: databases_list.stdout.find('keystone') == -1
 
-- name: (KEYSTONE) create identity endpoint
-  command: "openstack endpoint create --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 --publicurl http://{{openstack_controller_node}}:5000/v2.0 --internalurl http://{{openstack_controller_node}}:5000/v2.0 --adminurl http://{{openstack_controller_node}}:35357/v2.0 --region RegionOne identity"
-  when: databases_list.stdout.find('keystone') == -1
+- name: (KEYSTONE) initialize fernet repo (1)
+  command: "keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone"
+
+- name: (KEYSTONE) initialize fernet repo (2)
+  command: "keystone-manage credential_setup --keystone-user keystone --keystone-group keystone"
+
+- name: (KEYSTONE) bootstrap the identity service
+  command: "keystone-manage bootstrap --bootstrap-password {{ keystone_admin_pw }} \
+  --bootstrap-admin-url http://{{openstack_controller_node}}:35357/v3/ \
+  --bootstrap-internal-url http://{{openstack_controller_node}}:35357/v3/ \
+  --bootstrap-public-url http://{{openstack_controller_node}}:5000/v3/ \
+  --bootstrap-region-id RegionOne"
+
+#Create service entity and endpoint
+#- name: (KEYSTONE) create identity service
+#  command: "openstack service create --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 --name keystone --description \"OpenStack Identity\" identity"
+#  when: databases_list.stdout.find('keystone') == -1
+#
+#- name: (KEYSTONE) create identity endpoint
+#  command: "openstack endpoint create --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 --publicurl http://{{openstack_controller_node}}:5000/v2.0 --internalurl http://{{openstack_controller_node}}:5000/v2.0 --adminurl http://{{openstack_controller_node}}:35357/v2.0 --region RegionOne identity"
+#  when: databases_list.stdout.find('keystone') == -1
 
 # Create admin user/role/project
 - name: (KEYSTONE) create admin project

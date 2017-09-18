@@ -3,20 +3,19 @@
   apt: 
     name: "{{ item }}" 
     state: present
-    default_release: trusty-updates/kilo
+    default_release: xenial-updates/newton
   with_items:
     - nova-compute
-    - sysfsutils
 
-- name: (COMPUTE) install neutron-plugin
-  apt: 
-    name: "{{ item }}" 
-    state: present
-    default_release: trusty-updates/kilo
-  with_items:
-    - neutron-plugin-linuxbridge-agent
-    - conntrack
-  when: neutron
+#- name: (COMPUTE) install neutron-plugin
+#  apt:
+#    name: "{{ item }}"
+#    state: present
+#    default_release: xenial-updates/newton
+#  with_items:
+#    - neutron-plugin-linuxbridge-agent
+#    - conntrack
+#  when: neutron
 
 - name: (COMPUTE) replace nova.conf
   template: src=nova.conf.j2 dest="/etc/nova/nova.conf" owner=root group=root mode=0644
