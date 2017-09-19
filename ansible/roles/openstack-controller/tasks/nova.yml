@@ -10,31 +10,31 @@
   when: databases_list.stdout.find('nova') == -1
 
 - name: (NOVA) check if nova user already exists
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user list"
+  shell: "source /root/admin-openrc.sh && openstack user list"
   register: openstack_users
 
 - name: (NOVA) create nova user
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user create --password {{ keystone_admin_pw }} nova"
+  shell: "source /root/admin-openrc.sh && openstack user create --domain default --password {{ keystone_admin_pw }} nova"
   when: openstack_users.stdout.find('nova') == -1
 
 - name: (NOVA) check if nova user is admin in service project
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role list --project service --user nova"
+  shell: "source /root/admin-openrc.sh && openstack role list --project service --user nova"
   register: perms
 
 - name: (NOVA) add nova user to service project
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role add --project service --user nova admin"
+  shell: "source /root/admin-openrc.sh && openstack role add --project service --user nova admin"
   when: perms.stdout.find('admin') == -1
 
 - name: (NOVA) check if nova service exists
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service list"
+  shell: "source /root/admin-openrc.sh && openstack service list"
   register: services
 
 - name: (NOVA) create nova service entity
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service create --name nova --description \"OpenStack Compute\" compute"
+  shell: "source /root/admin-openrc.sh && openstack service create --name nova --description \"OpenStack Compute\" compute"
   when: services.stdout.find('nova') == -1
 
 - name: (NOVA) check if nova endpoint exists
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint list"
+  shell: "source /root/admin-openrc.sh && openstack endpoint list"
   register: endpoints
 
 - name: (NOVA) create nova api endpoint

@@ -10,35 +10,35 @@
   when: databases_list.stdout.find('glance') == -1
 
 - name: (GLANCE) check if glance user already exists
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user list"
+  shell: "source /root/admin-openrc.sh && openstack user list"
   register: openstack_users
 
 - name: (GLANCE) create glance user
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user create --password {{ keystone_admin_pw }} glance"
+  shell: "source /root/admin-openrc.sh && openstack user create --domain default --password {{ keystone_admin_pw }} glance"
   when: openstack_users.stdout.find('glance') == -1
 
 - name: (GLANCE) check if glance user is admin in service project
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role list --project service --user glance"
+  shell: "source /root/admin-openrc.sh && openstack role list --project service --user glance"
   register: glance_perms
 
 - name: (GLANCE) add glance user to service project
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role add --project service --user glance admin"
+  shell: "source /root/admin-openrc.sh && openstack role add --project service --user glance admin"
   when: glance_perms.stdout.find('admin') == -1
 
 - name: (GLANCE) check if glance service exists
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service list"
+  shell: "source /root/admin-openrc.sh && openstack service list"
   register: glance_service
 
 - name: (GLANCE) create glance service entity
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service create --name glance --description \"OpenStack Image Service\" image"
+  shell: "source /root/admin-openrc.sh && openstack service create --name glance --description \"OpenStack Image Service\" image"
   when: glance_service.stdout.find('glance') == -1
 
 - name: (GLANCE) check if glance endpoint exists
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint list"
+  shell: "source /root/admin-openrc.sh && openstack endpoint list"
   register: glance_endpoint
 
 - name: (GLANCE) create api endpoint
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint create --publicurl http://{{openstack_controller_node}}:9292 --internalurl http://{{openstack_controller_node}}:9292 --adminurl http://{{openstack_controller_node}}:9292 --region RegionOne image"
+  shell: "source /root/admin-openrc.sh && openstack endpoint create --publicurl http://{{openstack_controller_node}}:9292 --internalurl http://{{openstack_controller_node}}:9292 --adminurl http://{{openstack_controller_node}}:9292 --region RegionOne image"
   when: glance_endpoint.stdout.find('image') == -1
 
 - name: (GLANCE) install glance and associated packages

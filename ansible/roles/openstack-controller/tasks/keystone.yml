@@ -84,11 +84,6 @@
 #  notify:
 #    - restart apache
 
-- name: (KEYSTONE) stop keystone service if running (it will restart with apache2)
-  service:
-    name: keystone
-    state: stopped
-
 - name: (KEYSTONE) remove SQLite
   file:
     state: absent
@@ -125,27 +120,27 @@
 
 # Create admin user/role/project
 - name: (KEYSTONE) create admin project
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 project create --description \"Admin Project\" admin"
+  shell: "source /root/admin-openrc.sh && openstack project create --domain default --description \"Admin Project\" admin"
   when: databases_list.stdout.find('keystone') == -1
 
 - name: (KEYSTONE) create service project
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 project create --description \"Service Project\" service"
+  shell: "source /root/admin-openrc.sh && openstack project create --domain default --description \"Service Project\" service"
   when: databases_list.stdout.find('keystone') == -1
 
 - name: (KEYSTONE) create admin user
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user create --password {{ keystone_admin_pw }} admin"
+  shell: "source /root/admin-openrc.sh && openstack user create --domain default --password {{ keystone_admin_pw }} admin"
   when: databases_list.stdout.find('keystone') == -1
 
 - name: (KEYSTONE) create admin role
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role create admin"
+  shell: "source /root/admin-openrc.sh && openstack role create admin"
   when: databases_list.stdout.find('keystone') == -1
 
 - name: (KEYSTONE) create user role
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role create user"
+  shell: "source /root/admin-openrc.sh && openstack role create user"
   when: databases_list.stdout.find('keystone') == -1
 
 - name: (KEYSTONE) add admin role to admin user
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role add --project admin --user admin admin"
+  shell: "source /root/admin-openrc.sh && openstack role add --project admin --user admin admin"
   when: databases_list.stdout.find('keystone') == -1
 
 - name: (KEYSTONE) create OpenStack client script

@@ -10,35 +10,35 @@
   when: databases_list.stdout.find('neutron') == -1
 
 - name: (NEUTRON) check if neutron user already exists
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user list"
+  shell: "source /root/admin-openrc.sh && openstack user list"
   register: openstack_users
 
 - name: (NEUTRON) create neutron user
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 user create --password {{ keystone_admin_pw }} neutron"
+  shell: "source /root/admin-openrc.sh && openstack user create --domain default --password {{ keystone_admin_pw }} neutron"
   when: openstack_users.stdout.find('neutron') == -1
 
 - name: (NEUTRON) check if neutron user is admin in service project
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role list --project service --user neutron"
+  shell: "source /root/admin-openrc.sh && openstack role list --project service --user neutron"
   register: neutron_perms
 
 - name: (NEUTRON) add neutron user to service project
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 role add --project service --user neutron admin"
+  shell: "source /root/admin-openrc.sh && openstack role add --project service --user neutron admin"
   when: neutron_perms.stdout.find('admin') == -1
 
 - name: (NEUTRON) check if neutron service exists
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service list"
+  shell: "source /root/admin-openrc.sh && openstack service list"
   register: neutron_service
 
 - name: (NEUTRON) create neutron service entity
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 service create --name neutron --description \"OpenStack Networking Service\" network"
+  shell: "source /root/admin-openrc.sh && openstack service create --name neutron --description \"OpenStack Networking Service\" network"
   when: neutron_service.stdout.find('neutron') == -1
 
 - name: (NEUTRON) check if neutron endpoint exists
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint list"
+  shell: "source /root/admin-openrc.sh && openstack endpoint list"
   register: neutron_endpoint
 
 - name: (NEUTRON) create api endpoint
-  command: "openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint create --publicurl http://{{openstack_controller_node}}:9696 --internalurl http://{{openstack_controller_node}}:9696 --adminurl http://{{openstack_controller_node}}:9696 --region RegionOne network"
+  shell: "source /root/admin-openrc.sh && openstack endpoint create --publicurl http://{{openstack_controller_node}}:9696 --internalurl http://{{openstack_controller_node}}:9696 --adminurl http://{{openstack_controller_node}}:9696 --region RegionOne network"
   when: neutron_endpoint.stdout.find('network') == -1
 
 - name: (NEUTRON) install neutron and associated packages
