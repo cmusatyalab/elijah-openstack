@@ -11,50 +11,74 @@
 
 - name: (HEAT) check if heat user already exists
   shell: "source /root/admin-openrc.sh && openstack user list"
+  args:
+    executable: "/bin/bash"
   register: openstack_users
 
 - name: (HEAT) create heat user
   shell: "source /root/admin-openrc.sh && openstack user create --domain default --password {{ keystone_admin_pw }} heat"
+  args:
+    executable: "/bin/bash"
   when: openstack_users.stdout.find('heat') == -1
 
 - name: (HEAT) check if heat user is admin in service project
   shell: "source /root/admin-openrc.sh && openstack role list --project service --user heat"
+  args:
+    executable: "/bin/bash"
   register: heat_perms
 
 - name: (HEAT) add heat user to service project
   shell: "source /root/admin-openrc.sh && openstack role add --project service --user heat admin"
+  args:
+    executable: "/bin/bash"
   when: heat_perms.stdout.find('admin') == -1
 
 - name: (HEAT) check if heat service exists
   shell: "source /root/admin-openrc.sh && openstack service list"
+  args:
+    executable: "/bin/bash"
   register: heat_service
 
 - name: (HEAT) create heat service entity
   shell: "source /root/admin-openrc.sh && openstack service create --name heat --description \"OpenStack Orchestration\" orchestration"
+  args:
+    executable: "/bin/bash"
   when: heat_service.stdout.find('heat') == -1
 
 - name: (HEAT) check if cloudformation service exists
   shell: "source /root/admin-openrc.sh && openstack service list"
+  args:
+    executable: "/bin/bash"
   register: cfn_service
 
 - name: (HEAT) create cloudformation service entity
   shell: "source /root/admin-openrc.sh && openstack service create --name heat-cfn --description \"OpenStack Orchestration\" cloudformation"
+  args:
+    executable: "/bin/bash"
   when: cfn_service.stdout.find('heat-cfn') == -1
 
 - name: (HEAT) check if orchestration endpoint exists
   shell: "source /root/admin-openrc.sh && openstack endpoint list"
+  args:
+    executable: "/bin/bash"
   register: heat_endpoint
 
 - name: (HEAT) create orchestration endpoint
   shell: "source /root/admin-openrc.sh && openstack endpoint create --publicurl http://{{openstack_controller_node}}:8004/v1/%(tenant_id)s --internalurl http://{{openstack_controller_node}}:8004/v1/%(tenant_id)s --adminurl http://{{openstack_controller_node}}:8004/v1/%(tenant_id)s --region RegionOne heat"
+  args:
+    executable: "/bin/bash"
   when: heat_endpoint.stdout.find('heat') == -1
 
 - name: (HEAT) check if cloudformation endpoint exists
   shell: "source /root/admin-openrc.sh && openstack endpoint list"
+  args:
+    executable: "/bin/bash"
   register: cfn_endpoint
 
 - name: (HEAT) create cloudformation endpoint
   shell: "source /root/admin-openrc.sh && openstack endpoint create --publicurl http://{{openstack_controller_node}}:8000/v1 --internalurl http://{{openstack_controller_node}}:8000/v1 --adminurl http://{{openstack_controller_node}}:8000/v1 --region RegionOne cloudformation"
+  args:
+    executable: "/bin/bash"
   when: cfn_endpoint.stdout.find('cloudformation') == -1
 
 #- name: (HEAT) create heat domain
@@ -62,34 +86,50 @@
 
 - name: (HEAT) check if heat user already exists
   shell: "source /root/admin-openrc.sh && openstack user list"
+  args:
+    executable: "/bin/bash"
   register: openstack_users
 
 - name: (HEAT) create heat_domain_admin user
   shell: "source /root/admin-openrc.sh && openstack user create --domain default --password {{ keystone_admin_pw }} heat_domain_admin"
+  args:
+    executable: "/bin/bash"
   when: openstack_users.stdout.find('heat_domain_admin') == -1
 
 - name: (HEAT) give heat_domain_admin admin privs
   shell: "source /root/admin-openrc.sh && openstack role add --project admin --user heat_domain_admin admin"
+  args:
+    executable: "/bin/bash"
   ignore_errors: yes #openstack will complain if the user already has privs
 
 - name: (HEAT) check if stack owner role exists
   shell: "source /root/admin-openrc.sh && openstack role list"
+  args:
+    executable: "/bin/bash"
   register: openstack_roles
 
 - name: (HEAT) create stack owner role
   shell: "source /root/admin-openrc.sh && openstack role create heat_stack_owner"
+  args:
+    executable: "/bin/bash"
   when: openstack_roles.stdout.find('heat_stack_owner') == -1
 
 - name: (HEAT) give hadmin heat_stack_owner privs
   shell: "source /root/admin-openrc.sh && openstack role add --project admin --user admin heat_stack_owner"
+  args:
+    executable: "/bin/bash"
   ignore_errors: yes #openstack will complain if the user already has privs
 
 - name: (HEAT) check if stack user role exists
   shell: "source /root/admin-openrc.sh && openstack role list"
+  args:
+    executable: "/bin/bash"
   register: openstack_roles
 
 - name: (HEAT) create stack user role
   shell: "source /root/admin-openrc.sh && openstack role create heat_stack_user"
+  args:
+    executable: "/bin/bash"
   when: openstack_roles.stdout.find('heat_stack_user') == -1
 
 - name: (HEAT) create heat-domain script

@@ -11,34 +11,50 @@
 
 - name: (GLANCE) check if glance user already exists
   shell: "source /root/admin-openrc.sh && openstack user list"
+  args:
+    executable: "/bin/bash"
   register: openstack_users
 
 - name: (GLANCE) create glance user
   shell: "source /root/admin-openrc.sh && openstack user create --domain default --password {{ keystone_admin_pw }} glance"
+  args:
+    executable: "/bin/bash"
   when: openstack_users.stdout.find('glance') == -1
 
 - name: (GLANCE) check if glance user is admin in service project
   shell: "source /root/admin-openrc.sh && openstack role list --project service --user glance"
+  args:
+    executable: "/bin/bash"
   register: glance_perms
 
 - name: (GLANCE) add glance user to service project
   shell: "source /root/admin-openrc.sh && openstack role add --project service --user glance admin"
+  args:
+    executable: "/bin/bash"
   when: glance_perms.stdout.find('admin') == -1
 
 - name: (GLANCE) check if glance service exists
   shell: "source /root/admin-openrc.sh && openstack service list"
+  args:
+    executable: "/bin/bash"
   register: glance_service
 
 - name: (GLANCE) create glance service entity
   shell: "source /root/admin-openrc.sh && openstack service create --name glance --description \"OpenStack Image Service\" image"
+  args:
+    executable: "/bin/bash"
   when: glance_service.stdout.find('glance') == -1
 
 - name: (GLANCE) check if glance endpoint exists
   shell: "source /root/admin-openrc.sh && openstack endpoint list"
+  args:
+    executable: "/bin/bash"
   register: glance_endpoint
 
 - name: (GLANCE) create api endpoint
   shell: "source /root/admin-openrc.sh && openstack endpoint create --publicurl http://{{openstack_controller_node}}:9292 --internalurl http://{{openstack_controller_node}}:9292 --adminurl http://{{openstack_controller_node}}:9292 --region RegionOne image"
+  args:
+    executable: "/bin/bash"
   when: glance_endpoint.stdout.find('image') == -1
 
 - name: (GLANCE) install glance and associated packages

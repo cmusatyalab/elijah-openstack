@@ -11,34 +11,50 @@
 
 - name: (NOVA) check if nova user already exists
   shell: "source /root/admin-openrc.sh && openstack user list"
+  args:
+    executable: "/bin/bash"
   register: openstack_users
 
 - name: (NOVA) create nova user
   shell: "source /root/admin-openrc.sh && openstack user create --domain default --password {{ keystone_admin_pw }} nova"
+  args:
+    executable: "/bin/bash"
   when: openstack_users.stdout.find('nova') == -1
 
 - name: (NOVA) check if nova user is admin in service project
   shell: "source /root/admin-openrc.sh && openstack role list --project service --user nova"
+  args:
+    executable: "/bin/bash"
   register: perms
 
 - name: (NOVA) add nova user to service project
   shell: "source /root/admin-openrc.sh && openstack role add --project service --user nova admin"
+  args:
+    executable: "/bin/bash"
   when: perms.stdout.find('admin') == -1
 
 - name: (NOVA) check if nova service exists
   shell: "source /root/admin-openrc.sh && openstack service list"
+  args:
+    executable: "/bin/bash"
   register: services
 
 - name: (NOVA) create nova service entity
   shell: "source /root/admin-openrc.sh && openstack service create --name nova --description \"OpenStack Compute\" compute"
+  args:
+    executable: "/bin/bash"
   when: services.stdout.find('nova') == -1
 
 - name: (NOVA) check if nova endpoint exists
   shell: "source /root/admin-openrc.sh && openstack endpoint list"
+  args:
+    executable: "/bin/bash"
   register: endpoints
 
 - name: (NOVA) create nova api endpoint
-  command: 'openstack --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 endpoint create --publicurl http://{{openstack_controller_node}}:8774/v2.1/%(tenant_id)s --internalurl http://{{openstack_controller_node}}:8774/v2.1/%(tenant_id)s --adminurl http://{{openstack_controller_node}}:8774/v2.1/%(tenant_id)s --region RegionOne compute'
+  shell: "source /root/admin-openrc.sh && endpoint create --publicurl http://{{openstack_controller_node}}:8774/v2.1/%(tenant_id)s --internalurl http://{{openstack_controller_node}}:8774/v2.1/%(tenant_id)s --adminurl http://{{openstack_controller_node}}:8774/v2.1/%(tenant_id)s --region RegionOne compute"
+  args:
+    executable: "/bin/bash"
   when: endpoints.stdout.find('compute') == -1  
 
 - name: (NOVA) install nova-api and associated packages

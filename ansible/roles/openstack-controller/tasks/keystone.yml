@@ -118,35 +118,42 @@
 #  command: "openstack endpoint create --os-token {{ admin_token }} --os-url http://{{openstack_controller_node}}:35357/v2.0 --publicurl http://{{openstack_controller_node}}:5000/v2.0 --internalurl http://{{openstack_controller_node}}:5000/v2.0 --adminurl http://{{openstack_controller_node}}:35357/v2.0 --region RegionOne identity"
 #  when: databases_list.stdout.find('keystone') == -1
 
-# Create admin user/role/project
-- name: (KEYSTONE) create admin project
-  shell: "source /root/admin-openrc.sh && openstack project create --domain default --description \"Admin Project\" admin"
-  when: databases_list.stdout.find('keystone') == -1
-
-- name: (KEYSTONE) create service project
-  shell: "source /root/admin-openrc.sh && openstack project create --domain default --description \"Service Project\" service"
-  when: databases_list.stdout.find('keystone') == -1
-
-- name: (KEYSTONE) create admin user
-  shell: "source /root/admin-openrc.sh && openstack user create --domain default --password {{ keystone_admin_pw }} admin"
-  when: databases_list.stdout.find('keystone') == -1
-
-- name: (KEYSTONE) create admin role
-  shell: "source /root/admin-openrc.sh && openstack role create admin"
-  when: databases_list.stdout.find('keystone') == -1
-
-- name: (KEYSTONE) create user role
-  shell: "source /root/admin-openrc.sh && openstack role create user"
-  when: databases_list.stdout.find('keystone') == -1
-
-- name: (KEYSTONE) add admin role to admin user
-  shell: "source /root/admin-openrc.sh && openstack role add --project admin --user admin admin"
-  when: databases_list.stdout.find('keystone') == -1
-
 - name: (KEYSTONE) create OpenStack client script
-  template: 
+  template:
     src: admin-openrc.sh.j2
     dest: "~/admin-openrc.sh"
     owner: root
     group: root
     mode: 0700
+
+- name: (KEYSTONE) create service project
+  shell: "source /root/admin-openrc.sh && openstack project create --domain default --description \"Service Project\" service"
+  args:
+    executable: "/bin/bash"
+  when: databases_list.stdout.find('keystone') == -1
+
+- name: (KEYSTONE) create admin user
+  shell: "source /root/admin-openrc.sh && openstack user create --domain default --password {{ keystone_admin_pw }} admin"
+  args:
+    executable: "/bin/bash"
+  when: databases_list.stdout.find('keystone') == -1
+
+- name: (KEYSTONE) create admin role
+  shell: "source /root/admin-openrc.sh && openstack role create admin"
+  args:
+    executable: "/bin/bash"
+  when: databases_list.stdout.find('keystone') == -1
+
+- name: (KEYSTONE) create user role
+  shell: "source /root/admin-openrc.sh && openstack role create user"
+  args:
+    executable: "/bin/bash"
+  when: databases_list.stdout.find('keystone') == -1
+
+- name: (KEYSTONE) add admin role to admin user
+  shell: "source /root/admin-openrc.sh && openstack role add --project admin --user admin admin"
+  args:
+    executable: "/bin/bash"
+  when: databases_list.stdout.find('keystone') == -1
+
+

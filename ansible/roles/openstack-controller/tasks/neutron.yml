@@ -11,34 +11,50 @@
 
 - name: (NEUTRON) check if neutron user already exists
   shell: "source /root/admin-openrc.sh && openstack user list"
+  args:
+    executable: "/bin/bash"
   register: openstack_users
 
 - name: (NEUTRON) create neutron user
   shell: "source /root/admin-openrc.sh && openstack user create --domain default --password {{ keystone_admin_pw }} neutron"
+  args:
+    executable: "/bin/bash"
   when: openstack_users.stdout.find('neutron') == -1
 
 - name: (NEUTRON) check if neutron user is admin in service project
   shell: "source /root/admin-openrc.sh && openstack role list --project service --user neutron"
+  args:
+    executable: "/bin/bash"
   register: neutron_perms
 
 - name: (NEUTRON) add neutron user to service project
   shell: "source /root/admin-openrc.sh && openstack role add --project service --user neutron admin"
+  args:
+    executable: "/bin/bash"
   when: neutron_perms.stdout.find('admin') == -1
 
 - name: (NEUTRON) check if neutron service exists
   shell: "source /root/admin-openrc.sh && openstack service list"
+  args:
+    executable: "/bin/bash"
   register: neutron_service
 
 - name: (NEUTRON) create neutron service entity
   shell: "source /root/admin-openrc.sh && openstack service create --name neutron --description \"OpenStack Networking Service\" network"
+  args:
+    executable: "/bin/bash"
   when: neutron_service.stdout.find('neutron') == -1
 
 - name: (NEUTRON) check if neutron endpoint exists
   shell: "source /root/admin-openrc.sh && openstack endpoint list"
+  args:
+    executable: "/bin/bash"
   register: neutron_endpoint
 
 - name: (NEUTRON) create api endpoint
   shell: "source /root/admin-openrc.sh && openstack endpoint create --publicurl http://{{openstack_controller_node}}:9696 --internalurl http://{{openstack_controller_node}}:9696 --adminurl http://{{openstack_controller_node}}:9696 --region RegionOne network"
+  args:
+    executable: "/bin/bash"
   when: neutron_endpoint.stdout.find('network') == -1
 
 - name: (NEUTRON) install neutron and associated packages
