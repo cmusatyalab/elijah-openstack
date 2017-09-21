@@ -29,7 +29,7 @@
   tags: prereqs
 
 - name: (CONTROLLER) create mysql conf
-  template: src=mysqld_openstack.cnf.j2 dest="/etc/mysql/my.cnf" owner=root group=root mode=0644
+  template: src=mysqld_openstack.cnf.j2 dest="/etc/mysql/mariadb.conf.d/99-openstack.cnf" owner=root group=root mode=0644
   notify: restart mysql
   tags: prereqs
 
@@ -41,11 +41,6 @@
   package: name=rabbitmq-server state=present
   tags: prereqs
 
-- name: (CONTROLLER) check if openstack user already exists
-  command: rabbitmqctl list_users
-  register: rabbit_users
-  tags: prereqs
-
 - name: (CONTROLLER) create openstack rabbitmq user
   command: rabbitmqctl add_user openstack {{ rabbit_pw }}
   when: rabbit_users.stdout.find('openstack') == -1
@@ -53,6 +48,23 @@
 
 - name: (CONTROLLER) set user perms
   command: "rabbitmqctl set_permissions openstack \".*\" \".*\" \".*\""
+  tags: prereqs
+
+- name: (CONTROLLER) install memcached
+  package: name="{{ item }}" state=present
+  with_items:
+    - memcached
+    - python-memcache
+  tags: prereqs
+
+- name: (CONTROLLER) change memcached conf
+  lineinfile:
+    dest: /etc/memcached.conf
+    state: present
+    regexp: "^-l 127.0.0.1"
+    line: "-l {{openstack_controller_node}}"
+  notify:
+    - restart memcached
   tags: prereqs
 
 - include: keystone.yml

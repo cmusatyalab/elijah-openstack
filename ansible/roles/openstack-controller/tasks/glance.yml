@@ -51,12 +51,23 @@
     executable: "/bin/bash"
   register: glance_endpoint
 
-- name: (GLANCE) create api endpoint
-  shell: "source /root/admin-openrc.sh && openstack endpoint create --publicurl http://{{openstack_controller_node}}:9292 --internalurl http://{{openstack_controller_node}}:9292 --adminurl http://{{openstack_controller_node}}:9292 --region RegionOne image"
+- name: (GLANCE) create public api endpoint
+  shell: "source /root/admin-openrc.sh && openstack endpoint create --region RegionOne image public http://{{openstack_controller_node}}:9292"
   args:
     executable: "/bin/bash"
   when: glance_endpoint.stdout.find('image') == -1
 
+- name: (GLANCE) create internal api endpoint
+  shell: "source /root/admin-openrc.sh && openstack endpoint create --region RegionOne image internal http://{{openstack_controller_node}}:9292"
+  args:
+    executable: "/bin/bash"
+  when: glance_endpoint.stdout.find('image') == -1
+
+- name: (GLANCE) create admin api endpoint
+  shell: "source /root/admin-openrc.sh && openstack endpoint create --region RegionOne image admin http://{{openstack_controller_node}}:9292"
+  args:
+    executable: "/bin/bash"
+  when: glance_endpoint.stdout.find('image') == -1
 - name: (GLANCE) install glance and associated packages
   apt: 
     name: "{{ item }}"

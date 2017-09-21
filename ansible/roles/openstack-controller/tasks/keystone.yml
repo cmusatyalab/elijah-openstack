@@ -132,18 +132,6 @@
     executable: "/bin/bash"
   when: databases_list.stdout.find('keystone') == -1
 
-- name: (KEYSTONE) create admin user
-  shell: "source /root/admin-openrc.sh && openstack user create --domain default --password {{ keystone_admin_pw }} admin"
-  args:
-    executable: "/bin/bash"
-  when: databases_list.stdout.find('keystone') == -1
-
-- name: (KEYSTONE) create admin role
-  shell: "source /root/admin-openrc.sh && openstack role create admin"
-  args:
-    executable: "/bin/bash"
-  when: databases_list.stdout.find('keystone') == -1
-
 - name: (KEYSTONE) create user role
   shell: "source /root/admin-openrc.sh && openstack role create user"
   args:

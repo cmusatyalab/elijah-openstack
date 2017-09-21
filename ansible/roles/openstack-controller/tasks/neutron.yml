@@ -51,8 +51,20 @@
     executable: "/bin/bash"
   register: neutron_endpoint
 
-- name: (NEUTRON) create api endpoint
-  shell: "source /root/admin-openrc.sh && openstack endpoint create --publicurl http://{{openstack_controller_node}}:9696 --internalurl http://{{openstack_controller_node}}:9696 --adminurl http://{{openstack_controller_node}}:9696 --region RegionOne network"
+- name: (NEUTRON) create public api endpoint
+  shell: "source /root/admin-openrc.sh && openstack endpoint create  --region RegionOne network public http://{{openstack_controller_node}}:9696"
+  args:
+    executable: "/bin/bash"
+  when: neutron_endpoint.stdout.find('network') == -1
+
+- name: (NEUTRON) create internal api endpoint
+  shell: "source /root/admin-openrc.sh && openstack endpoint create  --region RegionOne network internal http://{{openstack_controller_node}}:9696"
+  args:
+    executable: "/bin/bash"
+  when: neutron_endpoint.stdout.find('network') == -1
+
+- name: (NEUTRON) create admin api endpoint
+  shell: "source /root/admin-openrc.sh && openstack endpoint create  --region RegionOne network admin http://{{openstack_controller_node}}:9696"
   args:
     executable: "/bin/bash"
   when: neutron_endpoint.stdout.find('network') == -1

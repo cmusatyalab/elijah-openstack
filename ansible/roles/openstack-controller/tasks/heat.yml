@@ -63,8 +63,20 @@
     executable: "/bin/bash"
   register: heat_endpoint
 
-- name: (HEAT) create orchestration endpoint
-  shell: "source /root/admin-openrc.sh && openstack endpoint create --publicurl http://{{openstack_controller_node}}:8004/v1/%(tenant_id)s --internalurl http://{{openstack_controller_node}}:8004/v1/%(tenant_id)s --adminurl http://{{openstack_controller_node}}:8004/v1/%(tenant_id)s --region RegionOne heat"
+- name: (HEAT) create public orchestration endpoint
+  shell: "source /root/admin-openrc.sh && openstack endpoint create --region RegionOne heat public 'http://{{openstack_controller_node}}:8004/v1/%(tenant_id)s'"
+  args:
+    executable: "/bin/bash"
+  when: heat_endpoint.stdout.find('heat') == -1
+
+- name: (HEAT) create internal orchestration endpoint
+  shell: "source /root/admin-openrc.sh && openstack endpoint create --region RegionOne heat internal 'http://{{openstack_controller_node}}:8004/v1/%(tenant_id)s'"
+  args:
+    executable: "/bin/bash"
+  when: heat_endpoint.stdout.find('heat') == -1
+
+- name: (HEAT) create admin orchestration endpoint
+  shell: "source /root/admin-openrc.sh && openstack endpoint create --region RegionOne heat admin 'http://{{openstack_controller_node}}:8004/v1/%(tenant_id)s'"
   args:
     executable: "/bin/bash"
   when: heat_endpoint.stdout.find('heat') == -1
@@ -75,12 +87,23 @@
     executable: "/bin/bash"
   register: cfn_endpoint
 
-- name: (HEAT) create cloudformation endpoint
-  shell: "source /root/admin-openrc.sh && openstack endpoint create --publicurl http://{{openstack_controller_node}}:8000/v1 --internalurl http://{{openstack_controller_node}}:8000/v1 --adminurl http://{{openstack_controller_node}}:8000/v1 --region RegionOne cloudformation"
+- name: (HEAT) create public cloudformation endpoint
+  shell: "source /root/admin-openrc.sh && openstack endpoint create --region RegionOne cloudformation public http://{{openstack_controller_node}}:8000/v1"
   args:
     executable: "/bin/bash"
   when: cfn_endpoint.stdout.find('cloudformation') == -1
 
+- name: (HEAT) create internal cloudformation endpoint
+  shell: "source /root/admin-openrc.sh && openstack endpoint create --region RegionOne cloudformation internal http://{{openstack_controller_node}}:8000/v1"
+  args:
+    executable: "/bin/bash"
+  when: cfn_endpoint.stdout.find('cloudformation') == -1
+
+- name: (HEAT) create admin cloudformation endpoint
+  shell: "source /root/admin-openrc.sh && openstack endpoint create --region RegionOne cloudformation admin http://{{openstack_controller_node}}:8000/v1"
+  args:
+    executable: "/bin/bash"
+  when: cfn_endpoint.stdout.find('cloudformation') == -1
 #- name: (HEAT) create heat domain
 #  shell: "source /root/admin-openrc.sh && openstack domain create --description \"Stack projects and user\" heat"
 

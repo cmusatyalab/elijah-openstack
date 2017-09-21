@@ -51,11 +51,23 @@
     executable: "/bin/bash"
   register: endpoints
 
-- name: (NOVA) create nova api endpoint
-  shell: "source /root/admin-openrc.sh && endpoint create --publicurl http://{{openstack_controller_node}}:8774/v2.1/%(tenant_id)s --internalurl http://{{openstack_controller_node}}:8774/v2.1/%(tenant_id)s --adminurl http://{{openstack_controller_node}}:8774/v2.1/%(tenant_id)s --region RegionOne compute"
+- name: (NOVA) create nova public api endpoint
+  shell: "source /root/admin-openrc.sh && endpoint create --region RegionOne compute public 'http://{{openstack_controller_node}}:8774/v2.1/%(tenant_id)s'"
   args:
     executable: "/bin/bash"
   when: endpoints.stdout.find('compute') == -1  
+
+- name: (NOVA) create nova internal api endpoint
+  shell: "source /root/admin-openrc.sh && endpoint create --region RegionOne compute internal 'http://{{openstack_controller_node}}:8774/v2.1/%(tenant_id)s'"
+  args:
+    executable: "/bin/bash"
+  when: endpoints.stdout.find('compute') == -1
+
+- name: (NOVA) create nova admin api endpoint
+  shell: "source /root/admin-openrc.sh && endpoint create --region RegionOne compute admin 'http://{{openstack_controller_node}}:8774/v2.1/%(tenant_id)s'"
+  args:
+    executable: "/bin/bash"
+  when: endpoints.stdout.find('compute') == -1
 
 - name: (NOVA) install nova-api and associated packages
   apt: 

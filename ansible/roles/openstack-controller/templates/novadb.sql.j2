@@ -1,6 +1,8 @@
-
 DROP DATABASE IF EXISTS nova;
 CREATE DATABASE nova;
+DROP DATABASE IF EXISTS nova_api;
+CREATE DATABASE nova_api;
+
 
 GRANT ALL PRIVILEGES ON nova.* TO 'nova'@'localhost' IDENTIFIED BY '{{ db_pw }}';
 GRANT ALL PRIVILEGES ON nova.* TO 'nova'@'%' IDENTIFIED BY '{{ db_pw }}';
