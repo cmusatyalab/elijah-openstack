@@ -4,7 +4,7 @@
   package: name="{{ item }}" state=present
   with_items:
     - mariadb-server
-    - python-mysqldb
+    - python-pymysql
     - python-pip
   tags: prereqs
 
@@ -39,6 +39,11 @@
 #RabbitMQ
 - name: (CONTROLLER) install RabbitMQ
   package: name=rabbitmq-server state=present
+  tags: prereqs
+
+- name: (CONTROLLER) check if openstack user already exists
+  command: rabbitmqctl list_users
+  register: rabbit_users
   tags: prereqs
 
 - name: (CONTROLLER) create openstack rabbitmq user
