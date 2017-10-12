@@ -17,7 +17,6 @@
     one_nic: True
   roles:
     - openstack-controller
-    - cloudlet-gateway
 
 - hosts: compute
   remote_user: root
