@@ -1,5 +1,5 @@
 ---
-- hosts: compute
+- hosts: controller, compute
   remote_user: root
   tags: cloudlet
   roles:
@@ -17,6 +17,7 @@
     one_nic: True
   roles:
     - openstack-controller
+    - cloudlet-gateway
 
 - hosts: compute
   remote_user: root

@@ -64,7 +64,7 @@ Installation of the cloudlet library from https://github.com/cmusatyalab/elijah-
 ### Step 6. Launch ansible playbook to install OpenStack, the clouldet library, and the OpenStack++ extensions
 ```sh
 $ cd ~/elijah-openstack/ansible   
-$ ansible-playbook -i ./hosts openstack-kilo.yaml
+$ ansible-playbook -i ./hosts openstackpp.yaml
 ```
 
 ### Step 7. Create the initial private network
