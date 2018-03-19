@@ -16,7 +16,7 @@
   apt: 
     name: "{{ item }}" 
     state: present
-    default_release: xenial-updates/newton
+    default_release: xenial-updates/ocata
   with_items:
     - keystone
 

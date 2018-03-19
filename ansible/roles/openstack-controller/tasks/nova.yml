@@ -73,7 +73,7 @@
   apt: 
     name: "{{ item }}"
     state: present
-    default_release: xenial-updates/newton
+    default_release: xenial-updates/ocata
   with_items:
     - nova-api
     - nova-conductor
@@ -85,7 +85,7 @@
 #  apt:
 #    name: "{{ item }}"
 #    state: present
-#    default_release: xenial-updates/newton
+#    default_release: xenial-updates/ocata
 #  with_items:
 #    - nova-network
 #  #  - nova-api-metadata #This seems to get pulled in with the nova-api package
