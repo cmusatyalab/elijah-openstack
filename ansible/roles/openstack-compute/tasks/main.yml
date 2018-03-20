@@ -3,7 +3,7 @@
   apt: 
     name: "{{ item }}" 
     state: present
-    default_release: xenial-updates/ocata
+    default_release: xenial-updates/newton
   with_items:
     - nova-compute
 
@@ -11,7 +11,7 @@
 #  apt:
 #    name: "{{ item }}"
 #    state: present
-#    default_release: xenial-updates/ocata
+#    default_release: xenial-updates/newton
 #  with_items:
 #    - neutron-plugin-linuxbridge-agent
 #    - conntrack

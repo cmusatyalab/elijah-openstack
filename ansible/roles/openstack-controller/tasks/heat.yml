@@ -162,7 +162,7 @@
   apt: 
     name: "{{ item }}"
     state: present
-    default_release: xenial-updates/ocata
+    default_release: xenial-updates/newton
   with_items:
     - heat-api
     - heat-engine
