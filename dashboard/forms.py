@@ -147,7 +147,7 @@ class ImportImageForm(forms.SelfHandlingForm):
                 open(memory_path))
             libvirt_xml_str = memory_header.xml
             cpu_count, memory_size_mb = get_resource_size(libvirt_xml_str)
-            disk_gb = int(math.ceil(os.path.getsize(disk_path)/1024/1024/1024))
+            disk_gb = int(math.ceil(os.path.getsize(disk_path)/1024.0/1024.0/1024.0))
             flavors = api.nova.flavor_list(request)
             ref_flavors = find_matching_flavor(flavors,
                                                cpu_count,

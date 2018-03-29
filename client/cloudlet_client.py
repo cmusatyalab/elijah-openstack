@@ -515,7 +515,7 @@ def request_import_basevm(server_address, token,
     memory_header = elijah_memory_util._QemuMemoryHeader(open(memory_path))
     libvirt_xml_str = memory_header.xml
     cpu_count, memory_size_mb = get_resource_size(libvirt_xml_str)
-    disk_gb = int(math.ceil(os.path.getsize(disk_path)/1024/1024/1024))
+    disk_gb = int(math.ceil(os.path.getsize(disk_path)/1024.0/1024.0/1024.0))
     flavor_list = get_list(server_address, token, endpoint, "flavors")
     flavor_ref, flavor_id = find_matching_flavor(flavor_list, cpu_count,
                                                  memory_size_mb, disk_gb)
