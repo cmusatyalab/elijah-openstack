@@ -89,6 +89,10 @@ In order to be able to access VM instances, you first need to edit the rules cor
 
 **NOTE: If you create a new security group, you must be sure to assign the VM that security group after launching it.**
 
+##Cloudlet Gateway
+You may optionally wish to install the Cloudlet Gateway which is a web server that launches cloudlet applications within VMs
+and/or containers and sits behind an OpenVPN firewall to provide public access to VMs/containers running on OpenStack++. To install
+ the Cloudlet Gateway, please see the [README](https://github.com/cmusatyalab/elijah-openstack/tree/master/cloudlet-gateway)
 
 ## How to use
 

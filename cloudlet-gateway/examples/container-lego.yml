@@ -1,0 +1,16 @@
+Containers: # Follow Docker Compose File Format
+  version: "3"
+  services:
+    lego:
+      image: registry.cmusatyalab.org/junjuew/gabriel-container-registry:apps
+      ports:
+        - "9098" # when host ports are not specified, a random port will be assigned
+        - "9101"
+      entrypoint: /bin/bash -c "/bin/bash -ex /run.sh lego"
+      deploy:
+        replicas: 1
+        update_config:
+          parallelism: 1
+          delay: 10s
+        restart_policy:
+          condition: on-failure

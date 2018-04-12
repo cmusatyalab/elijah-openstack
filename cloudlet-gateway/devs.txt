@@ -1,0 +1,10 @@
+LEL Specifics
+--------------
+1. LEL is using 172.17.0.0/16 as its public ip. However, docker default bridge (docker0) also use such subnet.
+Current solution is using "bip" option to let docker use 172.20.0.0/16.
+
+2. LEL uses nova-network. Right now all containers and vms are sitting on the same network.
+
+3. LEL vpn conflicts with 172.18 docker_gwbridge, need to create the docker_gwbridge before creating swarm
+
+docker network create --subnet=172.127.0.0/16 -o com.docker.network.bridge.enable_icc=false -o com.docker.network.bridge.name=docker_gwbridge -o com.docker.network.bridge.enable_ip_masquerade=true docker_gwbridge

@@ -26,3 +26,10 @@
   tags: compute
   roles:
     - openstack-compute
+
+- hosts: controller
+  remote_user: root
+  # only run tasks for the gateway role if it is explictly specified with --tags gateway flag
+  tags: [ 'never', 'gateway' ]
+  roles:
+    - cloudlet-gateway

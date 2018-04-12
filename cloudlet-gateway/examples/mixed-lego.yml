@@ -1,0 +1,113 @@
+VMs: # Follow OpenStack Heat Template
+  heat_template_version: 2013-05-23
+  description: Template to deploy a single compute instance
+  parameters:
+    image:
+      type: string
+      label: Image name or ID
+      description: Image to be used for compute instance
+      default: Gabriel020817
+    flavor:
+      type: string
+      label: Flavor
+      description: Type of instance (flavor) to be used
+      default: m1.xlarge
+    # CLOUDLET: all cloudlet app must have following parameters defined
+    CLOUDLET_INSTANCE_ID:
+      type: string
+      description: id of a particular cloudlet app instance
+      default: "unknown"
+    # CLOUDLET: all cloudlet mixed app must have following parameters defined
+    CLOUDLET_NAMESERVER_IP:
+      type: string
+      description: cloudlet nameserver ip used for naming resolution
+    CLOUDLET_NAMESERVER_PORT:
+      type: string
+      description: cloudlet nameserver port used for naming resolution
+      default: "8245"
+    CLOUDLET_NAMESERVER_PW:
+      type: string
+      description: nameserver authentication
+
+  resources:
+    wait_condition:
+      type: OS::Heat::WaitCondition
+      properties:
+        handle: { get_resource: wait_handle }
+        count: 1
+        timeout: 600
+
+    wait_handle:
+      type: OS::Heat::WaitConditionHandle
+
+    floating_ip:
+      type: OS::Nova::FloatingIP
+      properties:
+        pool: nova
+
+    floating_ip_assoc:
+      type: OS::Nova::FloatingIPAssociation
+      properties:
+        floating_ip: { get_resource: floating_ip }
+        server_id: { get_resource: lego_vm }
+
+    lego_vm:
+      type: OS::Nova::Server
+      properties:
+        image: { get_param: image }
+        flavor: { get_param: flavor }
+        user_data_format: RAW
+        user_data:
+          str_replace:
+            params:
+              wc_notify: { get_attr: ['wait_handle', 'curl_cli'] }
+              $CLOUDLET_NAMESERVER_IP: {get_param: CLOUDLET_NAMESERVER_IP}
+              $CLOUDLET_NAMESERVER_PORT: {get_param: CLOUDLET_NAMESERVER_PORT}
+            template: |
+              #!/bin/bash -ex
+              echo "Hello, World!"
+              echo "name server ip: $CLOUDLET_NAMESERVER_IP"
+              echo "name server ip: $CLOUDLET_NAMESERVER_PORT"
+              MY_IP=$(ip route get 1.1.1.1 | awk '{print $NF; exit}')
+              cd /home/ubuntu/Workspace/gabriel/server/bin/
+              python gabriel-control &
+              sleep 1
+              python gabriel-ucomm -s $MY_IP:8021 &
+              sleep 1
+              # cd /home/ubuntu/Workspace/gabriel-apps/lego/
+              # python proxy.py -s $MY_IP:8021 &
+              sleep 2
+              wc_notify --data-binary "{\"status\": \"SUCCESS\", \"id\": \"ip\", \"data\":\"$MY_IP\"}"
+
+  outputs:
+    instance_name:
+      description: Name of the instance
+      value: { get_attr: [lego_vm, name] }
+    instance_ip:
+      description: The (public) IP address of the deployed instance
+      value: { get_attr: [floating_ip, ip] }
+    # CLOUDLET: to register with the nameserver, need to start with variable ns_
+    # use wait_condition to get private vm ip for LEL
+    ns_lego_vm:
+      description: register lego_vm ip to nameserver
+      value:  { get_attr: [wait_condition, data] }
+
+
+Containers: # Follow Docker Compose File Format
+  version: "3"
+  services:
+    lego:
+      image: registry.cmusatyalab.org/junjuew/gabriel-container-registry:apps
+      entrypoint: /bin/bash -c "/bin/bash -ex /run.sh lego"
+      environment:
+        CLOUDLET_NAMESERVER_IP: "${CLOUDLET_NAMESERVER_IP}"
+        CLOUDLET_NAMESERVER_PORT: "${CLOUDLET_NAMESERVER_PORT}"
+        CLOUDLET_NAMESERVER_PW: "${CLOUDLET_NAMESERVER_PW}"
+        CLOUDLET_INSTANCE_ID: "${CLOUDLET_INSTANCE_ID}"
+      deploy:
+        replicas: 1
+        update_config:
+          parallelism: 1
+          delay: 10s
+        restart_policy:
+          condition: on-failure

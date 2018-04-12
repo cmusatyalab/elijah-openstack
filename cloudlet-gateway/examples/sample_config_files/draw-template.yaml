@@ -1,0 +1,78 @@
+heat_template_version: 2013-05-23
+
+description: Template to deploy a single compute instance
+
+parameters:
+  image:
+    type: string
+    label: Image name or ID
+    description: Image to be used for compute instance
+    default: Gabriel020817 
+  flavor:
+    type: string
+    label: Flavor
+    description: Type of instance (flavor) to be used
+    default: m1.xlarge
+  #private_network:
+  #  type: string
+  #  label: Private network name or ID
+  #  description: Network to attach instance to.
+  #  default:
+
+resources:
+  wait_condition:
+    type: OS::Heat::WaitCondition
+    properties:
+      handle: { get_resource: wait_handle }
+      count: 1
+      timeout: 600
+
+  wait_handle:
+    type: OS::Heat::WaitConditionHandle
+
+  floating_ip:
+    type: OS::Nova::FloatingIP
+    properties:
+      pool: nova
+
+  floating_ip_assoc:
+    type: OS::Nova::FloatingIPAssociation
+    properties:
+      floating_ip: { get_resource: floating_ip }
+      server_id: { get_resource: default_instance }
+
+  default_instance:
+    type: OS::Nova::Server
+    properties:
+      image: { get_param: image }
+      flavor: { get_param: flavor }
+
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          params:
+            wc_notify: { get_attr: ['wait_handle', 'curl_cli'] }
+          template: |
+            #!/bin/sh -ex
+            echo "Hello, World!"
+            MY_IP=$(ip route get 1.1.1.1 | awk '{print $NF; exit}')
+            cd /home/ubuntu/Workspace/gabriel/server/bin/
+            python gabriel-control &
+            sleep 1
+            python gabriel-ucomm -s $MY_IP:8021 &
+            sleep 1
+            cd /home/ubuntu/Workspace/gabriel-apps/draw/
+            python proxy.py -s $MY_IP:8021 &
+            sleep 2
+            wc_notify --data-binary '{"status": "SUCCESS"}'
+
+      #networks:
+      #  - network: { get_param: private_network }
+
+outputs:
+  instance_name:
+    description: Name of the instance
+    value: { get_attr: [default_instance, name] }
+  instance_ip:
+    description: The (public) IP address of the deployed instance
+    value: { get_attr: [floating_ip, ip] }

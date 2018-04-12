@@ -1,0 +1,77 @@
+---
+- name: (GATEWAY) install dependecies
+  apt:
+    name: "{{ item }}"
+    state: present
+  with_items:
+    - openvpn
+    - easy-rsa
+    - python-dev
+    - libssl-dev
+    - nodejs
+    - npm
+
+- name: (GATEWAY) install docker
+  shell: curl -sSL https://get.docker.com/ | sh
+
+- name: (GATEWAY) setup OpenVPN configuration
+  template: src=vpn.conf.j2 dest="/etc/openvpn/cloudletgateway.conf" owner=root group=root mode=0644
+#  notify: restart openvpn
+
+- name: (GATEWAY) get docker-machine
+  get_url:
+    url: https://github.com/docker/machine/releases/download/v0.10.0/docker-machine-Linux-x86_64
+    dest: /usr/local/bin/docker-machine
+    mode: 0744
+
+- name: (GATEWAY) copy env variables for gateway to profile.d
+  template: src=env-template.sh.j2 dest="/etc/profile.d/cloudlet-gateway.sh" owner=root group=root mode=0775
+
+- name: (GATEWAY) sever ssh connection and reconnect so that environment variables are loaded
+  meta: reset_connection
+
+- name: (GATEWAY) symlink nodejs
+  file:
+    src: /usr/bin/nodejs
+    dest: /usr/bin/node
+    owner: root
+    group: root
+    state: link
+
+# This is to workaround an issue with the SSL cert for the npm repo
+- name: (GATEWAY) workaround for bower SSL issue
+  command: "npm config set strict-ssl false"
+
+- name: (GATEWAY) npm install bower
+  npm:
+    name: bower
+    global: yes
+
+- name: (GATEWAY) install pip 9.0.1
+  pip:
+    name: pip
+    version: 9.0.1
+
+- name: (GATEWAY) install virtualenv
+  pip:
+    name: virtualenv
+
+- name: (GATEWAY) install pip dependencies for gateway into venv
+  pip:
+    chdir: ~/elijah-openstack/cloudlet-gateway
+    requirements: requirements/dev.txt
+    virtualenv: ~/elijah-openstack/cloudlet-gateway/venv
+    virtualenv_site_packages: yes
+
+- name: (GATEWAY) install bower dependencies for gateway
+  bower:
+    path: ~/elijah-openstack/cloudlet-gateway
+
+- name: (GATEWAY) flask db upgrade
+  command: ./venv/bin/flask db upgrade
+  args:
+    chdir: ~/elijah-openstack/cloudlet-gateway/
+
+- name: (GATEWAY) start cloudlet-gateway
+  shell: ~/elijah-openstack/cloudlet-gateway/venv/bin/flask run --host=0.0.0.0 --port= {{gateway_port}} &
+

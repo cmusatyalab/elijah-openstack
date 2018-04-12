@@ -1,0 +1,13 @@
+# need to source open stack rc
+source /root/admin-openrc.sh
+DIR="/root/elijah-openstack/cloudlet-gateway"
+export CAAS_SECRET='super-secret-key'
+export FLASK_APP=$DIR/autoapp.py
+export FLASK_DEBUG=1
+export DB_USER='database-user'
+export DB_PW='database-password'
+export CAAS_CERT=$HOME/env/caas/keys/domain.crt
+export CAAS_KEY=$HOME/env/caas/keys/domain.key
+export DEFAULT_PROVIDER='{{caas_user}}'
+export DEFAULT_PROVIDER_PW='{{caas_pw}}'
+export REDIS_NAMESERVER_PW='{{caas_pw}}'
