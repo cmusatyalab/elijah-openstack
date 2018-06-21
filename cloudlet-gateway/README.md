@@ -10,14 +10,14 @@ a plethora of IPv4 addresses available in your environment.
 
 ## Variable Configuration
 A number of variables can be configured in ```ansible/roles/cloudlet-gateway/vars/main.yml``` before launching the playbook:
-* gateway_ip - This IP of the host where the gateway will run
-* gateway_port - The port that the flask web server will run on 
-* openstack_flavor - An existing OpenStack flavor for the size of the VM that will be launched
-* openstack_image - The OpenStack image to launch for the cluster
-* openstack_network - The name of the nova network that was created during OpenStack setup
-* ssh_user - The user to SSH into the VM with
-* caas_user - The default login that will be created to log into the web portal
-* caas_pw - The password associated with caas_user (this will also be used for the Redis cache)
+* **gateway_ip** - This IP of the host where the gateway will run
+* **gateway_port** - The port that the flask web server will run on 
+* **openstack_flavor** - An existing OpenStack flavor for the size of the VM that will be launched
+* **openstack_image** - The OpenStack image to launch for the cluster
+* **openstack_network** - The name of the nova network that was created during OpenStack setup
+* **ssh_user** - The user to SSH into the VM with
+* **caas_user** - The default login that will be created to log into the web portal
+* **caas_pw** - The password associated with caas_user (this will also be used for the Redis cache)
 
 ## Installation
 The components for the Cloudlet Gateway are **NOT** installed by default when executing the Ansible playbook. To install the Cloudlet Gateway, the Ansible playbook can be executed whilst specifying the gateway tag:
@@ -79,6 +79,14 @@ Once one or more applications have been added by providers, customers can launch
 * **user_id** - the customer's user id (the user will be created if it does not already exist)
 * **app_id** - the application to launch (via POST)/ obtain information about (via GET)
 * **action** - valid values are 'create' and 'delete'; only applicable to POST method
+
+## Troubleshooting
+### Removing failed docker machines
+If there are issues creating the Docker swarm cluster, you can use the following commands to clean up the instances. **NOTE: This command will delete both the local reference and remove the VM instance from OpenStack if it was instantiated.**
+```
+ docker-machine ls
+ docker-machine rm --force <machine name>
+```
 
 
 
