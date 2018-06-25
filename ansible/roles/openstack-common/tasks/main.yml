@@ -1,10 +1,57 @@
 ---
-- name: (OS-COMMON) modify grub config to show text on boot
+- name: (GPUPASS) modify grub config to enable IOMMU
   lineinfile:
     dest: /etc/default/grub
     state: present
-    regexp: "^GRUB_CMDLINE_LINUX_DEFAULT "
-    line: "GRUB_CMDLINE_LINUX_DEFAULT=\"text\""
+    regexp: "^GRUB_CMDLINE_LINUX="
+    line: "GRUB_CMDLINE_LINUX=\"intel_iommu=on iommu=pt rd.driver.pre=vfio-pci\""
+  when: gpu_passthrough
+
+- name: (GPUPASS) update grub
+  command: update-grub
+  when: gpu_passthrough
+
+- name: (GPUPASS) update initram-fs modules for VFIO
+  blockinfile:
+    path: /etc/initramfs-tools/modules
+    state: present
+    block: |
+      vfio
+      vfio_iommu_type1
+      vfio_pci
+      vfio_virqfd
+  when: gpu_passthrough
+
+- name: (GPUPASS) update initram-fs
+  command: update-initramfs -u
+  when: gpu_passthrough
+
+- name: (GPUPASS) add GPU devices to VFIO conf
+  blockinfile:
+    path: /etc/modprobe.d/vfio.conf
+    create: yes
+    state: present
+    block: |
+      options vfio-pci ids={{gpu_device_ids}}
+      options vfio-pci disable_vga=1
+  when: gpu_passthrough
+
+- name: (GPUPASS) remove any existing nvidia drivers
+  apt:
+    name: "nvidia-3*"
+    state: absent
+  when: gpu_passthrough
+
+- name: (GPUPASS) reboot and...
+  command: /sbin/reboot
+  when: gpu_passthrough
+
+- name: (GPUPASS) ...wait for SSH to come back up
+  wait_for_connection:
+    delay: 60
+    sleep: 10
+    timeout: 600
+  when: gpu_passthrough
 
 # Install core OpenStack components
 - name: (OS-COMMON) install Ubuntu-Cloud-Keyring

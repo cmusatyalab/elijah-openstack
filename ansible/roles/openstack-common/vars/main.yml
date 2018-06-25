@@ -1,0 +1,4 @@
+gpu_passthrough: false
+#comma separated list of GPU device ids
+#can be found with lspci -nnk
+gpu_device_ids: "10de:1b06,10de:10ef"
