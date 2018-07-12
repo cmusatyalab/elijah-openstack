@@ -1,5 +1,5 @@
 ---
-gateway_ip: 127.0.0.1
+gateway_ip: 0.0.0.0
 gateway_port: 8999
 openstack_flavor: m1.medium
 openstack_image: ubuntu-14.04
