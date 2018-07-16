@@ -55,7 +55,7 @@ Nvidia-docker enables containers to access GPU easily. See [repo](https://github
 | Virtualizaton |   SSD MobileNet V1 (ms)      | SSD Inception V2 (ms)    | Faster-RCNN Inception V2 (ms) | Faster-RCNN ResNet101 (ms)  |
 |:-------------:|:----------------------------:|:------------------------:|:-----------------------------:|:---------------------------:|
 | bare-metal | 119  +- 5     | 130 +- 7 | 180 +- 6 | 220 +- 5 |
-| container inside a VM with GPU passthrough | 108  +- 19     | 114 +- 20 | 168 +- 22 | 220 +- 18 |
+| container inside a VM with GPU passthrough | 108  +- 19     | 114 +- 20 | 168 +- 22 | 225 +- 18 |
 
 <!---
 Results on cloudlet001 with Tesla K40c
