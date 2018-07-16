@@ -43,7 +43,6 @@ Nvidia-docker enables containers to access GPU easily. See [repo](https://github
 
 * Container Runtime: nvidia-docker 2.0.3 + docker-ce 18.03.1
 * 396.37 NVIDIA driver + cuda 9.0 + cudnn 7.1.4
-* GPU Application Clock: 875MHz(Graphics),3004MHz(Memory)
 
 #### Tensorflow Benchmarks:
 
