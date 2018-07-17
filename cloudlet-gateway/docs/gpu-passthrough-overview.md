@@ -10,7 +10,7 @@ The figure below represents the architecture. We adopt a containers on top of
 virtual machines approach to allow GPU sharing. The GPU device is dedicated to a
 particular VM through GPU-passthrough on the host.
 
-![Architecture](https://github.com/cmusatyalab/elijah-openstack/blob/gpu/cloudlet-gateway/GPU-Support-in-Cloudlet.png)
+![Architecture](https://github.com/cmusatyalab/elijah-openstack/blob/gpu/cloudlet-gateway/docs/GPU-Support-in-Cloudlet.png)
 
 ## Setup
 
