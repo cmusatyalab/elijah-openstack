@@ -56,6 +56,8 @@ Nvidia-docker enables containers to access GPU easily. See [repo](https://github
 |:-------------:|:----------------------------:|:------------------------:|:-----------------------------:|:---------------------------:|
 | bare-metal | 119  +- 5     | 130 +- 7 | 180 +- 6 | 220 +- 5 |
 | container inside a VM with GPU passthrough | 108  +- 19     | 114 +- 20 | 168 +- 22 | 225 +- 18 |
+| VM with GPU passthrough (gpu exclusive-process mode) | 118  +- 27     | 128 +- 23 | 175 +- 22 | 225 +- 19 |
+| VM with GPU passthrough (gpu default mode) | 108  +- 18     | 119 +- 19 | 164 +- 19 | 226 +- 17 |
 
 <!---
 Results on cloudlet001 with Tesla K40c
