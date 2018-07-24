@@ -1,0 +1,34 @@
+<domain type='kvm'>
+  <name>sample</name>
+  <uuid>4dea24b3-1d52-d8f3-2516-782e98a23fa0</uuid>
+  <memory unit='GiB'>4</memory>
+  <vcpu>2</vcpu>
+  <os>
+    <type arch="x86_64">hvm</type>
+  </os>
+  <clock sync="localtime"/>
+  <features>
+    <kvm>
+    <hidden state='on'/>
+    </kvm>
+  </features>
+  <devices>
+    <emulator>/usr/bin/kvm-spice</emulator>
+    <disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='/var/lib/libvirt/images/ubuntu-16.04-server.img'/>
+      <target dev='vda' bus='virtio'/>
+    </disk>
+    <serial type='pty'>
+        <target port='0'/>
+    </serial>
+    <console type='pty'>
+        <target type='serial' port='0'/>
+    </console>
+    <interface type='network'>
+      <source network='vagrant-libvirt'/>
+      <model type='virtio'/>
+    </interface>
+    <graphics type='vnc' port='-1' autoport='yes' keymap='en-us' listen='127.0.0.1'/>
+  </devices>
+</domain>

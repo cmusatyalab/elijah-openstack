@@ -123,3 +123,10 @@ Software stack should be similar to above.
 | bare-metal | 117, std 5      | 134, std 4 | 233, std 6 | 428, std 4 |
 | container inside a VM with GPU passthrough | 104, std 20     | 128, std 16 | 227, std 16 | 412, std 13 |
 -->
+
+# Second-Round Of Test
+| Virtualizaton |   SSD MobileNet V1 (ms)      | SSD Inception V2 (ms)    | Faster-RCNN Inception V2 (ms) | Faster-RCNN ResNet101 (ms)  |
+|:-------------:|:----------------------------:|:------------------------:|:-----------------------------:|:---------------------------:|
+| bare-metal |      |  |  |  |
+| VM with GPU passthrough (gpu default mode) | 95 +- 13  | 101 +- 13 |  | |
+| container inside a VM with GPU passthrough |    |  | |  |
