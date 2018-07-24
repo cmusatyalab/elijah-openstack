@@ -58,14 +58,14 @@ invoked with
 ```
 
 #### Convolution Speed
-| Experiment No. | Input Size                     | Filter Size   | # of Filters | Padding (h, w) | Stride (h, w) |
+| Experiment | Input Size    | Filter Size   | # of Filters | Padding (h, w) | Stride (h, w) |
 |----------------|--------------------------------|---------------|--------------|----------------|---------------|
 | 1 | W = 341, H = 79, C = 32, N = 4 | R = 5, S = 10 | 32           | 0,0            | 2,2           |
 | 2 | W = 224, H = 224, C = 3, N = 1 | R = 7, S = 7  | 64           | 3, 3           | 2, 2          |
-| 3 | | W = 56, H = 56, C = 256, N = 1 | R = 1, S = 1  | 128        | 0, 0           | 2, 2        |
+| 3 | W = 56, H = 56, C = 256, N = 1 | R = 1, S = 1  | 128        | 0, 0           | 2, 2        |
 | 4 | W = 7, H = 7,  C = 512, N = 2  | R = 1, S = 1  | 2048         | 0, 0           | 1, 1          |
 
-| Virtualization |   Exp No. 1 (us)          | Exp No. 2 (us)   | Exp No. 3 (us)  | Exp No.4 (us)    |
+| Virtualization |   Exp 1 (us)          | Exp 2 (us)   | Exp 3 (us)  | Exp 4 (us)    |
 |:--------------:|:---------------------:|:------------:|:-------------:|:------------:|
 | bare-metal     |  382 +- 9 | 46 +- 7 | 42 +- 2 | 70 +- 2 |
 | VM             |  388 +- 41 | 56 +- 15 | 42 +- 2 | 73 +- 7 |
