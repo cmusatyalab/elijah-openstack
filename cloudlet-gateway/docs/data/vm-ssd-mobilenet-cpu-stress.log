@@ -1,0 +1,877 @@
+2018-07-24 15:59:02.425141: I tensorflow/core/platform/cpu_feature_guard.cc:141] Your CPU supports instructions that this TensorFlow binary was not compiled to use: AVX2 FMA
+2018-07-24 15:59:02.880654: I tensorflow/stream_executor/cuda/cuda_gpu_executor.cc:897] successful NUMA node read from SysFS had negative value (-1), but there must be at least one NUMA node, so returning NUMA node zero
+2018-07-24 15:59:02.883183: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1392] Found device 0 with properties: 
+name: GeForce GTX 1080 Ti major: 6 minor: 1 memoryClockRate(GHz): 1.582
+pciBusID: 0000:00:08.0
+totalMemory: 10.92GiB freeMemory: 10.76GiB
+2018-07-24 15:59:02.883353: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1471] Adding visible gpu devices: 0
+2018-07-24 15:59:03.733177: I tensorflow/core/common_runtime/gpu/gpu_device.cc:952] Device interconnect StreamExecutor with strength 1 edge matrix:
+2018-07-24 15:59:03.733639: I tensorflow/core/common_runtime/gpu/gpu_device.cc:958]      0 
+2018-07-24 15:59:03.733650: I tensorflow/core/common_runtime/gpu/gpu_device.cc:971] 0:   N 
+2018-07-24 15:59:03.734853: I tensorflow/core/common_runtime/gpu/gpu_device.cc:1084] Created TensorFlow device (/job:localhost/replica:0/task:0/device:GPU:0 with 10411 MB memory) -> physical GPU (device: 0, name: GeForce GTX 1080 Ti, pci bus id: 0000:00:08.0, compute capability: 6.1)
+[D 180724 15:59:04 recv_and_process_frame:42] recv one image
+[D 180724 15:59:11 util:70] TF detection took 7099.28 ms
+[D 180724 15:59:11 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:11 recv_and_process_frame:42] recv one image
+[D 180724 15:59:11 util:70] TF detection took 78.90 ms
+[D 180724 15:59:11 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:11 recv_and_process_frame:42] recv one image
+[D 180724 15:59:11 util:70] TF detection took 62.12 ms
+[D 180724 15:59:11 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:12 recv_and_process_frame:42] recv one image
+[D 180724 15:59:12 util:70] TF detection took 74.72 ms
+[D 180724 15:59:12 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:12 recv_and_process_frame:42] recv one image
+[D 180724 15:59:12 util:70] TF detection took 68.16 ms
+[D 180724 15:59:12 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:12 recv_and_process_frame:42] recv one image
+[D 180724 15:59:12 util:70] TF detection took 54.63 ms
+[D 180724 15:59:12 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:12 recv_and_process_frame:42] recv one image
+[D 180724 15:59:12 util:70] TF detection took 69.05 ms
+[D 180724 15:59:12 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:12 recv_and_process_frame:42] recv one image
+[D 180724 15:59:12 util:70] TF detection took 52.80 ms
+[D 180724 15:59:12 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:12 recv_and_process_frame:42] recv one image
+[D 180724 15:59:12 util:70] TF detection took 63.99 ms
+[D 180724 15:59:12 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:12 recv_and_process_frame:42] recv one image
+[D 180724 15:59:12 util:70] TF detection took 72.45 ms
+[D 180724 15:59:12 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:13 recv_and_process_frame:42] recv one image
+[D 180724 15:59:13 util:70] TF detection took 62.98 ms
+[D 180724 15:59:13 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:13 recv_and_process_frame:42] recv one image
+[D 180724 15:59:13 util:70] TF detection took 46.15 ms
+[D 180724 15:59:13 recv_and_process_frame:45] # of detected boxes: 0
+[D 180724 15:59:13 recv_and_process_frame:42] recv one image
+[D 180724 15:59:13 util:70] TF detection took 48.24 ms
+[D 180724 15:59:13 recv_and_process_frame:45] # of detected boxes: 0
+[D 180724 15:59:13 recv_and_process_frame:42] recv one image
+[D 180724 15:59:13 util:70] TF detection took 46.39 ms
+[D 180724 15:59:13 recv_and_process_frame:45] # of detected boxes: 0
+[D 180724 15:59:13 recv_and_process_frame:42] recv one image
+[D 180724 15:59:13 util:70] TF detection took 34.45 ms
+[D 180724 15:59:13 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:13 recv_and_process_frame:42] recv one image
+[D 180724 15:59:13 util:70] TF detection took 48.95 ms
+[D 180724 15:59:13 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:13 recv_and_process_frame:42] recv one image
+[D 180724 15:59:13 util:70] TF detection took 43.32 ms
+[D 180724 15:59:13 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:13 recv_and_process_frame:42] recv one image
+[D 180724 15:59:13 util:70] TF detection took 68.55 ms
+[D 180724 15:59:13 recv_and_process_frame:45] # of detected boxes: 0
+[D 180724 15:59:13 recv_and_process_frame:42] recv one image
+[D 180724 15:59:14 util:70] TF detection took 50.13 ms
+[D 180724 15:59:14 recv_and_process_frame:45] # of detected boxes: 0
+[D 180724 15:59:14 recv_and_process_frame:42] recv one image
+[D 180724 15:59:14 util:70] TF detection took 62.95 ms
+[D 180724 15:59:14 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:14 recv_and_process_frame:42] recv one image
+[D 180724 15:59:14 util:70] TF detection took 63.54 ms
+[D 180724 15:59:14 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:14 recv_and_process_frame:42] recv one image
+[D 180724 15:59:14 util:70] TF detection took 64.09 ms
+[D 180724 15:59:14 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:14 recv_and_process_frame:42] recv one image
+[D 180724 15:59:14 util:70] TF detection took 61.54 ms
+[D 180724 15:59:14 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:14 recv_and_process_frame:42] recv one image
+[D 180724 15:59:14 util:70] TF detection took 62.95 ms
+[D 180724 15:59:14 recv_and_process_frame:45] # of detected boxes: 0
+[D 180724 15:59:14 recv_and_process_frame:42] recv one image
+[D 180724 15:59:14 util:70] TF detection took 46.19 ms
+[D 180724 15:59:14 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:14 recv_and_process_frame:42] recv one image
+[D 180724 15:59:14 util:70] TF detection took 54.39 ms
+[D 180724 15:59:14 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:14 recv_and_process_frame:42] recv one image
+[D 180724 15:59:14 util:70] TF detection took 49.90 ms
+[D 180724 15:59:14 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:15 recv_and_process_frame:42] recv one image
+[D 180724 15:59:15 util:70] TF detection took 56.25 ms
+[D 180724 15:59:15 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:15 recv_and_process_frame:42] recv one image
+[D 180724 15:59:15 util:70] TF detection took 61.07 ms
+[D 180724 15:59:15 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:15 recv_and_process_frame:42] recv one image
+[D 180724 15:59:15 util:70] TF detection took 64.24 ms
+[D 180724 15:59:15 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:15 recv_and_process_frame:42] recv one image
+[D 180724 15:59:15 util:70] TF detection took 64.38 ms
+[D 180724 15:59:15 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:15 recv_and_process_frame:42] recv one image
+[D 180724 15:59:15 util:70] TF detection took 46.99 ms
+[D 180724 15:59:15 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:15 recv_and_process_frame:42] recv one image
+[D 180724 15:59:15 util:70] TF detection took 66.50 ms
+[D 180724 15:59:15 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:15 recv_and_process_frame:42] recv one image
+[D 180724 15:59:15 util:70] TF detection took 61.67 ms
+[D 180724 15:59:15 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:15 recv_and_process_frame:42] recv one image
+[D 180724 15:59:15 util:70] TF detection took 57.34 ms
+[D 180724 15:59:15 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:15 recv_and_process_frame:42] recv one image
+[D 180724 15:59:15 util:70] TF detection took 60.58 ms
+[D 180724 15:59:15 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:16 recv_and_process_frame:42] recv one image
+[D 180724 15:59:16 util:70] TF detection took 63.37 ms
+[D 180724 15:59:16 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:16 recv_and_process_frame:42] recv one image
+[D 180724 15:59:16 util:70] TF detection took 49.19 ms
+[D 180724 15:59:16 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:16 recv_and_process_frame:42] recv one image
+[D 180724 15:59:16 util:70] TF detection took 54.19 ms
+[D 180724 15:59:16 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:16 recv_and_process_frame:42] recv one image
+[D 180724 15:59:16 util:70] TF detection took 50.52 ms
+[D 180724 15:59:16 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:16 recv_and_process_frame:42] recv one image
+[D 180724 15:59:16 util:70] TF detection took 67.82 ms
+[D 180724 15:59:16 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:16 recv_and_process_frame:42] recv one image
+[D 180724 15:59:16 util:70] TF detection took 44.66 ms
+[D 180724 15:59:16 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:16 recv_and_process_frame:42] recv one image
+[D 180724 15:59:16 util:70] TF detection took 34.94 ms
+[D 180724 15:59:16 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:16 recv_and_process_frame:42] recv one image
+[D 180724 15:59:16 util:70] TF detection took 62.44 ms
+[D 180724 15:59:16 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:16 recv_and_process_frame:42] recv one image
+[D 180724 15:59:16 util:70] TF detection took 136.59 ms
+[D 180724 15:59:16 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:16 recv_and_process_frame:42] recv one image
+[D 180724 15:59:17 util:70] TF detection took 49.75 ms
+[D 180724 15:59:17 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:17 recv_and_process_frame:42] recv one image
+[D 180724 15:59:17 util:70] TF detection took 83.25 ms
+[D 180724 15:59:17 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:17 recv_and_process_frame:42] recv one image
+[D 180724 15:59:17 util:70] TF detection took 76.07 ms
+[D 180724 15:59:17 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:17 recv_and_process_frame:42] recv one image
+[D 180724 15:59:17 util:70] TF detection took 68.41 ms
+[D 180724 15:59:17 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:17 recv_and_process_frame:42] recv one image
+[D 180724 15:59:17 util:70] TF detection took 56.13 ms
+[D 180724 15:59:17 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:17 recv_and_process_frame:42] recv one image
+[D 180724 15:59:17 util:70] TF detection took 45.18 ms
+[D 180724 15:59:17 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:17 recv_and_process_frame:42] recv one image
+[D 180724 15:59:17 util:70] TF detection took 50.23 ms
+[D 180724 15:59:17 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:17 recv_and_process_frame:42] recv one image
+[D 180724 15:59:17 util:70] TF detection took 91.75 ms
+[D 180724 15:59:17 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:17 recv_and_process_frame:42] recv one image
+[D 180724 15:59:17 util:70] TF detection took 78.85 ms
+[D 180724 15:59:17 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:18 recv_and_process_frame:42] recv one image
+[D 180724 15:59:18 util:70] TF detection took 90.52 ms
+[D 180724 15:59:18 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:18 recv_and_process_frame:42] recv one image
+[D 180724 15:59:18 util:70] TF detection took 76.12 ms
+[D 180724 15:59:18 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:18 recv_and_process_frame:42] recv one image
+[D 180724 15:59:18 util:70] TF detection took 71.70 ms
+[D 180724 15:59:18 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:18 recv_and_process_frame:42] recv one image
+[D 180724 15:59:18 util:70] TF detection took 71.47 ms
+[D 180724 15:59:18 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:18 recv_and_process_frame:42] recv one image
+[D 180724 15:59:18 util:70] TF detection took 88.25 ms
+[D 180724 15:59:18 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:18 recv_and_process_frame:42] recv one image
+[D 180724 15:59:18 util:70] TF detection took 58.71 ms
+[D 180724 15:59:18 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:18 recv_and_process_frame:42] recv one image
+[D 180724 15:59:19 util:70] TF detection took 77.26 ms
+[D 180724 15:59:19 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:19 recv_and_process_frame:42] recv one image
+[D 180724 15:59:19 util:70] TF detection took 68.78 ms
+[D 180724 15:59:19 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:19 recv_and_process_frame:42] recv one image
+[D 180724 15:59:19 util:70] TF detection took 79.84 ms
+[D 180724 15:59:19 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:19 recv_and_process_frame:42] recv one image
+[D 180724 15:59:19 util:70] TF detection took 86.63 ms
+[D 180724 15:59:19 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:19 recv_and_process_frame:42] recv one image
+[D 180724 15:59:19 util:70] TF detection took 80.01 ms
+[D 180724 15:59:19 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:19 recv_and_process_frame:42] recv one image
+[D 180724 15:59:19 util:70] TF detection took 59.20 ms
+[D 180724 15:59:19 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:19 recv_and_process_frame:42] recv one image
+[D 180724 15:59:19 util:70] TF detection took 60.72 ms
+[D 180724 15:59:19 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:19 recv_and_process_frame:42] recv one image
+[D 180724 15:59:19 util:70] TF detection took 42.90 ms
+[D 180724 15:59:19 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:20 recv_and_process_frame:42] recv one image
+[D 180724 15:59:20 util:70] TF detection took 72.91 ms
+[D 180724 15:59:20 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:20 recv_and_process_frame:42] recv one image
+[D 180724 15:59:20 util:70] TF detection took 68.40 ms
+[D 180724 15:59:20 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:20 recv_and_process_frame:42] recv one image
+[D 180724 15:59:20 util:70] TF detection took 63.10 ms
+[D 180724 15:59:20 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:20 recv_and_process_frame:42] recv one image
+[D 180724 15:59:20 util:70] TF detection took 71.72 ms
+[D 180724 15:59:20 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:20 recv_and_process_frame:42] recv one image
+[D 180724 15:59:20 util:70] TF detection took 79.22 ms
+[D 180724 15:59:20 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:20 recv_and_process_frame:42] recv one image
+[D 180724 15:59:20 util:70] TF detection took 74.12 ms
+[D 180724 15:59:20 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:20 recv_and_process_frame:42] recv one image
+[D 180724 15:59:21 util:70] TF detection took 68.02 ms
+[D 180724 15:59:21 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:21 recv_and_process_frame:42] recv one image
+[D 180724 15:59:21 util:70] TF detection took 57.74 ms
+[D 180724 15:59:21 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:21 recv_and_process_frame:42] recv one image
+[D 180724 15:59:21 util:70] TF detection took 57.05 ms
+[D 180724 15:59:21 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:21 recv_and_process_frame:42] recv one image
+[D 180724 15:59:21 util:70] TF detection took 58.62 ms
+[D 180724 15:59:21 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:21 recv_and_process_frame:42] recv one image
+[D 180724 15:59:21 util:70] TF detection took 73.67 ms
+[D 180724 15:59:21 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:21 recv_and_process_frame:42] recv one image
+[D 180724 15:59:21 util:70] TF detection took 54.36 ms
+[D 180724 15:59:21 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:21 recv_and_process_frame:42] recv one image
+[D 180724 15:59:21 util:70] TF detection took 83.49 ms
+[D 180724 15:59:21 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:22 recv_and_process_frame:42] recv one image
+[D 180724 15:59:22 util:70] TF detection took 67.68 ms
+[D 180724 15:59:22 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:22 recv_and_process_frame:42] recv one image
+[D 180724 15:59:22 util:70] TF detection took 87.72 ms
+[D 180724 15:59:22 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:22 recv_and_process_frame:42] recv one image
+[D 180724 15:59:22 util:70] TF detection took 61.67 ms
+[D 180724 15:59:22 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:22 recv_and_process_frame:42] recv one image
+[D 180724 15:59:22 util:70] TF detection took 58.28 ms
+[D 180724 15:59:22 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:22 recv_and_process_frame:42] recv one image
+[D 180724 15:59:22 util:70] TF detection took 88.83 ms
+[D 180724 15:59:22 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:22 recv_and_process_frame:42] recv one image
+[D 180724 15:59:22 util:70] TF detection took 65.52 ms
+[D 180724 15:59:22 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:22 recv_and_process_frame:42] recv one image
+[D 180724 15:59:22 util:70] TF detection took 71.82 ms
+[D 180724 15:59:22 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:23 recv_and_process_frame:42] recv one image
+[D 180724 15:59:23 util:70] TF detection took 68.42 ms
+[D 180724 15:59:23 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:23 recv_and_process_frame:42] recv one image
+[D 180724 15:59:23 util:70] TF detection took 90.33 ms
+[D 180724 15:59:23 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:23 recv_and_process_frame:42] recv one image
+[D 180724 15:59:23 util:70] TF detection took 74.08 ms
+[D 180724 15:59:23 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:23 recv_and_process_frame:42] recv one image
+[D 180724 15:59:23 util:70] TF detection took 60.79 ms
+[D 180724 15:59:23 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:23 recv_and_process_frame:42] recv one image
+[D 180724 15:59:23 util:70] TF detection took 76.54 ms
+[D 180724 15:59:23 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:23 recv_and_process_frame:42] recv one image
+[D 180724 15:59:23 util:70] TF detection took 42.73 ms
+[D 180724 15:59:23 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:24 recv_and_process_frame:42] recv one image
+[D 180724 15:59:24 util:70] TF detection took 60.88 ms
+[D 180724 15:59:24 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:24 recv_and_process_frame:42] recv one image
+[D 180724 15:59:24 util:70] TF detection took 58.72 ms
+[D 180724 15:59:24 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:24 recv_and_process_frame:42] recv one image
+[D 180724 15:59:24 util:70] TF detection took 63.72 ms
+[D 180724 15:59:24 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:24 recv_and_process_frame:42] recv one image
+[D 180724 15:59:24 util:70] TF detection took 51.74 ms
+[D 180724 15:59:24 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:24 recv_and_process_frame:42] recv one image
+[D 180724 15:59:24 util:70] TF detection took 65.43 ms
+[D 180724 15:59:24 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:24 recv_and_process_frame:42] recv one image
+[D 180724 15:59:24 util:95] [Over last 100 runs] TFModel Graph Execution Time took 134.82+-699.93 ms
+[D 180724 15:59:24 util:70] TF detection took 71.03 ms
+[D 180724 15:59:24 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:24 recv_and_process_frame:42] recv one image
+[D 180724 15:59:25 util:70] TF detection took 65.94 ms
+[D 180724 15:59:25 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:25 recv_and_process_frame:42] recv one image
+[D 180724 15:59:25 util:70] TF detection took 59.65 ms
+[D 180724 15:59:25 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:25 recv_and_process_frame:42] recv one image
+[D 180724 15:59:25 util:70] TF detection took 61.94 ms
+[D 180724 15:59:25 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:25 recv_and_process_frame:42] recv one image
+[D 180724 15:59:25 util:70] TF detection took 70.37 ms
+[D 180724 15:59:25 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:25 recv_and_process_frame:42] recv one image
+[D 180724 15:59:25 util:70] TF detection took 64.85 ms
+[D 180724 15:59:25 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:25 recv_and_process_frame:42] recv one image
+[D 180724 15:59:25 util:70] TF detection took 47.24 ms
+[D 180724 15:59:25 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:25 recv_and_process_frame:42] recv one image
+[D 180724 15:59:25 util:70] TF detection took 52.80 ms
+[D 180724 15:59:25 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:25 recv_and_process_frame:42] recv one image
+[D 180724 15:59:26 util:70] TF detection took 43.84 ms
+[D 180724 15:59:26 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:26 recv_and_process_frame:42] recv one image
+[D 180724 15:59:26 util:70] TF detection took 56.65 ms
+[D 180724 15:59:26 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:26 recv_and_process_frame:42] recv one image
+[D 180724 15:59:26 util:70] TF detection took 51.44 ms
+[D 180724 15:59:26 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:26 recv_and_process_frame:42] recv one image
+[D 180724 15:59:26 util:70] TF detection took 65.36 ms
+[D 180724 15:59:26 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:26 recv_and_process_frame:42] recv one image
+[D 180724 15:59:26 util:70] TF detection took 55.45 ms
+[D 180724 15:59:26 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:26 recv_and_process_frame:42] recv one image
+[D 180724 15:59:26 util:70] TF detection took 58.01 ms
+[D 180724 15:59:26 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:26 recv_and_process_frame:42] recv one image
+[D 180724 15:59:26 util:70] TF detection took 57.55 ms
+[D 180724 15:59:26 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:26 recv_and_process_frame:42] recv one image
+[D 180724 15:59:27 util:70] TF detection took 57.89 ms
+[D 180724 15:59:27 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:27 recv_and_process_frame:42] recv one image
+[D 180724 15:59:27 util:70] TF detection took 61.06 ms
+[D 180724 15:59:27 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:27 recv_and_process_frame:42] recv one image
+[D 180724 15:59:27 util:70] TF detection took 54.21 ms
+[D 180724 15:59:27 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:27 recv_and_process_frame:42] recv one image
+[D 180724 15:59:27 util:70] TF detection took 70.96 ms
+[D 180724 15:59:27 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:27 recv_and_process_frame:42] recv one image
+[D 180724 15:59:27 util:70] TF detection took 52.50 ms
+[D 180724 15:59:27 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:27 recv_and_process_frame:42] recv one image
+[D 180724 15:59:27 util:70] TF detection took 51.39 ms
+[D 180724 15:59:27 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:27 recv_and_process_frame:42] recv one image
+[D 180724 15:59:27 util:70] TF detection took 75.61 ms
+[D 180724 15:59:27 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:27 recv_and_process_frame:42] recv one image
+[D 180724 15:59:28 util:70] TF detection took 51.99 ms
+[D 180724 15:59:28 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:28 recv_and_process_frame:42] recv one image
+[D 180724 15:59:28 util:70] TF detection took 61.90 ms
+[D 180724 15:59:28 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:28 recv_and_process_frame:42] recv one image
+[D 180724 15:59:28 util:70] TF detection took 92.54 ms
+[D 180724 15:59:28 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:28 recv_and_process_frame:42] recv one image
+[D 180724 15:59:28 util:70] TF detection took 102.62 ms
+[D 180724 15:59:28 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:28 recv_and_process_frame:42] recv one image
+[D 180724 15:59:28 util:70] TF detection took 95.30 ms
+[D 180724 15:59:28 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:28 recv_and_process_frame:42] recv one image
+[D 180724 15:59:28 util:70] TF detection took 72.41 ms
+[D 180724 15:59:28 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:28 recv_and_process_frame:42] recv one image
+[D 180724 15:59:28 util:70] TF detection took 88.66 ms
+[D 180724 15:59:28 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:28 recv_and_process_frame:42] recv one image
+[D 180724 15:59:29 util:70] TF detection took 65.72 ms
+[D 180724 15:59:29 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:29 recv_and_process_frame:42] recv one image
+[D 180724 15:59:29 util:70] TF detection took 54.84 ms
+[D 180724 15:59:29 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:29 recv_and_process_frame:42] recv one image
+[D 180724 15:59:29 util:70] TF detection took 76.24 ms
+[D 180724 15:59:29 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:29 recv_and_process_frame:42] recv one image
+[D 180724 15:59:29 util:70] TF detection took 60.67 ms
+[D 180724 15:59:29 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:29 recv_and_process_frame:42] recv one image
+[D 180724 15:59:29 util:70] TF detection took 51.49 ms
+[D 180724 15:59:29 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:29 recv_and_process_frame:42] recv one image
+[D 180724 15:59:29 util:70] TF detection took 68.52 ms
+[D 180724 15:59:29 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:29 recv_and_process_frame:42] recv one image
+[D 180724 15:59:29 util:70] TF detection took 68.38 ms
+[D 180724 15:59:29 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:29 recv_and_process_frame:42] recv one image
+[D 180724 15:59:29 util:70] TF detection took 64.48 ms
+[D 180724 15:59:29 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:29 recv_and_process_frame:42] recv one image
+[D 180724 15:59:29 util:70] TF detection took 60.64 ms
+[D 180724 15:59:29 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:30 recv_and_process_frame:42] recv one image
+[D 180724 15:59:30 util:70] TF detection took 52.24 ms
+[D 180724 15:59:30 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:30 recv_and_process_frame:42] recv one image
+[D 180724 15:59:30 util:70] TF detection took 52.72 ms
+[D 180724 15:59:30 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:30 recv_and_process_frame:42] recv one image
+[D 180724 15:59:30 util:70] TF detection took 72.12 ms
+[D 180724 15:59:30 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:30 recv_and_process_frame:42] recv one image
+[D 180724 15:59:30 util:70] TF detection took 47.22 ms
+[D 180724 15:59:30 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:30 recv_and_process_frame:42] recv one image
+[D 180724 15:59:30 util:70] TF detection took 70.66 ms
+[D 180724 15:59:30 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:30 recv_and_process_frame:42] recv one image
+[D 180724 15:59:30 util:70] TF detection took 78.92 ms
+[D 180724 15:59:30 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:30 recv_and_process_frame:42] recv one image
+[D 180724 15:59:30 util:70] TF detection took 48.91 ms
+[D 180724 15:59:30 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:30 recv_and_process_frame:42] recv one image
+[D 180724 15:59:30 util:70] TF detection took 51.59 ms
+[D 180724 15:59:30 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:30 recv_and_process_frame:42] recv one image
+[D 180724 15:59:30 util:70] TF detection took 73.08 ms
+[D 180724 15:59:30 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:30 recv_and_process_frame:42] recv one image
+[D 180724 15:59:31 util:70] TF detection took 54.22 ms
+[D 180724 15:59:31 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:31 recv_and_process_frame:42] recv one image
+[D 180724 15:59:31 util:70] TF detection took 50.47 ms
+[D 180724 15:59:31 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:31 recv_and_process_frame:42] recv one image
+[D 180724 15:59:31 util:70] TF detection took 70.68 ms
+[D 180724 15:59:31 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:31 recv_and_process_frame:42] recv one image
+[D 180724 15:59:31 util:70] TF detection took 53.59 ms
+[D 180724 15:59:31 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:31 recv_and_process_frame:42] recv one image
+[D 180724 15:59:31 util:70] TF detection took 63.44 ms
+[D 180724 15:59:31 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:31 recv_and_process_frame:42] recv one image
+[D 180724 15:59:31 util:70] TF detection took 45.47 ms
+[D 180724 15:59:31 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:31 recv_and_process_frame:42] recv one image
+[D 180724 15:59:31 util:70] TF detection took 65.17 ms
+[D 180724 15:59:31 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:31 recv_and_process_frame:42] recv one image
+[D 180724 15:59:31 util:70] TF detection took 53.51 ms
+[D 180724 15:59:31 recv_and_process_frame:45] # of detected boxes: 5
+[D 180724 15:59:31 recv_and_process_frame:42] recv one image
+[D 180724 15:59:31 util:70] TF detection took 56.26 ms
+[D 180724 15:59:31 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:32 recv_and_process_frame:42] recv one image
+[D 180724 15:59:32 util:70] TF detection took 70.83 ms
+[D 180724 15:59:32 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:32 recv_and_process_frame:42] recv one image
+[D 180724 15:59:32 util:70] TF detection took 49.92 ms
+[D 180724 15:59:32 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:32 recv_and_process_frame:42] recv one image
+[D 180724 15:59:32 util:70] TF detection took 89.76 ms
+[D 180724 15:59:32 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:32 recv_and_process_frame:42] recv one image
+[D 180724 15:59:32 util:70] TF detection took 98.42 ms
+[D 180724 15:59:32 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:32 recv_and_process_frame:42] recv one image
+[D 180724 15:59:32 util:70] TF detection took 79.92 ms
+[D 180724 15:59:32 recv_and_process_frame:45] # of detected boxes: 5
+[D 180724 15:59:32 recv_and_process_frame:42] recv one image
+[D 180724 15:59:32 util:70] TF detection took 113.21 ms
+[D 180724 15:59:32 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:33 recv_and_process_frame:42] recv one image
+[D 180724 15:59:33 util:70] TF detection took 92.78 ms
+[D 180724 15:59:33 recv_and_process_frame:45] # of detected boxes: 5
+[D 180724 15:59:33 recv_and_process_frame:42] recv one image
+[D 180724 15:59:33 util:70] TF detection took 78.66 ms
+[D 180724 15:59:33 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:33 recv_and_process_frame:42] recv one image
+[D 180724 15:59:33 util:70] TF detection took 81.07 ms
+[D 180724 15:59:33 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:33 recv_and_process_frame:42] recv one image
+[D 180724 15:59:33 util:70] TF detection took 86.70 ms
+[D 180724 15:59:33 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:33 recv_and_process_frame:42] recv one image
+[D 180724 15:59:33 util:70] TF detection took 98.65 ms
+[D 180724 15:59:33 recv_and_process_frame:45] # of detected boxes: 5
+[D 180724 15:59:33 recv_and_process_frame:42] recv one image
+[D 180724 15:59:33 util:70] TF detection took 61.66 ms
+[D 180724 15:59:33 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:33 recv_and_process_frame:42] recv one image
+[D 180724 15:59:34 util:70] TF detection took 95.62 ms
+[D 180724 15:59:34 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:34 recv_and_process_frame:42] recv one image
+[D 180724 15:59:34 util:70] TF detection took 63.39 ms
+[D 180724 15:59:34 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:34 recv_and_process_frame:42] recv one image
+[D 180724 15:59:34 util:70] TF detection took 68.98 ms
+[D 180724 15:59:34 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:34 recv_and_process_frame:42] recv one image
+[D 180724 15:59:34 util:70] TF detection took 69.37 ms
+[D 180724 15:59:34 recv_and_process_frame:45] # of detected boxes: 6
+[D 180724 15:59:34 recv_and_process_frame:42] recv one image
+[D 180724 15:59:34 util:70] TF detection took 60.51 ms
+[D 180724 15:59:34 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:34 recv_and_process_frame:42] recv one image
+[D 180724 15:59:34 util:70] TF detection took 68.37 ms
+[D 180724 15:59:34 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:34 recv_and_process_frame:42] recv one image
+[D 180724 15:59:34 util:70] TF detection took 57.04 ms
+[D 180724 15:59:34 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:34 recv_and_process_frame:42] recv one image
+[D 180724 15:59:34 util:70] TF detection took 52.98 ms
+[D 180724 15:59:34 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:35 recv_and_process_frame:42] recv one image
+[D 180724 15:59:35 util:70] TF detection took 69.75 ms
+[D 180724 15:59:35 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:35 recv_and_process_frame:42] recv one image
+[D 180724 15:59:35 util:70] TF detection took 57.86 ms
+[D 180724 15:59:35 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:35 recv_and_process_frame:42] recv one image
+[D 180724 15:59:35 util:70] TF detection took 57.61 ms
+[D 180724 15:59:35 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:35 recv_and_process_frame:42] recv one image
+[D 180724 15:59:35 util:70] TF detection took 51.18 ms
+[D 180724 15:59:35 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:35 recv_and_process_frame:42] recv one image
+[D 180724 15:59:35 util:70] TF detection took 54.99 ms
+[D 180724 15:59:35 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:35 recv_and_process_frame:42] recv one image
+[D 180724 15:59:35 util:70] TF detection took 52.32 ms
+[D 180724 15:59:35 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:35 recv_and_process_frame:42] recv one image
+[D 180724 15:59:35 util:70] TF detection took 44.31 ms
+[D 180724 15:59:35 recv_and_process_frame:45] # of detected boxes: 6
+[D 180724 15:59:35 recv_and_process_frame:42] recv one image
+[D 180724 15:59:35 util:70] TF detection took 61.88 ms
+[D 180724 15:59:35 recv_and_process_frame:45] # of detected boxes: 5
+[D 180724 15:59:36 recv_and_process_frame:42] recv one image
+[D 180724 15:59:36 util:70] TF detection took 67.19 ms
+[D 180724 15:59:36 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:36 recv_and_process_frame:42] recv one image
+[D 180724 15:59:36 util:70] TF detection took 50.47 ms
+[D 180724 15:59:36 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:36 recv_and_process_frame:42] recv one image
+[D 180724 15:59:36 util:70] TF detection took 50.62 ms
+[D 180724 15:59:36 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:36 recv_and_process_frame:42] recv one image
+[D 180724 15:59:36 util:70] TF detection took 61.44 ms
+[D 180724 15:59:36 recv_and_process_frame:45] # of detected boxes: 6
+[D 180724 15:59:36 recv_and_process_frame:42] recv one image
+[D 180724 15:59:36 util:70] TF detection took 49.23 ms
+[D 180724 15:59:36 recv_and_process_frame:45] # of detected boxes: 5
+[D 180724 15:59:36 recv_and_process_frame:42] recv one image
+[D 180724 15:59:36 util:70] TF detection took 71.15 ms
+[D 180724 15:59:36 recv_and_process_frame:45] # of detected boxes: 6
+[D 180724 15:59:36 recv_and_process_frame:42] recv one image
+[D 180724 15:59:36 util:70] TF detection took 51.99 ms
+[D 180724 15:59:36 recv_and_process_frame:45] # of detected boxes: 6
+[D 180724 15:59:36 recv_and_process_frame:42] recv one image
+[D 180724 15:59:36 util:70] TF detection took 81.84 ms
+[D 180724 15:59:36 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:36 recv_and_process_frame:42] recv one image
+[D 180724 15:59:37 util:70] TF detection took 65.46 ms
+[D 180724 15:59:37 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:37 recv_and_process_frame:42] recv one image
+[D 180724 15:59:37 util:70] TF detection took 43.34 ms
+[D 180724 15:59:37 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:37 recv_and_process_frame:42] recv one image
+[D 180724 15:59:37 util:70] TF detection took 53.81 ms
+[D 180724 15:59:37 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:37 recv_and_process_frame:42] recv one image
+[D 180724 15:59:37 util:70] TF detection took 50.52 ms
+[D 180724 15:59:37 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:37 recv_and_process_frame:42] recv one image
+[D 180724 15:59:37 util:70] TF detection took 62.19 ms
+[D 180724 15:59:37 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:37 recv_and_process_frame:42] recv one image
+[D 180724 15:59:37 util:70] TF detection took 48.76 ms
+[D 180724 15:59:37 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:37 recv_and_process_frame:42] recv one image
+[D 180724 15:59:37 util:70] TF detection took 53.65 ms
+[D 180724 15:59:37 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:37 recv_and_process_frame:42] recv one image
+[D 180724 15:59:37 util:70] TF detection took 45.31 ms
+[D 180724 15:59:37 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:37 recv_and_process_frame:42] recv one image
+[D 180724 15:59:38 util:95] [Over last 100 runs] TFModel Graph Execution Time took 63.48+-14.53 ms
+[D 180724 15:59:38 util:70] TF detection took 58.42 ms
+[D 180724 15:59:38 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:38 recv_and_process_frame:42] recv one image
+[D 180724 15:59:38 util:70] TF detection took 69.28 ms
+[D 180724 15:59:38 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:38 recv_and_process_frame:42] recv one image
+[D 180724 15:59:38 util:70] TF detection took 58.17 ms
+[D 180724 15:59:38 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:38 recv_and_process_frame:42] recv one image
+[D 180724 15:59:38 util:70] TF detection took 72.46 ms
+[D 180724 15:59:38 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:38 recv_and_process_frame:42] recv one image
+[D 180724 15:59:38 util:70] TF detection took 67.03 ms
+[D 180724 15:59:38 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:38 recv_and_process_frame:42] recv one image
+[D 180724 15:59:38 util:70] TF detection took 60.19 ms
+[D 180724 15:59:38 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:38 recv_and_process_frame:42] recv one image
+[D 180724 15:59:38 util:70] TF detection took 56.83 ms
+[D 180724 15:59:38 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:38 recv_and_process_frame:42] recv one image
+[D 180724 15:59:39 util:70] TF detection took 100.69 ms
+[D 180724 15:59:39 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:39 recv_and_process_frame:42] recv one image
+[D 180724 15:59:39 util:70] TF detection took 78.60 ms
+[D 180724 15:59:39 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:39 recv_and_process_frame:42] recv one image
+[D 180724 15:59:39 util:70] TF detection took 72.49 ms
+[D 180724 15:59:39 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:39 recv_and_process_frame:42] recv one image
+[D 180724 15:59:39 util:70] TF detection took 76.23 ms
+[D 180724 15:59:39 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:39 recv_and_process_frame:42] recv one image
+[D 180724 15:59:39 util:70] TF detection took 73.68 ms
+[D 180724 15:59:39 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:39 recv_and_process_frame:42] recv one image
+[D 180724 15:59:39 util:70] TF detection took 56.42 ms
+[D 180724 15:59:39 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:39 recv_and_process_frame:42] recv one image
+[D 180724 15:59:39 util:70] TF detection took 81.29 ms
+[D 180724 15:59:39 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:39 recv_and_process_frame:42] recv one image
+[D 180724 15:59:40 util:70] TF detection took 106.55 ms
+[D 180724 15:59:40 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:40 recv_and_process_frame:42] recv one image
+[D 180724 15:59:40 util:70] TF detection took 51.34 ms
+[D 180724 15:59:40 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:40 recv_and_process_frame:42] recv one image
+[D 180724 15:59:40 util:70] TF detection took 57.06 ms
+[D 180724 15:59:40 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:40 recv_and_process_frame:42] recv one image
+[D 180724 15:59:40 util:70] TF detection took 58.44 ms
+[D 180724 15:59:40 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:40 recv_and_process_frame:42] recv one image
+[D 180724 15:59:40 util:70] TF detection took 57.23 ms
+[D 180724 15:59:40 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:40 recv_and_process_frame:42] recv one image
+[D 180724 15:59:40 util:70] TF detection took 39.06 ms
+[D 180724 15:59:40 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:40 recv_and_process_frame:42] recv one image
+[D 180724 15:59:40 util:70] TF detection took 45.92 ms
+[D 180724 15:59:40 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:40 recv_and_process_frame:42] recv one image
+[D 180724 15:59:40 util:70] TF detection took 56.03 ms
+[D 180724 15:59:40 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:40 recv_and_process_frame:42] recv one image
+[D 180724 15:59:40 util:70] TF detection took 79.83 ms
+[D 180724 15:59:40 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:40 recv_and_process_frame:42] recv one image
+[D 180724 15:59:41 util:70] TF detection took 58.63 ms
+[D 180724 15:59:41 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:41 recv_and_process_frame:42] recv one image
+[D 180724 15:59:41 util:70] TF detection took 80.25 ms
+[D 180724 15:59:41 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:41 recv_and_process_frame:42] recv one image
+[D 180724 15:59:41 util:70] TF detection took 62.04 ms
+[D 180724 15:59:41 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:41 recv_and_process_frame:42] recv one image
+[D 180724 15:59:41 util:70] TF detection took 54.46 ms
+[D 180724 15:59:41 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:41 recv_and_process_frame:42] recv one image
+[D 180724 15:59:41 util:70] TF detection took 66.71 ms
+[D 180724 15:59:41 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:41 recv_and_process_frame:42] recv one image
+[D 180724 15:59:41 util:70] TF detection took 55.10 ms
+[D 180724 15:59:41 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:41 recv_and_process_frame:42] recv one image
+[D 180724 15:59:41 util:70] TF detection took 51.93 ms
+[D 180724 15:59:41 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:41 recv_and_process_frame:42] recv one image
+[D 180724 15:59:41 util:70] TF detection took 46.97 ms
+[D 180724 15:59:41 recv_and_process_frame:45] # of detected boxes: 1
+[D 180724 15:59:41 recv_and_process_frame:42] recv one image
+[D 180724 15:59:42 util:70] TF detection took 64.80 ms
+[D 180724 15:59:42 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:42 recv_and_process_frame:42] recv one image
+[D 180724 15:59:42 util:70] TF detection took 65.64 ms
+[D 180724 15:59:42 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:42 recv_and_process_frame:42] recv one image
+[D 180724 15:59:42 util:70] TF detection took 52.07 ms
+[D 180724 15:59:42 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:42 recv_and_process_frame:42] recv one image
+[D 180724 15:59:42 util:70] TF detection took 75.49 ms
+[D 180724 15:59:42 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:42 recv_and_process_frame:42] recv one image
+[D 180724 15:59:42 util:70] TF detection took 46.56 ms
+[D 180724 15:59:42 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:42 recv_and_process_frame:42] recv one image
+[D 180724 15:59:42 util:70] TF detection took 64.48 ms
+[D 180724 15:59:42 recv_and_process_frame:45] # of detected boxes: 2
+[D 180724 15:59:42 recv_and_process_frame:42] recv one image
+[D 180724 15:59:42 util:70] TF detection took 49.25 ms
+[D 180724 15:59:42 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:42 recv_and_process_frame:42] recv one image
+[D 180724 15:59:42 util:70] TF detection took 49.48 ms
+[D 180724 15:59:42 recv_and_process_frame:45] # of detected boxes: 5
+[D 180724 15:59:42 recv_and_process_frame:42] recv one image
+[D 180724 15:59:42 util:70] TF detection took 44.14 ms
+[D 180724 15:59:42 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:42 recv_and_process_frame:42] recv one image
+[D 180724 15:59:43 util:70] TF detection took 76.10 ms
+[D 180724 15:59:43 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:43 recv_and_process_frame:42] recv one image
+[D 180724 15:59:43 util:70] TF detection took 46.80 ms
+[D 180724 15:59:43 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:43 recv_and_process_frame:42] recv one image
+[D 180724 15:59:43 util:70] TF detection took 48.03 ms
+[D 180724 15:59:43 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:43 recv_and_process_frame:42] recv one image
+[D 180724 15:59:43 util:70] TF detection took 52.34 ms
+[D 180724 15:59:43 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:43 recv_and_process_frame:42] recv one image
+[D 180724 15:59:43 util:70] TF detection took 51.53 ms
+[D 180724 15:59:43 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:43 recv_and_process_frame:42] recv one image
+[D 180724 15:59:43 util:70] TF detection took 50.80 ms
+[D 180724 15:59:43 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:43 recv_and_process_frame:42] recv one image
+[D 180724 15:59:43 util:70] TF detection took 60.33 ms
+[D 180724 15:59:43 recv_and_process_frame:45] # of detected boxes: 3
+[D 180724 15:59:43 recv_and_process_frame:42] recv one image
+[D 180724 15:59:43 util:70] TF detection took 60.02 ms
+[D 180724 15:59:43 recv_and_process_frame:45] # of detected boxes: 5
+[D 180724 15:59:43 recv_and_process_frame:42] recv one image
+[D 180724 15:59:43 util:70] TF detection took 54.25 ms
+[D 180724 15:59:43 recv_and_process_frame:45] # of detected boxes: 4
+[D 180724 15:59:43 recv_and_process_frame:42] recv one image
+[D 180724 15:59:43 util:70] TF detection took 43.88 ms
+[D 180724 15:59:43 recv_and_process_frame:45] # of detected boxes: 5
+[D 180724 15:59:44 recv_and_process_frame:42] recv one image
+[D 180724 15:59:44 util:70] TF detection took 55.07 ms
+[D 180724 15:59:44 recv_and_process_frame:45] # of detected boxes: 6
+[D 180724 15:59:44 recv_and_process_frame:42] recv one image
+[D 180724 15:59:44 util:70] TF detection took 74.82 ms
+[D 180724 15:59:44 recv_and_process_frame:45] # of detected boxes: 7
+[D 180724 15:59:44 recv_and_process_frame:42] recv one image
+[D 180724 15:59:44 util:70] TF detection took 85.06 ms
+[D 180724 15:59:44 recv_and_process_frame:45] # of detected boxes: 5
+[D 180724 15:59:44 recv_and_process_frame:42] recv one image
+[D 180724 15:59:44 util:70] TF detection took 72.60 ms
+[D 180724 15:59:44 recv_and_process_frame:45] # of detected boxes: 8
+[D 180724 15:59:44 recv_and_process_frame:42] recv one image
+[D 180724 15:59:44 util:70] TF detection took 62.31 ms
+[D 180724 15:59:44 recv_and_process_frame:45] # of detected boxes: 5
+[D 180724 15:59:44 recv_and_process_frame:42] recv one image
+[D 180724 15:59:44 util:70] TF detection took 90.62 ms
+[D 180724 15:59:44 recv_and_process_frame:45] # of detected boxes: 6
+[D 180724 15:59:44 recv_and_process_frame:42] recv one image
+[D 180724 15:59:44 util:70] TF detection took 65.30 ms
+[D 180724 15:59:44 recv_and_process_frame:45] # of detected boxes: 9
+[D 180724 15:59:44 recv_and_process_frame:42] recv one image
+[D 180724 15:59:44 util:70] TF detection took 48.94 ms
+[D 180724 15:59:44 recv_and_process_frame:45] # of detected boxes: 6
+[D 180724 15:59:45 recv_and_process_frame:42] recv one image
+[D 180724 15:59:45 util:70] TF detection took 73.74 ms
+[D 180724 15:59:45 recv_and_process_frame:45] # of detected boxes: 5
+[D 180724 15:59:45 recv_and_process_frame:42] recv one image
+[D 180724 15:59:45 util:70] TF detection took 53.15 ms
+[D 180724 15:59:45 recv_and_process_frame:45] # of detected boxes: 9
+[D 180724 15:59:45 recv_and_process_frame:42] recv one image
+[D 180724 15:59:45 util:70] TF detection took 51.92 ms
+[D 180724 15:59:45 recv_and_process_frame:45] # of detected boxes: 6
+[D 180724 15:59:45 recv_and_process_frame:42] recv one image
+[D 180724 15:59:45 util:70] TF detection took 84.57 ms
+[D 180724 15:59:45 recv_and_process_frame:45] # of detected boxes: 7
+[D 180724 15:59:45 recv_and_process_frame:42] recv one image
+[D 180724 15:59:45 util:70] TF detection took 64.50 ms
+[D 180724 15:59:45 recv_and_process_frame:45] # of detected boxes: 8
+[D 180724 15:59:45 recv_and_process_frame:42] recv one image
+[D 180724 15:59:45 util:70] TF detection took 54.09 ms
+[D 180724 15:59:45 recv_and_process_frame:45] # of detected boxes: 6
+[D 180724 15:59:45 recv_and_process_frame:42] recv one image
+[D 180724 15:59:45 util:70] TF detection took 55.47 ms
+[D 180724 15:59:45 recv_and_process_frame:45] # of detected boxes: 8
+[D 180724 15:59:45 recv_and_process_frame:42] recv one image
+[D 180724 15:59:45 util:70] TF detection took 66.48 ms
+[D 180724 15:59:45 recv_and_process_frame:45] # of detected boxes: 7
+[D 180724 15:59:46 recv_and_process_frame:42] recv one image
+[D 180724 15:59:46 util:70] TF detection took 60.83 ms
+[D 180724 15:59:46 recv_and_process_frame:45] # of detected boxes: 8
+[D 180724 15:59:46 recv_and_process_frame:42] recv one image
+[D 180724 15:59:46 util:70] TF detection took 83.59 ms
+[D 180724 15:59:46 recv_and_process_frame:45] # of detected boxes: 9
+[D 180724 15:59:46 recv_and_process_frame:42] recv one image
+[D 180724 15:59:46 util:70] TF detection took 113.61 ms
+[D 180724 15:59:46 recv_and_process_frame:45] # of detected boxes: 9
+[D 180724 15:59:46 recv_and_process_frame:42] recv one image
+[D 180724 15:59:46 util:70] TF detection took 162.14 ms
+[D 180724 15:59:46 recv_and_process_frame:45] # of detected boxes: 6
+[D 180724 15:59:46 recv_and_process_frame:42] recv one image
+[D 180724 15:59:46 util:70] TF detection took 125.37 ms
+[D 180724 15:59:46 recv_and_process_frame:45] # of detected boxes: 6
+[D 180724 15:59:46 recv_and_process_frame:42] recv one image
+[D 180724 15:59:46 util:70] TF detection took 81.73 ms
+[D 180724 15:59:46 recv_and_process_frame:45] # of detected boxes: 7
+[D 180724 15:59:46 recv_and_process_frame:42] recv one image
+[D 180724 15:59:47 util:70] TF detection took 90.23 ms
+[D 180724 15:59:47 recv_and_process_frame:45] # of detected boxes: 7
+[D 180724 15:59:47 recv_and_process_frame:42] recv one image
+[D 180724 15:59:47 util:70] TF detection took 79.20 ms
+[D 180724 15:59:47 recv_and_process_frame:45] # of detected boxes: 8
+[D 180724 15:59:47 recv_and_process_frame:42] recv one image
+[D 180724 15:59:47 util:70] TF detection took 62.42 ms
+[D 180724 15:59:47 recv_and_process_frame:45] # of detected boxes: 7
+[D 180724 15:59:47 recv_and_process_frame:42] recv one image
+[D 180724 15:59:47 util:70] TF detection took 55.44 ms
+[D 180724 15:59:47 recv_and_process_frame:45] # of detected boxes: 10
+[D 180724 15:59:47 recv_and_process_frame:42] recv one image
+[D 180724 15:59:47 util:70] TF detection took 60.88 ms
+[D 180724 15:59:47 recv_and_process_frame:45] # of detected boxes: 8
+[D 180724 15:59:47 recv_and_process_frame:42] recv one image
+[D 180724 15:59:47 util:70] TF detection took 62.23 ms
+[D 180724 15:59:47 recv_and_process_frame:45] # of detected boxes: 9
+[D 180724 15:59:47 recv_and_process_frame:42] recv one image
+[D 180724 15:59:47 util:70] TF detection took 54.95 ms
+[D 180724 15:59:47 recv_and_process_frame:45] # of detected boxes: 8
+[D 180724 15:59:47 recv_and_process_frame:42] recv one image
+[D 180724 15:59:47 util:70] TF detection took 67.16 ms
+[D 180724 15:59:47 recv_and_process_frame:45] # of detected boxes: 6
+[D 180724 15:59:47 recv_and_process_frame:42] recv one image
+[D 180724 15:59:48 util:70] TF detection took 53.54 ms
+[D 180724 15:59:48 recv_and_process_frame:45] # of detected boxes: 8
+[D 180724 15:59:48 recv_and_process_frame:42] recv one image
+[D 180724 15:59:48 util:70] TF detection took 56.47 ms
+[D 180724 15:59:48 recv_and_process_frame:45] # of detected boxes: 5
+[D 180724 15:59:48 recv_and_process_frame:42] recv one image
+[D 180724 15:59:48 util:70] TF detection took 53.56 ms
+[D 180724 15:59:48 recv_and_process_frame:45] # of detected boxes: 5
+[D 180724 15:59:48 recv_and_process_frame:42] recv one image
+[D 180724 15:59:48 util:70] TF detection took 51.04 ms
+[D 180724 15:59:48 recv_and_process_frame:45] # of detected boxes: 7
+[D 180724 15:59:48 recv_and_process_frame:42] recv one image
+[D 180724 15:59:48 util:70] TF detection took 43.05 ms
+[D 180724 15:59:48 recv_and_process_frame:45] # of detected boxes: 8
+[D 180724 15:59:48 recv_and_process_frame:42] recv one image
+[D 180724 15:59:48 util:70] TF detection took 46.46 ms
+[D 180724 15:59:48 recv_and_process_frame:45] # of detected boxes: 7
+[D 180724 15:59:48 recv_and_process_frame:42] recv one image
+[D 180724 15:59:48 util:70] TF detection took 49.54 ms
+[D 180724 15:59:48 recv_and_process_frame:45] # of detected boxes: 8
+[D 180724 15:59:48 recv_and_process_frame:42] recv one image
+[D 180724 15:59:48 util:70] TF detection took 71.56 ms
+[D 180724 15:59:48 recv_and_process_frame:45] # of detected boxes: 7
+[D 180724 15:59:48 recv_and_process_frame:42] recv one image
+[D 180724 15:59:48 util:70] TF detection took 98.50 ms
+[D 180724 15:59:48 recv_and_process_frame:45] # of detected boxes: 10

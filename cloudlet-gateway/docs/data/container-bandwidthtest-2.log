@@ -1,0 +1,12 @@
+
+Device: GeForce GTX 1080 Ti
+Transfer size (MB): 16
+
+Pageable transfers
+  Host to Device bandwidth (GB/s): 5.707654
+  Device to Host bandwidth (GB/s): 5.581986
+
+Pinned transfers
+  Host to Device bandwidth (GB/s): 6.085545
+  Device to Host bandwidth (GB/s): 6.555730
+
