@@ -16,8 +16,8 @@ particular VM through GPU-passthrough on the host.
 
 ### GPU-Passthrough to a libvirt VM
 
-The setup process is automated through Ansible. Please see [repo](https://github.com/junjuew/ansible-dotfiles/) for the
-set-up. Use following command to set up your machine.
+The setup process is automated through Ansible. Please see [repo](https://github.com/junjuew/ansible-dotfiles/). 
+Use following command to set up GPU passthrough.
 
 ```bash
 ansible-playbook -i hosts-gpu-passthrough gpu-passthrough-playbook.yml
@@ -25,39 +25,46 @@ ansible-playbook -i hosts-gpu-passthrough gpu-passthrough-playbook.yml
 
 ### Container Access to GPU
 
-Nvidia-docker enables containers to access GPU easily. See [repo](https://github.com/junjuew/ansible-dotfiles/) for installation.
+nvidia-docker enables containers to access GPU easily. See [repo](https://github.com/junjuew/ansible-dotfiles/) for installation.
 
-## Performance
+## Performance Overhead
 
-We measure the overhead introduced by virtuation for both compute and memory transfer.
+We used two benchmarks to measure the overhead introduced by VM and container virtuation. The first benchmark [DeepBench](https://github.com/baidu-research/DeepBench) is compute-intensive. In particular, we focused on convolution operation --- the core workload of convolutional neural networks. The second benchmark [BandwidthTest](https://github.com/parallel-forall/code-samples/blob/master/series/cuda-cpp/optimize-data-transfers/bandwidthtest.cu) evaluated the data transfer bandwidth between the host and the GPU.
+
+*In both experiments, the overhead introduced by virtualization is <2.5%.*
 
 ### HW & SW Setup
 
-The GPU in test is NVIDIA Tesla GTX 1080 Ti GPU with following setup.
+The GPU in test is NVIDIA Tesla GTX 1080 Ti GPU.
 
 * Max GPU Clock: 1911 MHz(Graphics), 5505 MHz(Memory)
 * Default Computing mode
 
-The software in use in bare-metal, VM, and container inside the VM is kept the same.
+The software in bare-metal, VM, and container-inside-VM is kept the same.
 
 * Ubuntu 16.04
 * linux kernel 4.4.0-130
 * 396.37 NVIDIA driver + cuda 9.0 + cudnn 7.1.4.18
 
-The VM is created using qemu-kvm 2.6.2 through libvirt. GPU passthrough is done through vfio.
-The container inside the VM is created using nvidia-docker 2.0.3 and docker 18.03.1.
+The VM is created using qemu-kvm 2.6.2 and libvirt. GPU passthrough is achieved through vfio.
+The container-inside-VM is created using nvidia-docker 2.0.3 and docker 18.03.1.
 
 ### Convolution Kernels --- Compute
 
 We used floating point general matrix multiplication from [this
-benchmark](https://github.com/baidu-research/DeepBench). THe benchmark is
+benchmark](https://github.com/baidu-research/DeepBench). The benchmark is
 invoked with
 
 ```bash
 ./conv_bench inferenct float
 ```
 
-#### Convolution Speed
+The benchmark uses *cudnnFindConvolutionForwardAlgorithm* in cudnn to determine the convolution algorithm to use at runtime. In our experiments, such dynamic algorithm selection results in large variance of execution time as different algorithms are used across different runs. It is unclear why cudnn would select different algorithms even when convolution parameters are kept the same. To obtain reproducible results, we manuallly fixed the convolutional algorithm to be CUDNN_CONVOLUTION_FWD_ALGO_IMPLICIT_PRECOMP_GEMM in the code. See [here](https://docs.nvidia.com/deeplearning/sdk/cudnn-developer-guide/index.html#api-introduction) for more on what the algorithm does.
+
+We used the same convolutional kernels as described in [DeepBench](https://github.com/baidu-research/DeepBench) "Server Inference Setup" for comparison.
+
+#### Convolution Experiment Parameters
+
 | Experiment | Input Size    | Filter Size   | # of Filters | Padding (h, w) | Stride (h, w) |
 |----------------|--------------------------------|---------------|--------------|----------------|---------------|
 | 1 | W = 341, H = 79, C = 32, N = 4 | R = 5, S = 10 | 32           | 0,0            | 2,2           |
@@ -65,11 +72,12 @@ invoked with
 | 3 | W = 56, H = 56, C = 256, N = 1 | R = 1, S = 1  | 128        | 0, 0           | 2, 2        |
 | 4 | W = 7, H = 7,  C = 512, N = 2  | R = 1, S = 1  | 2048         | 0, 0           | 1, 1          |
 
+#### Convolution Speed
 | Virtualization |   Exp 1 (us)          | Exp 2 (us)   | Exp 3 (us)  | Exp 4 (us)    |
 |:--------------:|:---------------------:|:------------:|:-------------:|:------------:|
-| bare-metal     |  382 +- 9 | 46 +- 7 | 42 +- 2 | 70 +- 2 |
-| VM             |  388 +- 41 | 56 +- 15 | 42 +- 2 | 73 +- 7 |
-| Container inside VM |  382 +- 3 | 56 +- 15 | 42 +- 2 | 72 +- 5 |
+| bare-metal     |  381 +- 9 | 44 +- 1 | 39 +- 1 | 68 +- 1 |
+| VM             |  384 +- 11 | 45 +- 1 | 39 +- 1 | 67 +- 1 |
+| Container inside VM |  386 +- 9 | 45 +- 1 | 39 +- 1 | 68 +- 2 |
 
 <!---
 #### GEMM Benchmark Speed
@@ -85,9 +93,9 @@ GEMM benchmark is only executed for 3 times. The running time is not big enough 
 
 ### Bandwidth Test --- Bandwidth
 
-We benchmarked memory transfer time from host to device using
+We benchmarked memory bandwidth between the host and the GPU device using
 [bandwidthtest.cu](https://github.com/parallel-forall/code-samples/blob/master/series/cuda-cpp/optimize-data-transfers/bandwidthtest.cu).
-You can learn more about this test
+You can learn more about pinned transfer bandwdith
 [here](https://devblogs.nvidia.com/how-optimize-data-transfers-cuda-cc/). 
 
 #### Pinned Transfer Bandwidth
@@ -130,3 +138,14 @@ Software stack should be similar to above.
 | bare-metal |      |  |  |  |
 | VM with GPU passthrough (gpu default mode) | 95 +- 13  | 101 +- 13 |  | |
 | container inside a VM with GPU passthrough |    |  | |  |
+
+### Experiments Data
+
+Complete experiment results are in [data](data) directory.
+
+* baremetal-conv, vm-conv, container-conv: Convolution kernel benchmark results for bare-metal, vm, and container-inside-VM.
+* run.sh: Convolution kernel result summary script
+* bandwidth-test: BandwithTest benchmark results for bare-metal, vm, and container-inside-VM.
+* conv-dynamic-algorithm: Unmodified convolution kernel benchmark results, which select convolution algorithms at runtime.
+* gemm-test: GEMM kernel benchmark results using DeepBench. Note that the data has high variance since not enough runs are executed.
+* vm-ssd-*: Object detection benchmark results on VM using [cvutils](www.github.com/junjuew/cvutils). Note that this benchmark includes extra processing time on CPU as well. It should not be used for measuring virtualization overhead.
