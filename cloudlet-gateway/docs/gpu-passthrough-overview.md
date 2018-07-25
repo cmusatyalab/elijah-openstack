@@ -31,7 +31,7 @@ nvidia-docker enables containers to access GPU easily. See [repo](https://github
 
 We used two benchmarks to measure the overhead introduced by VM and container virtuation. The first benchmark [DeepBench](https://github.com/baidu-research/DeepBench) is compute-intensive. In particular, we focused on convolution operation --- the core workload of convolutional neural networks. The second benchmark [BandwidthTest](https://github.com/parallel-forall/code-samples/blob/master/series/cuda-cpp/optimize-data-transfers/bandwidthtest.cu) evaluated the data transfer bandwidth between the host and the GPU.
 
-*In both experiments, the overhead introduced by virtualization is <2.5%.*
+**In both experiments, the overhead introduced by virtualization is <2.5%.**
 
 ### HW & SW Setup
 
