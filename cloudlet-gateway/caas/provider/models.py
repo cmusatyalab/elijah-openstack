@@ -10,7 +10,6 @@ from enum import Enum
 from flask import current_app
 from flask_login import UserMixin
 
-from caas.core.machine import Machine
 from caas.core.openstackutils import get_fixed_ip_from_floating_ip
 from caas.database import Column, Model, SurrogatePK, db, reference_col, relationship
 from caas.extensions import bcrypt
@@ -183,6 +182,8 @@ class Cluster(SurrogatePK, Model):
 
     @property
     def leader_public_ip(self):
+        # not requiring docker machine as a dependency
+        from caas.core.machine import Machine
         dm = Machine()
         leader_env_str = dm.env(machine=self.leader_name).split('\n')
         pat = re.compile(r'export DOCKER_HOST="tcp://(.*):\d+"')

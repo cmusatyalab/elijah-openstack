@@ -49,9 +49,9 @@ def apps():
     for app in current_user.apps:
         display_info[app.name] = app.config_file_name[AppModel.APP_TYPE(app.type)]
     cluster_monitor_urls = {}
-    for cluster in clusters:
-        cluster_monitor_urls[cluster.name] = '{}{}:8080'.format(current_app.config['LELPROXY'],
-                                                                cluster.leader_public_ip)
+    # for cluster in clusters:
+    #     cluster_monitor_urls[cluster.name] = '{}{}:8080'.format(current_app.config['LELPROXY'],
+    #                                                             cluster.leader_public_ip)
     return render_template('providers/services.html', apps=display_info, clusters=clusters, form=form,
                            cluster_monitor_urls=cluster_monitor_urls)
 
