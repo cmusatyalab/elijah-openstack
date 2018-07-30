@@ -15,7 +15,6 @@ cliff-tablib==1.1
 cmd2==0.7.0
 colorama==0.3.7
 configparser==3.5.0
-cryptography==1.8.1
 cssmin==0.2.0
 debtcollector==1.13.0
 docker==2.2.1
