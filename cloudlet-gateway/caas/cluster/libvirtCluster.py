@@ -1,8 +1,11 @@
 """Abstraction for a libvirt controller that can CRUD libvirt-based VMs.
 
 This module is standalone except using the global jinja2 environment.
+Only libvirt bridge networking is supported now. It assumes the host system
+already has a bridge created.
 """
 from __future__ import absolute_import, division, print_function
+
 import subprocess
 
 import libvirt
@@ -11,19 +14,38 @@ from logzero import logger
 
 from caas.cluster import base
 
+class NetworkInterface(object):
+    def __init__(self):
+        super(NetworkInterface, self).__init__()
+        self.type, source, model = None, None, None
+
+class BridgeNetworkInterface(object):
+    def __init__(self, source):
+        super(BridgeNetworkInterface, self).__init__()
+        self.type = 'bridge'
+        self.source = source
+        self.model = 'e1000'
+
+class GPU(object):
+    def __init__(self, bus, slot, function):
+        """Create a GPU object.
+        bus, slot, function: integers corresponding to PCI device bus, slot, function
+        """
+        super(GPU, self).__init__()
+        self.bus = '0x{:02X}'.format(bus)
+        self.slot = '0x{:02X}'.format(slot)
+        self.function = '0x{:02X}'.format(function)
 
 class LibvirtController(base.BaseCluster):
     """Controller for managing libvirt-based VMs."""
     DOMAIN_INFO_NAME = 'name'
     DOMAIN_INFO_STATE = 'state'
-    HOST_GPU_INFO_BUS = 'bus'
-    HOST_GPU_INFO_SLOT = 'slot'
-    HOST_GPU_INFO_FUNCTION = 'function'
     JINJA_PACKAGE_LOADER_PACKAGE = 'caas'
     JINJA_PACKAGE_LOADER_TEMPLATE_DIR = 'templates'
 
     def __init__(self, uri="qemu:///system"):
         """Connect to libvirt daemon."""
+        super(LibvirtController, self).__init__()
         self._conn = libvirt.open(uri)
         if self._conn is None:
             raise EnvironmentError("Failed to connect to libvirt. Do you have libvirt installed?")
@@ -33,13 +55,14 @@ class LibvirtController(base.BaseCluster):
             autoescape=select_autoescape(['html', 'xml'])
         )
 
-    def _create_vm_from_xml_template(self, name, cpu, memory, image_format, image_path, gpus):
+    def _create_vm_from_xml_template(self, name, cpu, memory, image_format, image_path, network_interfaces, gpus):
         template = self._jinja_env.get_template("libvirt-vm-template.xml")
         vm_xml = template.render(name=name,
                                  cpu=cpu,
                                  memory=memory,
                                  image_format=image_format,
                                  image_path=image_path,
+                                 network_interfaces = network_interfaces,
                                  gpus=gpus)
         domain = self._conn.createXML(vm_xml, 0)
         if domain is None:
@@ -57,16 +80,17 @@ class LibvirtController(base.BaseCluster):
             raise EnvironmentError("Failed to auto detect NVIDIA GPU cards information")
         gpus = []
         for line in out.splitlines():
-            gpu_info = {}
             [bus, slot, function] = map(lambda x: int(x, 16), line.split())
-            gpu_info[self.__class__.HOST_GPU_INFO_BUS] = '0x{:02X}'.format(bus)
-            gpu_info[self.__class__.HOST_GPU_INFO_SLOT] = '0x{:02X}'.format(slot)
-            gpu_info[self.__class__.HOST_GPU_INFO_FUNCTION] = '0x{:02X}'.format(function)
-            gpus.append(gpu_info)
+            gpu = GPU(bus, slot, function)
+            gpus.append(gpu)
         return gpus
 
-    def create(self, name, cpu, memory, image_format, image_path, gpus=[], detect_gpus=False):
-        """Create a libvirt VM"""
+    def create(self, name, cpu, memory, image_format, image_path, network_interfaces, gpus=[], detect_gpus=False):
+        """Create a libvirt VM.
+
+        network_interfaces: a list of NetworkInterface-derived objects.
+        gpus: a list of GPU objects
+        """
         # auto-detect GPU is limited to nvidia gpu only for now
         if detect_gpus:
             gpus = self._get_nvidia_gpu_info()
@@ -75,6 +99,7 @@ class LibvirtController(base.BaseCluster):
                                                  memory=memory,
                                                  image_format=image_format,
                                                  image_path=image_path,
+                                                 network_interfaces=network_interfaces,
                                                  gpus=gpus)
 
     def get(self):
