@@ -16,7 +16,7 @@ class BaseCluster(with_metaclass(abc.ABCMeta)):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def read(self, parameter_list):
+    def get(self, parameter_list):
         """Get information about the cluster."""
         raise NotImplementedError
 
