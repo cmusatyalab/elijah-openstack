@@ -1,3 +1,7 @@
+"""Abstract base class for cluster abstraction.
+
+A cluster is an entity that has capbilities to CRUD compute resources.
+"""
 from __future__ import absolute_import, division, print_function
 
 import abc

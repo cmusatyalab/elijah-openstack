@@ -1,6 +1,8 @@
-from __future__ import absolute_import, division, print_function
+"""Abstraction for a libvirt controller that can CRUD libvirt-based VMs.
 
-import shlex
+This module is standalone except using the global jinja2 environment.
+"""
+from __future__ import absolute_import, division, print_function
 import subprocess
 
 import libvirt
@@ -11,17 +13,7 @@ from caas.cluster import base
 
 
 class LibvirtController(base.BaseCluster):
-    """Controller for managing libvirt-based VMs"""
-    # _libvirt_states = {
-    #     libvirt.VIR_DOMAIN_NOSTATE
-    #     libvirt.VIR_DOMAIN_RUNNING
-    #     libvirt.VIR_DOMAIN_BLOCKED:
-    #     libvirt.VIR_DOMAIN_PAUSED:
-    #     libvirt.VIR_DOMAIN_SHUTDOWN:
-    #     libvirt.VIR_DOMAIN_SHUTOFF:
-    #     libvirt.VIR_DOMAIN_CRASHED:
-    #     libvirt.VIR_DOMAIN_PMSUSPENDED:
-    # }
+    """Controller for managing libvirt-based VMs."""
     DOMAIN_INFO_NAME = 'name'
     DOMAIN_INFO_STATE = 'state'
     HOST_GPU_INFO_BUS = 'bus'
