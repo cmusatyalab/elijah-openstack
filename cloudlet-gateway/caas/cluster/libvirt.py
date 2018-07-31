@@ -38,18 +38,21 @@ class LibvirtController(base.BaseCluster):
 
     def _get_nvidia_gpu_info(self):
         """Return NVIDIA GPU card info."""
-        cmd = "lspci -nn | grep -o '.*NVIDIA.*' | cut -d ' ' -f 1"
-        cmd_proc = subprocess.Popen(shlex.split(cmd), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        cmd = 'lspci -nn | grep NVIDIA | cut -d " " -f 1 | tr : " " | tr . " "'
+        # the output of the above command is "bus_id slot_id function" in hex
+        cmd_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        out, err = cmd_proc.communicate()
         ret = cmd_proc.returncode
         if ret != 0:
             raise EnvironmentError("Failed to auto detect NVIDIA GPU cards information")
-        out, _ = cmd_proc.communicate()
         gpus = []
-        for line in out:
+        for line in out.splitlines():
             gpu_info = {}
-            gpu_info['bus'] = '0x{:2X}'.format(out.split(':')[0])
-            gpu_info['slot'] = '0x{:2X}'.format(out.split(':')[1].split('.')[0])
-            gpu_info['function'] = '0x{:2X}'.format(out.split(':')[1].split('.')[1])
+            [bus, slot, function] = map(lambda x: int(x, 16), line.split())
+            gpu_info['bus'] = '0x{:02X}'.format(bus)
+            gpu_info['slot'] = '0x{:02X}'.format(slot)
+            gpu_info['function'] = '0x{:02X}'.format(function)
+            gpus.append(gpu_info)
         return gpus
 
     def create(self, name, cpu, memory, image_format, image_path, gpus=[], detect_gpus=False):

@@ -74,7 +74,7 @@
       <source>
         <address domain='0x0000' bus="{{ gpu_card.bus }}" slot="{{ gpu_card.slot }}" function="{{ gpu_card.function }}"/>
       </source>
-      <address type='pci' domain='0x0000' bus='0x00' slot={{ "%02x"|format(loop.index + 16) }} function='{{ gpu_card.gpu_function }}'/>
+      <address type='pci' domain='0x0000' bus='0x00' slot='{{ "%02x"|format(loop.index + 16) }}' function='{{ gpu_card.function }}'/>
     </hostdev>
     {% endfor %}
   </devices>
