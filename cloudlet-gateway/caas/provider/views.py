@@ -10,7 +10,7 @@ from flask_login import login_required, current_user
 import ruamel.yaml
 
 from caas.provider.api import create_application, rm_config_files
-from caas.provider.forms import NewAppForm
+from caas.provider import forms
 from caas.provider.models import App as AppModel, Cluster
 from caas.utils import flash_errors
 
@@ -32,19 +32,20 @@ def apps():
     # get clusters for current user
     clusters = Cluster.query.filter_by(user_id=current_user.id).all()
     cluster_choices = [(cluster.name, cluster.name) for cluster in clusters]
-    form = NewAppForm(cluster_choices)
+    appform = forms.NewAppForm(cluster_choices)
+    clusterform = forms.NewClusterForm()
     if request.method == 'POST':
-        if form.validate_on_submit():
-            uploaded_file = form.config_file.data
-            app_name = form.appname.data
+        if appform.validate_on_submit():
+            uploaded_file = appform.config_file.data
+            app_name = appform.appname.data
             user_id = current_user.id
-            cluster = Cluster.query.filter_by(name=form.clustername.data, user_id=current_user.id).first()
+            cluster = Cluster.query.filter_by(name=appform.clustername.data, user_id=current_user.id).first()
             create_application(app_name, user_id, uploaded_file, cluster)
             flash('Created a new app', 'success')
             redirect_url = request.args.get('next') or url_for('provider.apps')
             return redirect(redirect_url)
         else:
-            flash_errors(form)
+            flash_errors(appform)
     display_info = {}
     for app in current_user.apps:
         display_info[app.name] = app.config_file_name[AppModel.APP_TYPE(app.type)]
@@ -52,7 +53,7 @@ def apps():
     # for cluster in clusters:
     #     cluster_monitor_urls[cluster.name] = '{}{}:8080'.format(current_app.config['LELPROXY'],
     #                                                             cluster.leader_public_ip)
-    return render_template('providers/services.html', apps=display_info, clusters=clusters, form=form,
+    return render_template('providers/services.html', apps=display_info, clusters=clusters, appform=appform, clusterform=clusterform,
                            cluster_monitor_urls=cluster_monitor_urls)
 
 

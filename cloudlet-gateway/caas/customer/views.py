@@ -22,7 +22,7 @@ from caas.extensions import csrf_protect
 from caas.provider.models import App as AppModel, Cluster
 from caas.utils import get_config_file_path
 
-blueprint = Blueprint('customer', __name__, static_folder='../static')
+blueprint = Blueprint('customer', __name__, url_prefix='/customers', static_folder='../static')
 csrf_protect.exempt(blueprint)
 
 CLOUDLET_NAMESERVER_IP = 'CLOUDLET_NAMESERVER_IP'
@@ -291,7 +291,6 @@ def is_instance_provisioned(customer, app):
 
 
 @blueprint.route('/', methods=["GET", "POST"])
-@blueprint.route('/customers', methods=["GET", "POST"])
 def create():
     current_app.logger.debug("request header: {} \n args: {}".format(request.headers, request.args))
 
