@@ -82,7 +82,7 @@ class NewClusterForm(FlaskForm):
     def __init__(self):
         super(NewClusterForm, self).__init__()
         self.acceleration.choices = [("", "---"), ('GPU', 'GPU')]
-        self.clustertype.choices = [("", "---"), ('Kubernetes', 'Kubernetes')]
+        self.clustertype.choices = [('Kubernetes', 'Kubernetes')]
         self.network.choices = [("", "---"), ('Bridge', 'Bridge')]
 
     def validate(self):

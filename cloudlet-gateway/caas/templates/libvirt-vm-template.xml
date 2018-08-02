@@ -1,8 +1,8 @@
 <domain type='kvm' xmlns:qemu='http://libvirt.org/schemas/domain/qemu/1.0'>
-  <name>{{ name }}</name>
-  <memory unit='GiB'>{{ memory }}</memory>
-  <currentMemory unit='GiB'>{{ memory }}</currentMemory>
-  <vcpu placement='static'>{{ cpu }}</vcpu>
+  <name>{{ res_config.name }}</name>
+  <memory unit='GiB'>{{ res_config.memory }}</memory>
+  <currentMemory unit='GiB'>{{ res_config.memory }}</currentMemory>
+  <vcpu placement='static'>{{ res_config.cpu }}</vcpu>
   <os>
     <type arch='x86_64' machine='pc-i440fx-yakkety'>hvm</type>
     <boot dev='hd'/>
@@ -32,8 +32,8 @@
   <devices>
     <emulator>/usr/bin/kvm-spice</emulator>
     <disk type='file' device='disk'>
-      <driver name='qemu' type="{{ image_format }}"/>
-      <source file="{{ image_path }}" />
+      <driver name='qemu' type="{{ res_config.image_format }}"/>
+      <source file="{{ res_config.image_path }}" />
       <target dev='vda' bus='virtio'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x07' function='0x0'/>
     </disk>
@@ -69,7 +69,7 @@
     <memballoon model='virtio'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x06' function='0x0'/>
     </memballoon>
-    {% for gpu_card in gpus %}
+    {% for gpu_card in res_config.gpus %}
     <hostdev mode='subsystem' type='pci' managed='yes'>
       <source>
         <address domain='0x0000' bus="{{ gpu_card.bus }}" slot="{{ gpu_card.slot }}" function="{{ gpu_card.function }}"/>
@@ -77,7 +77,7 @@
       <address type='pci' domain='0x0000' bus='0x00' slot='{{ "%02x"|format(loop.index + 16) }}' function='{{ gpu_card.function }}'/>
     </hostdev>
     {% endfor %}
-    {% for network_interface in network_interfaces %}
+    {% for network_interface in res_config.network_interfaces %}
     <interface type='{{ network_interface.type }}'>
        <source {{ network_interface.type }}='{{ network_interface.source }}'/>
        <model type='{{ network_interface.model }}'/>
