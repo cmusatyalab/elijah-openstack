@@ -135,6 +135,12 @@
                         <div class="form-group">
                             <label>Cluster Type:</label>
                             {{ clusterform.clustertype(class_="form-control") }}
+                              <fieldset class="form-group" id="cluster_custom" style="display:none">
+                                <label for="cluster_custom_vm_image_format">Custom Image Format</label>
+                                {{ clusterform.cluster_custom_vm_image_format(class_="form-control") }}
+                                <label for="cluster_custom_vm_image_path">Custom Image Path</label>
+                                {{ clusterform.cluster_custom_vm_image_path(class_="form-control") }}
+                            </fieldset>
                         </div>
                     </form>
                 </div>
@@ -163,6 +169,17 @@
                 }
                 else{
                     $("#network-bridge")[0].style.display="none";
+                }
+            }); 
+            $("#clustertype").on('change',function(){
+                var selectedval = $("#clustertype").val();
+                console.log(selectedval)
+                if (selectedval == "Custom") 
+                {
+                    $("#cluster_custom")[0].style.display="block";
+                }
+                else{
+                    $("#cluster_custom")[0].style.display="none";
                 }
             }); 
        });

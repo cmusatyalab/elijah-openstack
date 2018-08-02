@@ -78,12 +78,15 @@ class NewClusterForm(FlaskForm):
     network_bridge_name = wtforms.StringField('Bridge Name', validators=[validators.DataRequired()])
     acceleration = wtforms.SelectField('Acceleration', validators=[validators.DataRequired()])
     clustertype = wtforms.SelectField('Type', validators=[validators.DataRequired()])
+    cluster_custom_vm_image_format = wtforms.SelectField('VM Format', validators=[validators.DataRequired()])
+    cluster_custom_vm_image_path = wtforms.StringField('Bridge Name', validators=[validators.DataRequired()])
 
     def __init__(self):
         super(NewClusterForm, self).__init__()
         self.acceleration.choices = [("", "---"), ('GPU', 'GPU')]
-        self.clustertype.choices = [('Kubernetes', 'Kubernetes')]
+        self.clustertype.choices = [('Kubernetes', 'Kubernetes'), ('Custom', 'Custom VM Images')]
         self.network.choices = [("", "---"), ('Bridge', 'Bridge')]
+        self.cluster_custom_vm_image_format.choices = [ ('qcow2', 'qcow2'), ('raw', 'raw')]
 
     def validate(self):
         """Validate the form."""
