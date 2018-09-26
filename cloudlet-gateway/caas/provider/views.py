@@ -4,14 +4,16 @@ import os
 import pdb
 
 import requests
-from flask import Blueprint, render_template, request, flash, url_for, redirect, current_app, send_from_directory, \
-    Response, abort, stream_with_context
-from flask_login import login_required, current_user
 import ruamel.yaml
+from flask import (Blueprint, Response, abort, current_app, flash, redirect,
+                   render_template, request, send_from_directory,
+                   stream_with_context, url_for)
+from flask_login import current_user, login_required
 
-from caas.provider.api import create_application, rm_config_files
 from caas.provider import forms
-from caas.provider.models import App as AppModel, Cluster
+from caas.provider.api import create_application, rm_config_files
+from caas.provider.models import App as AppModel
+from caas.provider.models import Cluster
 from caas.utils import flash_errors
 
 blueprint = Blueprint('provider', __name__, url_prefix='/providers', static_folder='../static')
@@ -23,6 +25,15 @@ def members():
     """show current apps"""
     return render_template('providers/members.html')
 
+def _handle_appform(appform):
+    uploaded_file = appform.config_file.data
+    app_name = appform.appname.data
+    user_id = current_user.id
+    cluster = Cluster.query.filter_by(name=appform.clustername.data, user_id=current_user.id).first()
+    create_application(app_name, user_id, uploaded_file, cluster)
+    flash('Created a new app', 'success')
+    redirect_url = request.args.get('next') or url_for('provider.apps')
+    return redirect(redirect_url)
 
 @blueprint.route('/', methods=["GET", "POST"])
 @blueprint.route('/apps', methods=["GET", "POST"])
@@ -36,14 +47,7 @@ def apps():
     clusterform = forms.NewClusterForm()
     if request.method == 'POST':
         if appform.validate_on_submit():
-            uploaded_file = appform.config_file.data
-            app_name = appform.appname.data
-            user_id = current_user.id
-            cluster = Cluster.query.filter_by(name=appform.clustername.data, user_id=current_user.id).first()
-            create_application(app_name, user_id, uploaded_file, cluster)
-            flash('Created a new app', 'success')
-            redirect_url = request.args.get('next') or url_for('provider.apps')
-            return redirect(redirect_url)
+            return _handle_appform(appform)
         else:
             flash_errors(appform)
     display_info = {}

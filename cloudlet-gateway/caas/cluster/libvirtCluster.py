@@ -27,8 +27,7 @@ class LibvirtController(base.BaseCluster):
         if self._conn is None:
             raise EnvironmentError("Failed to connect to libvirt. Do you have libvirt installed?")
         self._jinja_env = Environment(
-            loader=PackageLoader(self.__class__.JINJA_PACKAGE_LOADER_PACKAGE,
-                                 self.__class__.JINJA_PACKAGE_LOADER_TEMPLATE_DIR),
+            loader=PackageLoader(self.__class__.JINJA_PACKAGE_LOADER_PACKAGE, self.__class__.JINJA_PACKAGE_LOADER_TEMPLATE_DIR),
             autoescape=select_autoescape(['html', 'xml'])
         )
 
@@ -37,7 +36,7 @@ class LibvirtController(base.BaseCluster):
         vm_xml = template.render(res_config=res_config)
         domain = self._conn.createXML(vm_xml, 0)
         if domain is None:
-            raise EnvironmentError("Libvirt failed to create {}.".format(name))
+            raise EnvironmentError("Libvirt failed to create {}.".format(res_config.name))
         return domain
 
     def create(self, res_config):
