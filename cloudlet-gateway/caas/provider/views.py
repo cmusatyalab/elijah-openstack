@@ -10,8 +10,8 @@ from flask import (Blueprint, Response, abort, current_app, flash, redirect,
                    stream_with_context, url_for)
 from flask_login import current_user, login_required
 
-from caas.provider import forms
-from caas.provider.api import create_application, rm_config_files
+from caas.provider import forms, controller
+from caas.provider.api import rm_config_files
 from caas.provider.models import App as AppModel
 from caas.provider.models import Cluster
 from caas import utils
@@ -25,22 +25,6 @@ def members():
     """show current apps"""
     return render_template('providers/members.html')
 
-@utils.validate_form
-def _handle_appform(appform):
-    uploaded_file = appform.config_file.data
-    app_name = appform.appname.data
-    user_id = current_user.id
-    cluster = Cluster.query.filter_by(name=appform.clustername.data, user_id=current_user.id).first()
-    create_application(app_name, user_id, uploaded_file, cluster)
-    flash('Created a new app', 'success')
-    redirect_url = request.args.get('next') or url_for('provider.apps')
-    return redirect(redirect_url)
-
-@utils.validate_form
-def _handle_clusterform(clusterform):
-    flash('Created a new cluster', 'success')
-    redirect_url = request.args.get('next') or url_for('provider.apps')
-    return redirect(redirect_url)
 
 @blueprint.route('/', methods=["GET", "POST"])
 @blueprint.route('/apps', methods=["GET", "POST"])
@@ -53,8 +37,8 @@ def apps():
     appform = forms.NewAppForm(cluster_choices)
     clusterform = forms.NewClusterForm()
     form_handlers = {
-        "Create Cluster": _handle_clusterform(clusterform),
-        "Create App": _handle_appform(appform)
+        "Create Cluster": controller.handle_clusterform(clusterform),
+        "Create App": controller.handle_appform(appform)
     }
     if request.method == 'POST':
         success, current_form = form_handlers[request.form["form_name"]]()
@@ -67,8 +51,9 @@ def apps():
     # for cluster in clusters:
     #     cluster_monitor_urls[cluster.name] = '{}{}:8080'.format(current_app.config['LELPROXY'],
     #                                                             cluster.leader_public_ip)
-    return render_template('providers/services.html', apps=display_info, clusters=clusters, appform=appform, clusterform=clusterform,
-                           cluster_monitor_urls=cluster_monitor_urls)
+    return render_template('providers/services.html',
+                           apps=display_info, clusters=clusters, appform=appform,
+                           clusterform=clusterform, cluster_monitor_urls=cluster_monitor_urls)
 
 
 @blueprint.route('/delete/<string:appname>', methods=["GET"])

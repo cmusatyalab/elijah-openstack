@@ -12,15 +12,36 @@ from logzero import logger
 
 from caas.cluster import base
 
+class Singleton(type):
+    _instances = {}
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
+        return cls._instances[cls]
 
 class LibvirtController(base.BaseCluster):
+    __metaclass__ = Singleton
     """Controller for managing libvirt-based VMs."""
     DOMAIN_INFO_NAME = 'name'
     DOMAIN_INFO_STATE = 'state'
     JINJA_PACKAGE_LOADER_PACKAGE = 'caas'
     JINJA_PACKAGE_LOADER_TEMPLATE_DIR = 'templates'
+    _instances = {}
+
+    @staticmethod
+    def get_controller_instance(uri="qemu:///system"):
+        if uri not in _intances:
+            _instances[uri] = _create_instance(uri)
+        else:
+            return _instances[uri]
 
     def __init__(self, uri="qemu:///system"):
+        # TODO: implement singleton
+        # if LibvirtController.__instance[uri] != None:
+        #     raise ValueError("This class is a singleton!")
+        # else:
+        #     Singleton.__instance = self
+
         """Connect to libvirt daemon."""
         super(LibvirtController, self).__init__()
         self._conn = libvirt.open(uri)
@@ -30,7 +51,7 @@ class LibvirtController(base.BaseCluster):
             loader=PackageLoader(self.__class__.JINJA_PACKAGE_LOADER_PACKAGE, self.__class__.JINJA_PACKAGE_LOADER_TEMPLATE_DIR),
             autoescape=select_autoescape(['html', 'xml'])
         )
-
+    
     def _create_vm_from_xml_template(self, res_config):
         template = self._jinja_env.get_template("libvirt-vm-template.xml")
         vm_xml = template.render(res_config=res_config)
