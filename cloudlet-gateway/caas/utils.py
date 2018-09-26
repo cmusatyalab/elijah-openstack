@@ -4,6 +4,14 @@ import os
 
 from flask import flash, current_app
 
+def validate_form(form_handler):
+    """Decorator to help call validation on form."""
+    def _validate_before_handler(current_form, *args, **kwargs):
+        if not current_form.validate_on_submit():
+            return False, current_form
+        else:
+            return True, form_handler(current_form, *args, **kwargs)
+    return _validate_before_handler
 
 def flash_errors(form, category='warning'):
     """Flash all errors for a form."""

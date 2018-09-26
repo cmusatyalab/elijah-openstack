@@ -91,7 +91,7 @@
                 </div>
                 <div class="modal-footer">
                     <input type="submit" class="btn btn-default"
-                    id="newappform_submit" value="Create App" form="newappform"/>
+                    id="newappform_submit" name="form_name" value="Create App" form="newappform"/>
                     <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
                 </div>
             </div>
@@ -115,16 +115,16 @@
                         </div>
                         <div class="form-group">
                             <label>vCPUs:</label>
-                            {{ clusterform.vCPUs(placeholder='4', class_="form-control") }}
+                            {{ clusterform.vCPUs(class_="form-control") }}
                         </div>
                         <div class="form-group">
                             <label>vMemory(GiB):</label>
-                            {{ clusterform.vMem(placeholder='8', class_="form-control") }}
+                            {{ clusterform.vMem(class_="form-control") }}
                         </div>
                         <div class="form-group">
                             <label>Network:</label>
                             {{ clusterform.network(class_="form-control") }}
-                              <fieldset class="form-group" id="network-bridge" style="display:none">
+                              <fieldset class="form-group" id="network-bridge" style="display:block">
                                 <label for="bridge-name">Bridge Name</label>
                                 {{ clusterform.network_bridge_name(class_="form-control") }}
                             </fieldset>
@@ -146,7 +146,9 @@
                     </form>
                 </div>
                 <div class="modal-footer">
-                    <input type="submit" class="btn btn-default" id="newclusterform_submit" value="Create Cluster" form="newclusterform"/>
+                    <input type="submit" class="btn btn-default"
+                    id="newclusterform_submit" name="form_name" value="Create Cluster"
+                    form="newclusterform"/>
                     <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
                 </div>
             </div>

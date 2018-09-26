@@ -14,7 +14,7 @@ from caas.provider import forms
 from caas.provider.api import create_application, rm_config_files
 from caas.provider.models import App as AppModel
 from caas.provider.models import Cluster
-from caas.utils import flash_errors
+from caas import utils
 
 blueprint = Blueprint('provider', __name__, url_prefix='/providers', static_folder='../static')
 
@@ -25,6 +25,7 @@ def members():
     """show current apps"""
     return render_template('providers/members.html')
 
+@utils.validate_form
 def _handle_appform(appform):
     uploaded_file = appform.config_file.data
     app_name = appform.appname.data
@@ -32,6 +33,12 @@ def _handle_appform(appform):
     cluster = Cluster.query.filter_by(name=appform.clustername.data, user_id=current_user.id).first()
     create_application(app_name, user_id, uploaded_file, cluster)
     flash('Created a new app', 'success')
+    redirect_url = request.args.get('next') or url_for('provider.apps')
+    return redirect(redirect_url)
+
+@utils.validate_form
+def _handle_clusterform(clusterform):
+    flash('Created a new cluster', 'success')
     redirect_url = request.args.get('next') or url_for('provider.apps')
     return redirect(redirect_url)
 
@@ -45,11 +52,14 @@ def apps():
     cluster_choices = [(cluster.name, cluster.name) for cluster in clusters]
     appform = forms.NewAppForm(cluster_choices)
     clusterform = forms.NewClusterForm()
+    form_handlers = {
+        "Create Cluster": _handle_clusterform(clusterform),
+        "Create App": _handle_appform(appform)
+    }
     if request.method == 'POST':
-        if appform.validate_on_submit():
-            return _handle_appform(appform)
-        else:
-            flash_errors(appform)
+        success, current_form = form_handlers[request.form["form_name"]]()
+        if not success:
+            utils.flash_errors(current_form)
     display_info = {}
     for app in current_user.apps:
         display_info[app.name] = app.config_file_name[AppModel.APP_TYPE(app.type)]

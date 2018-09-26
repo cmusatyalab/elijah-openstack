@@ -80,11 +80,11 @@ class NewClusterForm(FlaskForm):
     vCPUs = wtforms.IntegerField('vCPUs', widget = widgets.Input(input_type="number"), validators=[validators.DataRequired(), validators.NumberRange(min=1)])
     vMem = wtforms.IntegerField('vMem', widget = widgets.Input(input_type="number"), validators=[validators.DataRequired(), validators.NumberRange(min=2)])
     network = wtforms.SelectField('Network', validators=[validators.DataRequired()])
-    network_bridge_name = wtforms.StringField('Bridge Name', validators=[validators.DataRequired()])
-    acceleration = wtforms.SelectField('Acceleration', validators=[validators.DataRequired()])
-    clustertype = wtforms.SelectField('Type', validators=[validators.DataRequired()])
-    cluster_custom_vm_image_format = wtforms.SelectField('VM Format', validators=[validators.DataRequired()])
-    cluster_custom_vm_image_path = wtforms.StringField('Bridge Name', validators=[validators.DataRequired()])
+    network_bridge_name = wtforms.StringField('Bridge Name')
+    acceleration = wtforms.SelectField('Acceleration')
+    clustertype = wtforms.SelectField('Type')
+    cluster_custom_vm_image_format = wtforms.SelectField('VM Format')
+    cluster_custom_vm_image_path = wtforms.StringField('VM Image Path')
 
     def __init__(self):
         super(NewClusterForm, self).__init__()
