@@ -12,15 +12,7 @@ from logzero import logger
 
 from caas.cluster import base
 
-class Singleton(type):
-    _instances = {}
-    def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
-
 class LibvirtController(base.BaseCluster):
-    __metaclass__ = Singleton
     """Controller for managing libvirt-based VMs."""
     DOMAIN_INFO_NAME = 'name'
     DOMAIN_INFO_STATE = 'state'
@@ -28,21 +20,7 @@ class LibvirtController(base.BaseCluster):
     JINJA_PACKAGE_LOADER_TEMPLATE_DIR = 'templates'
     _instances = {}
 
-    @staticmethod
-    def get_controller_instance(uri="qemu:///system"):
-        if uri not in _intances:
-            _instances[uri] = _create_instance(uri)
-        else:
-            return _instances[uri]
-
-    def __init__(self, uri="qemu:///system"):
-        # TODO: implement singleton
-        # if LibvirtController.__instance[uri] != None:
-        #     raise ValueError("This class is a singleton!")
-        # else:
-        #     Singleton.__instance = self
-
-        """Connect to libvirt daemon."""
+    def __init__(self, uri):
         super(LibvirtController, self).__init__()
         self._conn = libvirt.open(uri)
         if self._conn is None:

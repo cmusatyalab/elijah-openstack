@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """app views."""
 import os
-import pdb
+from functools import partial
 
 import requests
 import ruamel.yaml
@@ -37,8 +37,8 @@ def apps():
     appform = forms.NewAppForm(cluster_choices)
     clusterform = forms.NewClusterForm()
     form_handlers = {
-        "Create Cluster": controller.handle_clusterform(clusterform),
-        "Create App": controller.handle_appform(appform)
+        "Create Cluster": partial(controller.handle_clusterform, clusterform),
+        "Create App": partial(controller.handle_clusterform, appform),
     }
     if request.method == 'POST':
         success, current_form = form_handlers[request.form["form_name"]]()

@@ -75,12 +75,6 @@ class BaseCluster(with_metaclass(abc.ABCMeta)):
         pass
     
     @abc.abstractmethod
-    @staticmethod
-    def get_controller_instance(*arg, **kwarys):
-        """Cluster Controller should be singletons."""
-        raise NotImplementedError
-
-    @abc.abstractmethod
     def create(self, parameter_list):
         """Create a VM/Contianer."""
         raise NotImplementedError
