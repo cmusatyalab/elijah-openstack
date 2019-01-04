@@ -98,7 +98,7 @@ python-neutronclient==2.4.0
 python-novaclient==7.0.0
 python-swiftclient==3.3.0
 pytz==2017.2
-PyYAML==3.12
+PyYAML==4.2b1
 redis==2.10.5
 requests>=2.20.0
 requestsexceptions==1.2.0
